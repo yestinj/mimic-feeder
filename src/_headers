@@ -6,7 +6,7 @@
 
 /*
    Cache-Control: public, max-age=3600
-   Content-Security-Policy: default-src 'self' https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com; worker-src 'self' blob:; object-src 'none'; img-src 'self' data:; style-src 'self'
+   Content-Security-Policy: default-src 'self' https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com https://static.cloudflareinsights.com blob:; worker-src 'self' blob:; object-src 'none'; img-src 'self' data:; style-src 'self'
    X-Content-Type-Options: nosniff
    X-Frame-Options: DENY
    Referrer-Policy: strict-origin-when-cross-origin
