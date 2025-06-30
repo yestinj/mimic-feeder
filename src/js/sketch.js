@@ -80,7 +80,11 @@ function setup() {
         canvasWidth = windowWidth;
         canvasHeight = canvasWidth / ASPECT_RATIO;
     }
-    createCanvas(canvasWidth, canvasHeight);
+
+    let canvas = createCanvas(canvasWidth, canvasHeight);
+    canvas.parent('gameContainer');
+    canvas.elt.setAttribute('role', 'application');
+    canvas.elt.setAttribute('aria-label', 'Interactive game canvas');
 
     initializeStates(); // Sets gameState.lastUsedName to "Player"
 

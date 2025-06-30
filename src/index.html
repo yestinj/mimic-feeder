@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+
+    <meta name="description" content="Play Mimic Feeder, a strategic p5.js game where you outsmart opponents with clever tactics.">
+    <meta name="keywords" content="Mimic Feeder, p5.js, strategy game, canvas game">
+    <meta name="author" content="Yestin Johnson">
+    <link rel="icon" href="assets/favicon.ico">
+    <!-- Open Graph for social sharing -->
+    <meta property="og:title" content="Mimic Feeder">
+    <meta property="og:description" content="A fun and strategic p5.js game. Outsmart your opponents in Mimic Feeder!">
+    <!--    TODO -->
+    <meta property="og:image" content="/assets/og-image.png">
+    <meta property="og:url" content="https://mimicfeeder.yest.dev/">
+    <meta property="og:type" content="website">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mimic Feeder</title>
+
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Load Libraries with defer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js" defer></script>
+    <!-- Load Game Scripts with defer -->
+    <script src="js/constants.js" defer></script>
+    <script src="js/assets.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/player.js" defer></script>
+    <script src="js/objects.js" defer></script>
+    <script src="js/abilities.js" defer></script>
+    <script src="js/ui.js" defer></script>
+    <script src="js/introScreen.js" defer></script>
+    <script src="js/nameInputScreen.js" defer></script>
+    <script src="js/gameOverScreen.js" defer></script>
+    <script src="js/helpScreen.js" defer></script>
+    <script src="js/objectInfoScreen.js" defer></script>
+    <script src="js/aboutScreen.js" defer></script>
+    <script src="js/sketch.js" defer></script>
+</head>
+<body>
+<!-- Canvas will be created here by p5.js -->
+    <div id="gameContainer" aria-label="Mimic Feeder game canvas">
+        <noscript>Your browser does not support JavaScript or it is disabled. Please enable JavaScript to play Mimic Feeder.</noscript>
+    </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "mimic-feeder",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "clean-css": "^5.3.3",
+    "esbuild": "^0.25.5",
+    "html-minifier": "^4.0.0"
+  },
+  "description": "A fun little game I created with the help of AI - Grok, Copilot, Google AI Studio (Claude), and Jetbrains Junie.",
+  "main": "build.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yestinj/mimic-feeder.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/yestinj/mimic-feeder/issues"
+  },
+  "homepage": "https://github.com/yestinj/mimic-feeder#readme"
+}
