@@ -1,0 +1,7 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none';
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+
+https://*.pages.dev/*
+  X-Robots-Tag: noindex
