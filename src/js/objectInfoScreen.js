@@ -197,7 +197,13 @@ function drawObjectInfoScreen() {
     textSize(14);
     textStyle(NORMAL);
     textLeading(18);
-    textWrap(WORD);
+    // In p5.js 1.9.4, WORD constant might need to be accessed differently
+    // Using string literal 'word' as a fallback
+    try {
+        textWrap(WORD);
+    } catch (e) {
+        textWrap('word');
+    }
 
     let objectDescText = "Consumables are creatures you can eat for points. " +
         "Shinies are valuable objects that give high points. " +

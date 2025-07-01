@@ -48,7 +48,13 @@ function drawHelpScreen() {
     textSize(14);
     textStyle(NORMAL);
     textLeading(18);
-    textWrap(WORD);
+    // In p5.js 1.9.4, WORD constant might need to be accessed differently
+    // Using string literal 'word' as a fallback
+    try {
+        textWrap(WORD);
+    } catch (e) {
+        textWrap('word');
+    }
     let howToPlayText = "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.\n" +
         "Letting perfectly good food (creatures) perish or getting hit by a dangerous object will cause damage.\n" +
         "Cats are special...";
@@ -85,7 +91,13 @@ function drawHelpScreen() {
     textSize(14);
     textStyle(NORMAL);
     textLeading(18);
-    textWrap(WORD);
+    // In p5.js 1.9.4, WORD constant might need to be accessed differently
+    // Using string literal 'word' as a fallback
+    try {
+        textWrap(WORD);
+    } catch (e) {
+        textWrap('word');
+    }
 
     let tentaclesText = "Tentacles (1 key): At Player level " + PLAYER_LEVEL_FOR_TENTACLES +
         ", you gain the ability to extend tentacles that can grab multiple objects at once. " +

@@ -40,7 +40,13 @@ function drawIntroScreen() {
     textStyle(NORMAL);
     let descriptionTextLeading = 18;
     textLeading(descriptionTextLeading);
-    textWrap(WORD);
+    // In p5.js 1.9.4, WORD constant might need to be accessed differently
+    // Using string literal 'word' as a fallback
+    try {
+        textWrap(WORD);
+    } catch (e) {
+        textWrap('word');
+    }
     let description = "Dungeon mimics are greedy, hungry creatures. " +
         "They need to eat, anything edible, and love collecting shinies.\n\n" +
         "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.\n\n" +

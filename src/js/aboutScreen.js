@@ -40,7 +40,13 @@ function drawAboutScreen() {
     textSize(16);
     textStyle(NORMAL);
     textLeading(22);
-    textWrap(WORD);
+    // In p5.js 1.9.4, WORD constant might need to be accessed differently
+    // Using string literal 'word' as a fallback
+    try {
+        textWrap(WORD);
+    } catch (e) {
+        textWrap('word');
+    }
     let aboutText = "This game was created by Yestin. It's currently in alpha, and is just a fun side project.";
     text(aboutText, leftMargin, currentY, textBlockWidth);
     currentY += 100; // Space after about text
