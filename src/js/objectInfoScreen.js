@@ -3,16 +3,15 @@ function drawObjectInfoScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    // Overlay Size Calculation - same as helpScreen for consistency
-    let originalOverlayHeightPercentage = 0.80;
-    let reductionFactor = 0.85;
-    let overlayWidth = width * 0.6;
-    let overlayHeight = height * originalOverlayHeightPercentage * reductionFactor;
+    // Calculate content height dynamically
+    let contentHeight = calculateObjectInfoContentHeight();
 
-    if (overlayHeight < 580) {
-        overlayHeight = 580;
-    }
-    if (overlayWidth < 550) {
+    // Overlay Size Calculation
+    let overlayWidth = width * 0.6;
+    // Add padding to the content height
+    let overlayHeight = contentHeight + 50; // Reduced from 60 to 50
+
+    if (overlayWidth < 550) { // Min width
         overlayWidth = 550;
     }
     let overlayX = (width - overlayWidth) / 2;
@@ -26,7 +25,7 @@ function drawObjectInfoScreen() {
     // Text Content
     let leftMargin = overlayX + 30;
     let textBlockWidth = overlayWidth - (2 * 30); // Max width for most text
-    let currentY = overlayY + 30; // Initial Y padding from top of overlay
+    let currentY = overlayY + 25; // Reduced from 30 to 25
 
     // 1. Heading: "Object Info"
     fill(0);
@@ -34,11 +33,11 @@ function drawObjectInfoScreen() {
     textAlign(LEFT, TOP);
     textStyle(BOLD);
     text(`Object Info`, leftMargin, currentY);
-    currentY += 40; // Space after heading
+    currentY += 35;
 
     // Define spacing and image size
     let imageSize = 24;
-    let rowHeight = 30; // Increased from 20 to accommodate images
+    let rowHeight = 25; // Reduced from 30 to 25
     let col1X = leftMargin;
     let col2X = leftMargin + 250; // Further increased spacing between columns to prevent overlap
     let textWidth = 30; // Width for spacing after image
@@ -80,7 +79,7 @@ function drawObjectInfoScreen() {
     fill(0); // Black for heading
     textAlign(LEFT, TOP);
     text("Consumables:", leftMargin, currentY);
-    currentY += 40; // Increased space after heading
+    currentY += 30; // Reduced from 40 to 25
 
     // Points List with Images for Consumables
     textSize(12);
@@ -100,7 +99,7 @@ function drawObjectInfoScreen() {
     currentY += rowHeight;
 
     drawObjectInfo(col1X, currentY, OBJ_WRAITH, "Wraith");
-    currentY += rowHeight + 3; // Extra space after consumables section
+    currentY += rowHeight + 2; // Reduced from 3 to 2
 
     // 3. Shinies Section
     textSize(16);
@@ -108,7 +107,7 @@ function drawObjectInfoScreen() {
     fill(0);
     textAlign(LEFT, TOP);
     text("Shinies:", leftMargin, currentY);
-    currentY += 33; // Increased space after heading
+    currentY += 30;
 
     // Points List with Images for Shinies
     textSize(12);
@@ -117,7 +116,7 @@ function drawObjectInfoScreen() {
     // Draw non-humanoid edible objects with points
     drawObjectInfo(col1X, currentY, OBJ_CROWN, "Crown");
     drawObjectInfo(col2X, currentY, OBJ_DIAMOND, "Diamond");
-    currentY += rowHeight + 3; // Extra space after shinies section
+    currentY += rowHeight + 2; // Reduced from 3 to 2
 
     // 4. Hazards Section
     textSize(16);
@@ -125,7 +124,7 @@ function drawObjectInfoScreen() {
     fill(0);
     textAlign(LEFT, TOP);
     text("Hazards:", leftMargin, currentY);
-    currentY += 32; // Increased space after heading
+    currentY += 30;
 
     // Points List with Images for Hazards
     textSize(12);
@@ -151,7 +150,7 @@ function drawObjectInfoScreen() {
     // Display text after image
     text(fireballText, col2X + imageSize + textWidth, currentY);
 
-    currentY += rowHeight + 5; // Extra space after hazards section
+    currentY += rowHeight + 3; // Reduced from 5 to 3
 
     // 4. Power-ups Section
     textSize(16);
@@ -159,7 +158,7 @@ function drawObjectInfoScreen() {
     fill(0);
     textAlign(LEFT, TOP);
     text("Power-ups:", leftMargin, currentY);
-    currentY += 40; // Increased space after heading
+    currentY += 35;
 
     // Points List with Images for Power-ups
     textSize(12);
@@ -183,7 +182,7 @@ function drawObjectInfoScreen() {
     }
     text(magnetText, col2X + imageSize + textWidth, currentY);
 
-    currentY += rowHeight + 15; // Extra space after power-ups section
+    currentY += rowHeight + 8;
 
     // 3. Object Descriptions (optional)
     textSize(16);
@@ -191,12 +190,12 @@ function drawObjectInfoScreen() {
     fill(0);
     textAlign(LEFT, TOP);
     text("Object Descriptions:", leftMargin, currentY);
-    currentY += 26;
+    currentY += 25;
 
     // Object descriptions
     textSize(14);
     textStyle(NORMAL);
-    textLeading(18);
+    textLeading(16);
     // In p5.js 1.9.4, WORD constant might need to be accessed differently
     // Using string literal 'word' as a fallback
     try {
@@ -210,7 +209,7 @@ function drawObjectInfoScreen() {
         "Hazards are dangerous objects that can damage you. " +
         "Power-ups grant special abilities.";
     text(objectDescText, leftMargin, currentY, textBlockWidth);
-    currentY += 80;
+    currentY += 40;
 
     // Navigation instructions at bottom
     let bottomPadding = 10;
@@ -263,6 +262,81 @@ function drawObjectInfoScreen() {
 
     textStyle(NORMAL);
     textAlign(LEFT, BASELINE); // Reset for other potential text drawing
+}
+
+// Function to calculate the required height for the object info screen content
+function calculateObjectInfoContentHeight() {
+    // Get the width for text wrapping calculations
+    let overlayWidth = width * 0.6;
+    if (overlayWidth < 550) {
+        overlayWidth = 550;
+    }
+    let textBlockWidth = overlayWidth - (2 * 30); // Max width for text (with 30px margins)
+
+    let totalHeight = 0;
+
+    // 1. Heading: "Object Info" (28px + 30px spacing)
+    totalHeight += 28 + 30; // Reduced from 40
+
+    // Define spacing and row heights
+    let rowHeight = 25; // Reduced from 30
+
+    // 2. Consumables Section (16px + 25px spacing)
+    totalHeight += 16 + 25; // Reduced from 40
+
+    // Consumables list (4 rows, rowHeight each)
+    totalHeight += rowHeight * 4 + 2; // Reduced extra spacing from 3 to 2
+
+    // 3. Shinies Section (16px + 25px spacing)
+    totalHeight += 16 + 25; // Reduced from 33
+
+    // Shinies list (1 row, rowHeight each)
+    totalHeight += rowHeight + 2; // Reduced extra spacing from 3 to 2
+
+    // 4. Hazards Section (16px + 25px spacing)
+    totalHeight += 16 + 25; // Reduced from 32
+
+    // Hazards list (1 row, rowHeight each)
+    totalHeight += rowHeight + 3; // Reduced from 5
+
+    // 5. Power-ups Section (16px + 25px spacing)
+    totalHeight += 16 + 25; // Reduced from 40
+
+    // Power-ups list (1 row, rowHeight each)
+    totalHeight += rowHeight + 8; // Reduced from 15
+
+    // 6. Object Descriptions (16px + 20px spacing)
+    totalHeight += 16 + 20; // Reduced from 26
+
+    // Object descriptions text
+    let objectDescText = "Consumables are creatures you can eat for points. " +
+        "Shinies are valuable objects that give high points. " +
+        "Hazards are dangerous objects that can damage you. " +
+        "Power-ups grant special abilities.";
+
+    // Calculate description height
+    let descTextSize = 14;
+    let descLineHeight = 16; // Reduced from 18
+
+    // Estimate wrapped lines based on text width and available space
+    let avgCharWidth = descTextSize * 0.6; // Approximate average character width
+    let charsPerLine = Math.floor(textBlockWidth / avgCharWidth);
+    let descLines = Math.ceil(objectDescText.length / charsPerLine);
+
+    // Calculate description height
+    let descriptionHeight = descLines * descLineHeight;
+    totalHeight += descriptionHeight + 40;
+
+    // 7. Navigation instructions (3 lines, 18px each)
+    totalHeight += 18 * 3 + 10;
+
+    // 8. Version and author info
+    totalHeight += 15;
+
+    // somehow this is much too big, lets try this
+    totalHeight -= 100;
+
+    return totalHeight;
 }
 
 function handleObjectInfoScreenKeyPressed() {

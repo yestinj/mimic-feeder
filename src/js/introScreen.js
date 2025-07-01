@@ -3,14 +3,14 @@ function drawIntroScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    // Overlay Size Calculation
-    let originalOverlayHeightPercentage = 0.40;
-    let overlayWidth = width * 0.50;
-    let overlayHeight = height * originalOverlayHeightPercentage;
+    // Calculate content height dynamically
+    let contentHeight = calculateIntroContentHeight();
 
-    if (overlayHeight < 300) { // Min height to ensure content fits
-        overlayHeight = 300;
-    }
+    // Overlay Size Calculation
+    let overlayWidth = width * 0.50;
+    // Add padding to the content height
+    let overlayHeight = contentHeight + 60; // 30px padding top and bottom
+
     if (overlayWidth < 500) { // Min width
         overlayWidth = 550;
     }
@@ -57,7 +57,7 @@ function drawIntroScreen() {
     // Estimate description height for positioning elements below it
     let explicitNewlinesInDesc = (description.match(/\n\n/g) || []).length * 2;
     let approxLinesInDesc = 8 + explicitNewlinesInDesc; // Base 8 lines + explicit breaks
-    currentY += approxLinesInDesc * (14 * 0.8); // Adjusted factor for tighter lines
+    currentY += approxLinesInDesc * (16 * 0.8); // Adjusted factor for tighter lines
     //currentY += 15; // Padding after description
 
     // 3. "Game Controls" Heading
@@ -113,6 +113,62 @@ function drawIntroScreen() {
 
     textStyle(NORMAL);
     textAlign(LEFT, BASELINE); // Reset for other potential text drawing
+}
+
+// Function to calculate the required height for the intro screen content
+function calculateIntroContentHeight() {
+    // Get the width for text wrapping calculations
+    let overlayWidth = width * 0.50;
+    if (overlayWidth < 500) {
+        overlayWidth = 550;
+    }
+    let textBlockWidth = overlayWidth - (2 * 30); // Max width for text (with 30px margins)
+
+    let totalHeight = 0;
+
+    // 1. Heading: "Mimic Feeder" (28px + 40px spacing)
+    totalHeight += 28 + 40;
+
+    // 2. Description text
+    let description = "Dungeon mimics are greedy, hungry creatures. " +
+        "They need to eat, anything edible, and love collecting shinies.\n\n" +
+        "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.\n\n" +
+        "Letting perfectly good food (creatures) perish will cause damage.\n\n" +
+        "Eat the food, collect the shinies and powerups, and avoid the bombs!";
+
+    // Calculate description height based on text wrapping
+    let descTextSize = 14;
+    let descLineHeight = 18;
+
+    // Count explicit line breaks
+    let explicitNewlinesInDesc = (description.match(/\n\n/g) || []).length * 2;
+
+    // Estimate wrapped lines based on text width and available space
+    let textWidth = textBlockWidth;
+    let avgCharWidth = descTextSize * 0.6; // Approximate average character width
+    let charsPerLine = Math.floor(textWidth / avgCharWidth);
+    let textLines = Math.ceil(description.length / charsPerLine);
+
+    // Add explicit line breaks
+    textLines += explicitNewlinesInDesc;
+
+    // Calculate description height
+    let descriptionHeight = textLines * descLineHeight;
+    totalHeight += descriptionHeight;
+
+    // 3. "Game Controls" Heading (16px + 26px spacing)
+    totalHeight += 16 + 26;
+
+    // 4. Controls List (2 items, 20px each)
+    totalHeight += 20 * 2;
+
+    // 5. Start Instruction & Bottom Corner Texts
+    // Add space for "Press Enter to start" and version/author info
+    totalHeight += 40;
+
+    totalHeight -= 50;
+
+    return totalHeight;
 }
 
 function handleIntroScreenKeyPressed() {
