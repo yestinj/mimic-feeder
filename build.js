@@ -91,10 +91,6 @@ async function bundleJS(inputDir, outputDir) {
         'sketch.js'
     ];
 
-    // Create the js subdirectory in the output directory
-    const jsOutputDir = path.join(outputDir, 'js');
-    await fs.mkdir(jsOutputDir, { recursive: true });
-
     // Create a temporary directory for concatenation
     const tempDir = path.join(outputDir, 'temp');
     await fs.mkdir(tempDir, { recursive: true });
@@ -162,7 +158,7 @@ async function main() {
         await Promise.all([
             minifyHTML('src', OUTPUT_DIR),
             minifyCSS('src', OUTPUT_DIR),
-            bundleJS(JS_DIR, OUTPUT_DIR), // Changed to output directly to OUTPUT_DIR
+            bundleJS(JS_DIR, OUTPUT_DIR),
             copyAssets(ASSET_DIR, `${OUTPUT_DIR}/assets`),
             fs.copyFile('src/_headers', `${OUTPUT_DIR}/_headers`).catch(() => {})
         ]);
