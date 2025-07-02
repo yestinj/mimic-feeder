@@ -1,77 +1,151 @@
-// --- Game State Management ---
+/**
+ * @fileoverview Main game file for Mimic Feeder.
+ * Contains the core game loop, event handlers, and game state management.
+ * @author Yestin Johnson
+ */
+
+/**
+ * Game State Management - Core variables and initialization
+ */
+
+/**
+ * Main game state object containing all game-related state
+ * @type {Object}
+ */
 let gameState = {};
+
+/**
+ * Player state object containing all player-related state
+ * @type {Object}
+ */
 let playerState = {};
 
+/**
+ * Initializes game and player state objects with default values
+ * @function
+ */
 function initializeStates() {
     gameState = {
-        score: 0,
-        dungeonFloor: 1,
-        dungeonZone: 1,
-        objectsEaten: 0,
-        gameOver: false,
-        enteringName: false,
-        playerName: "",
-        lastUsedName: "Player", // Default, will be potentially overridden
-        currentNameInput: "",
-        startTime: 0,
-        playTime: 0,
-        gameStarted: false,
-        showIntroScreen: false, // Determined in setup
-        showHelpScreen: false, // Help/About screen flag
-        showObjectInfoScreen: false, // Object Info screen flag
-        showAboutScreen: false, // About screen flag
-        shouldTriggerGameOver: false,
-        objectSpawnRate: BASE_OBJECT_SPAWN_RATE_FRAMES,
-        dropSpeedScale: INITIAL_DROP_SPEED_SCALE,
-        lastHealthPotionLevel: 0,
-        humansForNextMaxLife: HUMANS_PER_MAX_LIFE_INCREASE,
-        collectedCounts: {
+        score: 0,                                      // Current game score
+        dungeonFloor: 1,                               // Current dungeon floor (level)
+        dungeonZone: 1,                                // Current zone within the floor
+        objectsEaten: 0,                               // Count of objects eaten by player
+        gameOver: false,                               // Whether the game is over
+        enteringName: false,                           // Whether player is entering name for high score
+        playerName: "",                                // Player's name
+        lastUsedName: "Player",                        // Last used player name (from localStorage)
+        currentNameInput: "",                          // Current input in name field
+        startTime: 0,                                  // Game start time (in seconds)
+        playTime: 0,                                   // Total play time (in seconds)
+        gameStarted: false,                            // Whether game has started
+        showIntroScreen: false,                        // Whether to show intro screen
+        showHelpScreen: false,                         // Whether to show help screen
+        showObjectInfoScreen: false,                   // Whether to show object info screen
+        showAboutScreen: false,                        // Whether to show about screen
+        shouldTriggerGameOver: false,                  // Flag to trigger game over on next frame
+        objectSpawnRate: BASE_OBJECT_SPAWN_RATE_FRAMES,// Rate at which objects spawn
+        dropSpeedScale: INITIAL_DROP_SPEED_SCALE,      // Speed at which objects fall
+        lastHealthPotionLevel: 0,                      // Last level a health potion appeared
+        humansForNextMaxLife: HUMANS_PER_MAX_LIFE_INCREASE, // Humans needed for next max life increase
+        collectedCounts: {                             // Counts of each object type collected
             human: 0, goblin: 0, elf: 0, wraith: 0, cat: 0,
             dwarf: 0, dragon: 0, small_bomb: 0, crown: 0, diamond: 0, magnet: 0
         },
-        catsRescued: 0,
-        catsRescuedPoints: 0,
-        collectedCount: 0,
-        destroyedCount: 0,
+        catsRescued: 0,                               // Number of cats rescued
+        catsRescuedPoints: 0,                         // Points from rescuing cats
+        collectedCount: 0,                            // Total objects collected
+        destroyedCount: 0,                            // Total objects destroyed
     };
+
     playerState = {
-        lives: INITIAL_LIVES,
-        maxLives: MAX_LIVES_START,
-        level: PLAYER_INITIAL_LEVEL,
-        experience: 0,
-        experienceCap: PLAYER_XP_CAP_INITIAL,
-        speedPercentage: 100,
-        sizePercentage: 100,
-        hasWizardStaff: false,
-        hasMagnet: false,
-        tentaclesCooldown: 0,
-        usingTentacles: false,
-        tentacleTargetLimit: INITIAL_TENTACLE_TARGET_LIMIT,
-        magnetismCooldown: 0,
-        usingMagnetism: false,
-        magnetizedObjects: [],
-        shadowBoltCooldown: 0
+        lives: INITIAL_LIVES,                         // Current player lives
+        maxLives: MAX_LIVES_START,                    // Maximum lives player can have
+        level: PLAYER_INITIAL_LEVEL,                  // Current player level
+        experience: 0,                                // Current experience points
+        experienceCap: PLAYER_XP_CAP_INITIAL,         // Experience needed for next level
+        speedPercentage: 100,                         // Player speed percentage (increases with level)
+        sizePercentage: 100,                          // Player size percentage (increases with level)
+        hasWizardStaff: false,                        // Whether player has wizard staff
+        hasMagnet: false,                             // Whether player has magnet
+        tentaclesCooldown: 0,                         // Cooldown timer for tentacles ability
+        usingTentacles: false,                        // Whether tentacles are currently active
+        tentacleTargetLimit: INITIAL_TENTACLE_TARGET_LIMIT, // Max objects tentacles can target
+        magnetismCooldown: 0,                         // Cooldown timer for magnetism ability
+        usingMagnetism: false,                        // Whether magnetism is currently active
+        magnetizedObjects: [],                        // Objects currently affected by magnetism
+        shadowBoltCooldown: 0                         // Cooldown timer for shadow bolt ability
     };
 }
 
-// Global references
+/**
+ * Global references - Game-wide variables and arrays
+ */
+/**
+ * Array of bomb explosion effects
+ * @type {Array}
+ */
 let bombExplosions = [];
+/**
+ * Array of shadow bolt explosion effects
+ * @type {Array}
+ */
 let shadowBoltExplosions = [];
+/**
+ * Array of ground splat effects
+ * @type {Array}
+ */
 let groundSplats = [];
-let bossFireballs = []; // Array to track boss fireballs
+/**
+ * Array of boss fireball projectiles
+ * @type {Array}
+ */
+let bossFireballs = [];
+/**
+ * Whether audio has been started
+ * @type {boolean}
+ */
 let audioStarted = false;
+/**
+ * Game canvas aspect ratio
+ * @const {number}
+ */
 const ASPECT_RATIO = 1024 / 768;
 // UI elements declared globally in ui.js
 
+/**
+ * Timer for shadow bolt mouth animation
+ * @type {number}
+ */
 let shadowBoltAjarTimer = 0;
+/**
+ * Duration of shadow bolt mouth animation
+ * @const {number}
+ */
 const SHADOW_BOLT_AJAR_DURATION = 15;
+/**
+ * Timer for jump eat mouth animation
+ * @type {number}
+ */
 let jumpEatOpenTimer = 0;
+/**
+ * Duration of jump eat mouth animation
+ * @const {number}
+ */
 const JUMP_EAT_OPEN_DURATION = 45;
 
-let isInitialPageLoad = true; // This flag helps differentiate first load from restarts
+/**
+ * Flag to track initial page load vs restart
+ * @type {boolean}
+ */
+let isInitialPageLoad = true;
 
-
+/**
+ * p5.js setup function - Called once at the beginning
+ * Sets up the canvas, initializes game state, and prepares the game
+ * @function
+ */
 function setup() {
+    // Calculate canvas dimensions based on aspect ratio and window size
     let canvasWidth, canvasHeight;
     if (windowWidth / windowHeight >= ASPECT_RATIO) {
         canvasHeight = windowHeight;
@@ -81,19 +155,19 @@ function setup() {
         canvasHeight = canvasWidth / ASPECT_RATIO;
     }
 
+    // Create and configure the canvas
     let canvas = createCanvas(canvasWidth, canvasHeight);
     canvas.parent('gameContainer');
     canvas.elt.setAttribute('role', 'application');
     canvas.elt.setAttribute('aria-label', 'Interactive game canvas');
 
-    initializeStates(); // Sets gameState.lastUsedName to "Player"
-
-    // Load name from localStorage (via loadLastUsedName in setupUI)
-    setupPlayer(); // Depends on playerState, which is fine
+    // Initialize game state and components
+    initializeStates();
+    setupPlayer();
     setupSoundMap();
     setupUI(); // This calls loadLastUsedName()
 
-    // 3. Set currentNameInput based on whether user has entered a name before
+    // Set current name input based on whether user has entered a name before
     if (gameState.lastUsedName !== "Player") {
         // If user has entered a name before, use that name
         gameState.currentNameInput = gameState.lastUsedName;
@@ -102,10 +176,9 @@ function setup() {
         gameState.currentNameInput = "";
     }
 
-    // 4. Decide whether to show intro screen
+    // Decide whether to show intro screen
     if (isInitialPageLoad) {
         // Only show intro screen if this is the first time the game is loaded
-        // Check if player name exists in localStorage (not the default "Player")
         if (gameState.lastUsedName === "Player") {
             gameState.showIntroScreen = true;
         } else {
@@ -124,7 +197,13 @@ function setup() {
     }
 }
 
+/**
+ * p5.js windowResized function - Called when the browser window is resized
+ * Adjusts canvas and UI elements to fit the new window size
+ * @function
+ */
 function windowResized() {
+    // Recalculate canvas dimensions based on aspect ratio and new window size
     let canvasWidth, canvasHeight;
     if (windowWidth / windowHeight >= ASPECT_RATIO) {
         canvasHeight = windowHeight;
@@ -135,6 +214,7 @@ function windowResized() {
     }
     resizeCanvas(canvasWidth, canvasHeight);
 
+    // Reposition UI buttons
     if (typeof retryButton !== 'undefined') {
         retryButton.x = width / 2 - retryButton.w / 2;
         retryButton.y = height / 2 - 150;
@@ -145,12 +225,18 @@ function windowResized() {
     }
 }
 
+/**
+ * p5.js draw function - Called continuously to render and update the game
+ * This is the main game loop that handles rendering and game logic
+ * @function
+ */
 function draw() {
     // Update background music based on level
     if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen) {
         updateBackgroundMusic();
     }
 
+    // Draw the appropriate background based on dungeon floor
     if (gameState.dungeonFloor < 3) {
         if (bgImage1) {
             image(bgImage1, 0, 0, width, height);
@@ -341,6 +427,11 @@ function draw() {
     drawUI();
 }
 
+/**
+ * Triggers the game over state
+ * Sets up the game over screen and plays appropriate sounds
+ * @function
+ */
 function triggerGameOver() {
     gameState.gameOver = true;
     gameState.enteringName = true;
@@ -349,6 +440,11 @@ function triggerGameOver() {
     stopAllSounds(true, false); // Stop all sounds including background music
 }
 
+/**
+ * Starts the audio context if needed
+ * Ensures audio can play when user interacts with the game
+ * @function
+ */
 function startAudioIfNeeded() {
     if (getAudioContext() && getAudioContext().state === 'suspended' && !audioStarted) {
         userStartAudio();
@@ -361,6 +457,11 @@ function startAudioIfNeeded() {
     }
 }
 
+/**
+ * Updates and renders bomb explosion animations
+ * Manages explosion animation frames and removes completed explosions
+ * @function
+ */
 function updateBombExplosions() {
     for (let i = bombExplosions.length - 1; i >= 0; i--) {
         let explosion = bombExplosions[i];
@@ -513,11 +614,11 @@ function updateBossFireballs() {
 
             // Create explosion
             bombExplosions.push({
-                x: fireball.x, 
-                y: fireball.y, 
-                currentFrame: 0, 
+                x: fireball.x,
+                y: fireball.y,
+                currentFrame: 0,
                 frameTimer: 0,
-                objWidth: fireball.w, 
+                objWidth: fireball.w,
                 objHeight: fireball.h,
                 type: 'fireball_burst'
             });
@@ -533,11 +634,11 @@ function updateBossFireballs() {
         if (fireball.y + fireball.h/2 >= groundLevel) {
             // Create explosion
             bombExplosions.push({
-                x: fireball.x, 
-                y: groundLevel - fireball.h/2, 
-                currentFrame: 0, 
+                x: fireball.x,
+                y: groundLevel - fireball.h/2,
+                currentFrame: 0,
                 frameTimer: 0,
-                objWidth: fireball.w, 
+                objWidth: fireball.w,
                 objHeight: fireball.h,
                 type: 'fireball_burst'
             });
@@ -550,7 +651,13 @@ function updateBossFireballs() {
     }
 }
 
+/**
+ * p5.js keyPressed function - Called when a key is pressed
+ * Handles keyboard input for game controls and navigation
+ * @function
+ */
 function keyPressed() {
+    // Handle key presses for different game screens
     if (gameState.showIntroScreen && handleIntroScreenKeyPressed()) {
         return;
     }
@@ -571,14 +678,19 @@ function keyPressed() {
     if (gameState.showAboutScreen && handleAboutScreenKeyPressed()) {
         return;
     }
+
     // Show help screen when Escape is pressed during gameplay
     if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen && keyCode === ESCAPE) {
         gameState.showHelpScreen = true;
         return;
     }
+
+    // Skip gameplay controls if not in active game state
     if (gameState.showIntroScreen || gameState.gameOver || gameState.showHelpScreen) {
         return;
     }
+
+    // Handle gameplay controls
     startAudioIfNeeded();
     handlePlayerJump();
     handleTentaclesAbility();
@@ -586,6 +698,11 @@ function keyPressed() {
     handleMagnetismAbility();
 }
 
+/**
+ * p5.js keyTyped function - Called when a key that produces a character is pressed
+ * Used primarily for text input in name entry screen
+ * @function
+ */
 function keyTyped() {
     if (gameState.showIntroScreen) {
         return;
@@ -595,7 +712,13 @@ function keyTyped() {
     }
 }
 
+/**
+ * p5.js mousePressed function - Called when a mouse button is pressed
+ * Handles mouse input for buttons and UI interactions
+ * @function
+ */
 function mousePressed() {
+    // Handle mouse presses for different game screens
     if (gameState.showIntroScreen && handleIntroScreenMousePressed()) {
         return;
     }
@@ -605,19 +728,27 @@ function mousePressed() {
     if (gameState.gameOver && !gameState.enteringName && handleGameOverScreenMousePressed()) {
         return;
     }
+
+    // Ensure audio is started when interacting with the game
     if (!gameState.gameOver && !gameState.showIntroScreen) {
         startAudioIfNeeded();
     }
 }
 
+/**
+ * Stops all game sounds with options to allow specific sounds to continue
+ * @function
+ * @param {boolean} [allowGameOverSound=false] - Whether to allow game over sound to continue playing
+ * @param {boolean} [keepBackgroundMusic=false] - Whether to keep background music playing
+ */
 function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) {
     for (const soundName in soundMap) {
         if (soundMap.hasOwnProperty(soundName)) {
             const sound = soundMap[soundName];
             if (sound && typeof sound.stop === 'function' && typeof sound.isLoaded === 'function' && sound.isLoaded()) {
-                if ((sound === gameOverSound && allowGameOverSound) || 
+                if ((sound === gameOverSound && allowGameOverSound) ||
                     (keepBackgroundMusic && (sound === backgroundMusic1 || sound === backgroundMusic2))) {
-                    // Skip
+                    // Skip these sounds based on parameters
                 } else {
                     sound.stop();
                 }
@@ -626,7 +757,11 @@ function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) 
     }
 }
 
-// Function to manage background music based on level
+/**
+ * Manages background music based on current dungeon floor
+ * Switches between two background tracks depending on floor number
+ * @function
+ */
 function updateBackgroundMusic() {
     // Determine which background music should be playing based on floor
     // Floors 1-2, 5-6, etc. use backgroundMusic1
@@ -655,13 +790,18 @@ function updateBackgroundMusic() {
     }
 }
 
+/**
+ * Restarts the game, resetting all game state to initial values
+ * Clears all objects and resets player state
+ * @function
+ */
 function restartGame() {
+    // Stop all sounds and reset game state
     stopAllSounds(false, false); // Stop all sounds including background music
     initializeStates(); // This resets gameState.lastUsedName to "Player"
 
-    // Load name from localStorage
+    // Load name from localStorage and set up name input
     loadLastUsedName();
-    // Set currentNameInput based on whether user has entered a name before
     if (gameState.lastUsedName !== "Player") {
         // If user has entered a name before, use that name
         gameState.currentNameInput = gameState.lastUsedName;
@@ -670,6 +810,7 @@ function restartGame() {
         gameState.currentNameInput = "";
     }
 
+    // Reset player and clear all game objects
     resetPlayer();
     objects = [];
     popups = [];
@@ -679,9 +820,13 @@ function restartGame() {
     shadowBoltExplosions = [];
     groundSplats = [];
     bossFireballs = [];
+
+    // Reset timers
     openChestTimer = 0;
     shadowBoltAjarTimer = 0;
     jumpEatOpenTimer = 0;
+
+    // Reset notifications
     gameLevelNotification.active = false;
     gameLevelNotification.timer = 0;
     gameLevelNotification.text = "";
@@ -692,8 +837,8 @@ function restartGame() {
     magnetNotification.active = false;
     magnetNotification.timer = 0;
 
+    // Reset audio and game state
     audioStarted = false;
-    // For a restart, we go directly into the game
     gameState.gameStarted = true;
     gameState.showIntroScreen = false; // DO NOT show intro on restart
     gameState.showObjectInfoScreen = false; // Reset Object Info screen flag

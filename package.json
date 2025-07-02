@@ -3,14 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "start": "npx http-server dist -o",
+    "dev": "nodemon --watch src --ext js,html,css --exec \"npm run build && echo 'Build complete, refresh your browser'\"",
+    "docs": "jsdoc -c jsdoc.json",
+    "serve-docs": "npx http-server docs -o"
   },
   "devDependencies": {
     "clean-css": "^5.3.3",
+    "docdash": "^2.0.2",
     "esbuild": "^0.25.5",
-    "html-minifier": "^4.0.0"
+    "html-minifier": "^4.0.0",
+    "http-server": "^14.1.1",
+    "jsdoc": "^4.0.2",
+    "nodemon": "^3.0.1"
   },
-  "description": "A fun little game I created with the help of AI - Grok, Copilot, Google AI Studio (Claude), and Jetbrains Junie.",
+  "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",
   "main": "build.js",
   "repository": {
     "type": "git",
@@ -18,7 +26,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/yestinj/mimic-feeder/issues"

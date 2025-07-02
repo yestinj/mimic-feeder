@@ -1,3 +1,13 @@
+/**
+ * @fileoverview Intro screen functionality for Mimic Feeder.
+ * Contains functions for rendering and handling the game's intro screen.
+ * @author Yestin Johnson
+ */
+
+/**
+ * Draws the intro screen with game description and controls
+ * @function
+ */
 function drawIntroScreen() {
     // Draw semi-transparent overlay for the entire screen
     fill(0, 0, 0, 200);
@@ -115,7 +125,12 @@ function drawIntroScreen() {
     textAlign(LEFT, BASELINE); // Reset for other potential text drawing
 }
 
-// Function to calculate the required height for the intro screen content
+/**
+ * Calculates the required height for the intro screen content
+ * Dynamically determines the height needed based on text content and screen size
+ * @function
+ * @returns {number} The calculated height in pixels
+ */
 function calculateIntroContentHeight() {
     // Get the width for text wrapping calculations
     let overlayWidth = width * 0.50;
@@ -171,6 +186,12 @@ function calculateIntroContentHeight() {
     return totalHeight;
 }
 
+/**
+ * Handles keyboard input on the intro screen
+ * Processes key presses when the intro screen is active
+ * @function
+ * @returns {boolean} True if the key press was handled, false otherwise
+ */
 function handleIntroScreenKeyPressed() {
     if (gameState.showIntroScreen) {
         if (keyCode === ENTER) {
