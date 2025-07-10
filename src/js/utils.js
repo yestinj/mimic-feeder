@@ -125,12 +125,16 @@ function handleBombCollection(obj) {
             playerState.lives = 0;
             gameState.shouldTriggerGameOver = true;
         }
+        // Add screen shake when player loses a life
+        triggerScreenShake(8);
     }
     bombExplosions.push({
         x: obj.x, y: obj.y, currentFrame: 0, frameTimer: 0,
         objWidth: obj.w, objHeight: obj.h,
         type: obj.type === OBJ_FIREBALL ? 'fireball_burst' : 'bomb_explosion'
     });
+    // Add screen shake for explosion
+    triggerScreenShake(5);
     playSound('explode');
 }
 
@@ -235,11 +239,11 @@ function clearAllObjects() {
         } else if ([OBJ_SMALL_BOMB, OBJ_FIREBALL].includes(obj.type)) {
             // Bomb explosion
             bombExplosions.push({
-                x: obj.x, 
-                y: obj.y, 
-                currentFrame: 0, 
+                x: obj.x,
+                y: obj.y,
+                currentFrame: 0,
                 frameTimer: 0,
-                objWidth: obj.w, 
+                objWidth: obj.w,
                 objHeight: obj.h,
                 type: obj.type === OBJ_FIREBALL ? 'fireball_burst' : 'bomb_explosion'
             });
@@ -391,12 +395,18 @@ function collectObject(obj, index, isEaten = false) {
         switch (props.effect) {
             case 'gainStaff':
                 handleWizardStaffCollection();
+                // Add screen shake for staff collection
+                triggerScreenShake(3);
                 break;
             case 'gainMagnet':
                 handleMagnetCollection();
+                // Add screen shake for magnet collection
+                triggerScreenShake(3);
                 break;
             case 'gainLife': // Effect name from objectProperties
                 handleHealthPotionCollection(); // Call renamed function
+                // Add screen shake for health potion collection
+                triggerScreenShake(4);
                 break;
             case 'checkMaxLifeIncrease':
                 handleHumanCollection();
@@ -409,6 +419,10 @@ function collectObject(obj, index, isEaten = false) {
                 }
                 if (props.countKey) {
                     gameState.collectedCounts[props.countKey]++;
+                }
+                // Add screen shake for valuable items
+                if (obj.type === OBJ_CROWN || obj.type === OBJ_DIAMOND) {
+                    triggerScreenShake(4);
                 }
                 if (obj.type !== OBJ_WIZARD_STAFF && obj.type !== OBJ_HEALTH_POTION && obj.type !== OBJ_CROWN && obj.type !== OBJ_DIAMOND && obj.type !== OBJ_MAGNET) {
                     gameState.collectedCount++;

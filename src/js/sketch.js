@@ -140,6 +140,12 @@ const JUMP_EAT_OPEN_DURATION = 45;
 let isInitialPageLoad = true;
 
 /**
+ * Screen shake amount for visual feedback
+ * @type {number}
+ */
+let screenShakeAmount = 0;
+
+/**
  * p5.js setup function - Called once at the beginning
  * Sets up the canvas, initializes game state, and prepares the game
  * @function
@@ -231,6 +237,13 @@ function windowResized() {
  * @function
  */
 function draw() {
+    // Apply screen shake effect if active
+    if (screenShakeAmount > 0) {
+        translate(random(-screenShakeAmount, screenShakeAmount), random(-screenShakeAmount, screenShakeAmount));
+        screenShakeAmount *= 0.9; // Decay
+        if (screenShakeAmount < 0.5) screenShakeAmount = 0;
+    }
+
     // Update background music based on level
     if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen) {
         updateBackgroundMusic();
@@ -788,6 +801,15 @@ function updateBackgroundMusic() {
             backgroundMusic2.loop();
         }
     }
+}
+
+/**
+ * Triggers a screen shake effect with the specified intensity
+ * @param {number} intensity - The intensity of the screen shake
+ * @function
+ */
+function triggerScreenShake(intensity) {
+    screenShakeAmount = intensity;
 }
 
 /**
