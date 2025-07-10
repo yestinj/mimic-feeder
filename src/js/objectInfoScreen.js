@@ -37,14 +37,14 @@ function drawObjectInfoScreen() {
 
     // Define spacing and image size
     let imageSize = 24;
-    let rowHeight = 25; // Reduced from 30 to 25
+    let rowHeight = 30;
     let col1X = leftMargin;
-    let col2X = leftMargin + 250; // Further increased spacing between columns to prevent overlap
-    let textWidth = 30; // Width for spacing after image
+    let col2X = leftMargin + 250;
+    let textWidth = 30;
 
     // Special sizes for human and wraith
-    let humanImageSize = 30; // Larger size for human
-    let wraithImageSize = 30; // Larger size for wraith
+    let humanImageSize = 28;
+    let wraithImageSize = 28;
 
     // Function to draw object info with image
     function drawObjectInfo(x, y, objType, objName) {
@@ -79,7 +79,7 @@ function drawObjectInfoScreen() {
     fill(0); // Black for heading
     textAlign(LEFT, TOP);
     text("Consumables:", leftMargin, currentY);
-    currentY += 30; // Reduced from 40 to 25
+    currentY += 35;
 
     // Points List with Images for Consumables
     textSize(12);
@@ -107,7 +107,7 @@ function drawObjectInfoScreen() {
     fill(0);
     textAlign(LEFT, TOP);
     text("Shinies:", leftMargin, currentY);
-    currentY += 30;
+    currentY += 35;
 
     // Points List with Images for Shinies
     textSize(12);
@@ -124,7 +124,7 @@ function drawObjectInfoScreen() {
     fill(0);
     textAlign(LEFT, TOP);
     text("Hazards:", leftMargin, currentY);
-    currentY += 30;
+    currentY += 35;
 
     // Points List with Images for Hazards
     textSize(12);

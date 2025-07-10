@@ -33,7 +33,7 @@ function drawHelpScreen() {
     textAlign(LEFT, TOP);
     textStyle(BOLD);
     text(`Help`, leftMargin, currentY);
-    currentY += 35;
+    currentY += 40;
 
     // 2. How to Play
     textSize(16);
@@ -66,7 +66,7 @@ function drawHelpScreen() {
     fill(0); // Black for heading
     textAlign(LEFT, TOP);
     text("Game Controls:", leftMargin, currentY);
-    currentY += 20;
+    currentY += 25;
 
     // Controls List
     textSize(12);
@@ -88,7 +88,7 @@ function drawHelpScreen() {
     fill(0); // Black for heading
     textAlign(LEFT, TOP);
     text("Special Abilities:", leftMargin, currentY);
-    currentY += 20;
+    currentY += 25;
 
     // Abilities Description
     textSize(14);
@@ -106,19 +106,19 @@ function drawHelpScreen() {
         ", you gain the ability to extend tentacles that can grab multiple objects at once. " +
         "This ability has a cooldown.";
     text(tentaclesText, leftMargin, currentY, textBlockWidth);
-    currentY += 40;
+    currentY += 45;
 
     let shadowBoltText = "Shadow Bolt (spacebar): At Floor " + DUNGEON_FLOOR_FOR_STAFF_DROP +
         " Zone " + DUNGEON_ZONE_FOR_STAFF_DROP + ", a wizard staff may appear. Collecting it grants the ability to shoot shadow bolts " +
         "that can destroy objects at a distance.";
     text(shadowBoltText, leftMargin, currentY, textBlockWidth);
-    currentY += 50;
+    currentY += 55;
 
     let magnetismText = "Magnetism (2 key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
         " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it grants " +
         "the ability to attract non-humanoid objects towards the player. This ability has a cooldown.";
     text(magnetismText, leftMargin, currentY, textBlockWidth);
-    currentY += 50;
+    currentY += 55;
 
     let dashText = "Dash: Double-tap the left or right arrow keys to quickly dash in that direction. " +
         "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / 60) + " second(s).";
