@@ -895,6 +895,10 @@ function restartGame() {
     gameState.showObjectInfoScreen = false; // Reset Object Info screen flag
     gameState.showAboutScreen = false; // Reset About screen flag
     gameState.showAchievementsScreen = false; // Reset Achievements screen flag
+
+    // Reset achievements pagination
+    achievementsCurrentPage = 0;
+
     gameState.startTime = millis() / 1000;
     startAudioIfNeeded();
 }

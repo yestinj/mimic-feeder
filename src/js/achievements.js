@@ -25,7 +25,7 @@ const ACHIEVEMENTS = [
         id: 'cat_lover',
         name: 'Cat Lover',
         description: 'Rescue 5 cats',
-        check: (state) => state.collectedCounts.cat >= 5
+        check: (state) => state.game.catsRescued >= 5
     },
     {
         id: 'treasure_hunter',
@@ -200,6 +200,9 @@ function loadAchievements() {
 }
 
 
+// Current page for achievements pagination
+let achievementsCurrentPage = 0;
+
 /**
  * Draws the achievements screen
  * @function
@@ -209,15 +212,40 @@ function drawAchievementsScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    // Overlay Size Calculation
-    let overlayWidth = width * 0.7;
-    let overlayHeight = height * 0.8;
+    // Overlay Size Calculation - Make it responsive to window size
+    let overlayWidth = width * 0.8;
+    let overlayHeight = height * 0.85;
 
     if (overlayWidth < 550) { // Min width
         overlayWidth = 550;
     }
     let overlayX = (width - overlayWidth) / 2;
     let overlayY = (height - overlayHeight) / 2;
+
+    // Calculate how many achievements can fit on one page
+    const achievementHeight = 60;
+    const achievementSpacing = 10;
+    const headerHeight = 95; // Space for title and unlocked count
+    const footerHeight = 40; // Space for navigation instructions
+
+    // Calculate available height for achievements
+    const availableHeight = overlayHeight - headerHeight - footerHeight;
+
+    // Calculate how many achievements can fit on one page
+    const achievementsPerPage = Math.floor(availableHeight / (achievementHeight + achievementSpacing));
+
+    // Ensure at least one achievement fits
+    const effectiveAchievementsPerPage = Math.max(1, achievementsPerPage);
+
+    // Calculate total number of pages
+    const totalPages = Math.ceil(ACHIEVEMENTS.length / effectiveAchievementsPerPage);
+
+    // Ensure current page is valid
+    achievementsCurrentPage = Math.max(0, Math.min(achievementsCurrentPage, totalPages - 1));
+
+    // Calculate which achievements to show on current page
+    const startIndex = achievementsCurrentPage * effectiveAchievementsPerPage;
+    const endIndex = Math.min(startIndex + effectiveAchievementsPerPage, ACHIEVEMENTS.length);
 
     // Draw the overlay background
     fill(160, 160, 160); // Grey
@@ -244,19 +272,26 @@ function drawAchievementsScreen() {
         }
     }
 
-    // Show progress
+    // Show progress and page indicator
     textSize(16);
     textStyle(NORMAL);
     text(`Unlocked: ${unlockedCount}/${ACHIEVEMENTS.length}`, leftMargin, currentY);
+
+    // Show page indicator if multiple pages
+    if (totalPages > 1) {
+        textAlign(RIGHT, TOP);
+        text(`Page ${achievementsCurrentPage + 1}/${totalPages}`, overlayX + overlayWidth - 30, currentY);
+        textAlign(LEFT, TOP);
+    }
+
     currentY += 30;
 
-    // List all achievements
+    // List achievements for current page
     textSize(18);
     let achievementY = currentY;
-    let achievementHeight = 60;
     let achievementWidth = overlayWidth - 60;
 
-    for (let i = 0; i < ACHIEVEMENTS.length; i++) {
+    for (let i = startIndex; i < endIndex; i++) {
         const achievement = ACHIEVEMENTS[i];
         const isUnlocked = gameState.achievements[achievement.id];
 
@@ -299,7 +334,7 @@ function drawAchievementsScreen() {
             text("LOCKED", leftMargin + achievementWidth - 10, achievementY + 10);
         }
 
-        achievementY += achievementHeight + 10;
+        achievementY += achievementHeight + achievementSpacing;
     }
 
     // Navigation Instructions
@@ -307,6 +342,19 @@ function drawAchievementsScreen() {
     textStyle(ITALIC);
     fill(0);
     textAlign(CENTER, BOTTOM);
+
+    // Show page navigation instructions if multiple pages
+    if (totalPages > 1) {
+        let navText = "";
+        if (achievementsCurrentPage > 0) {
+            navText += "Press Left Arrow for previous page   ";
+        }
+        if (achievementsCurrentPage < totalPages - 1) {
+            navText += "Press Right Arrow for next page   ";
+        }
+        text(navText, overlayX + overlayWidth / 2, overlayY + overlayHeight - 40);
+    }
+
     text(
         "Press Escape to close",
         overlayX + overlayWidth / 2,
@@ -326,8 +374,30 @@ function handleAchievementsScreenKeyPressed() {
     if (gameState.showAchievementsScreen) {
         if (keyCode === ESCAPE) {
             gameState.showAchievementsScreen = false;
+            achievementsCurrentPage = 0; // Reset to first page when closing
             return true;
         }
+
+        // Calculate how many achievements can fit on one page (same logic as in drawAchievementsScreen)
+        const overlayHeight = height * 0.85;
+        const headerHeight = 95;
+        const footerHeight = 40;
+        const achievementHeight = 60;
+        const achievementSpacing = 10;
+        const availableHeight = overlayHeight - headerHeight - footerHeight;
+        const achievementsPerPage = Math.max(1, Math.floor(availableHeight / (achievementHeight + achievementSpacing)));
+        const totalPages = Math.ceil(ACHIEVEMENTS.length / achievementsPerPage);
+
+        // Handle page navigation
+        if (keyCode === RIGHT_ARROW && achievementsCurrentPage < totalPages - 1) {
+            achievementsCurrentPage++;
+            return true;
+        }
+        if (keyCode === LEFT_ARROW && achievementsCurrentPage > 0) {
+            achievementsCurrentPage--;
+            return true;
+        }
+
         return true;
     }
     return false;
