@@ -78,6 +78,8 @@ function drawHelpScreen() {
     text("Jump / Double Jump:  Up Arrow", leftMargin, currentY);
     currentY += 18;
     text("Help Screen: Escape (Esc)", leftMargin, currentY);
+    currentY += 18;
+    text("Achievements: A key", leftMargin, currentY);
     currentY += 23;
 
     // 5. Abilities
@@ -218,8 +220,8 @@ function calculateHelpContentHeight() {
     // 4. "Game Controls" heading (16px + 20px spacing)
     totalHeight += 16 + 20;
 
-    // 5. Controls List (4 items, 18px each)
-    totalHeight += 18 * 4 + 5;
+    // 5. Controls List (5 items, 18px each)
+    totalHeight += 18 * 5 + 5;
 
     // 6. "Special Abilities" heading (16px + 20px spacing)
     totalHeight += 16 + 20;

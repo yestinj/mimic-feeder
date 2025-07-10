@@ -88,6 +88,7 @@ async function bundleJS(inputDir, outputDir) {
         'helpScreen.js',
         'objectInfoScreen.js',
         'aboutScreen.js',
+        'achievements.js',
         'sketch.js'
     ];
 

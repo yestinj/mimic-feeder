@@ -12,6 +12,7 @@ Dungeon mimics are greedy, hungry creatures. They need to eat anything edible an
 - **Cast Shadow Bolt** (with Wizard Staff): Space
 - **Use Tentacles** (at level 5+): Z
 - **Use Magnetism** (with Magnet): X
+- **View Achievements**: A
 
 ## Installation and Running
 1. Clone the repository

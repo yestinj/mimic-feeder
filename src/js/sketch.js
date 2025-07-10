@@ -42,6 +42,7 @@ function initializeStates() {
         showHelpScreen: false,                         // Whether to show help screen
         showObjectInfoScreen: false,                   // Whether to show object info screen
         showAboutScreen: false,                        // Whether to show about screen
+        showAchievementsScreen: false,                 // Whether to show achievements screen
         shouldTriggerGameOver: false,                  // Flag to trigger game over on next frame
         objectSpawnRate: BASE_OBJECT_SPAWN_RATE_FRAMES,// Rate at which objects spawn
         dropSpeedScale: INITIAL_DROP_SPEED_SCALE,      // Speed at which objects fall
@@ -55,6 +56,7 @@ function initializeStates() {
         catsRescuedPoints: 0,                         // Points from rescuing cats
         collectedCount: 0,                            // Total objects collected
         destroyedCount: 0,                            // Total objects destroyed
+        achievements: {},                             // Player's achievements
     };
 
     playerState = {
@@ -176,6 +178,7 @@ function setup() {
     setupPlayer();
     setupSoundMap();
     setupUI(); // This calls loadLastUsedName()
+    loadAchievements(); // Load achievements from localStorage
 
     // Set current name input based on whether user has entered a name before
     if (gameState.lastUsedName !== "Player") {
@@ -292,6 +295,10 @@ function draw() {
         drawAboutScreen();
         return;
     }
+    if (gameState.showAchievementsScreen) {
+        drawAchievementsScreen();
+        return;
+    }
 
     if (!gameState.gameStarted) {
         gameState.startTime = millis() / 1000;
@@ -309,6 +316,10 @@ function draw() {
     updateShadowBoltExplosions();
     updatePopups();
     updateGroundSplats();
+
+    // Check for achievements and update notifications
+    checkAchievements();
+    updateAchievementNotification();
 
     if (gameLevelNotification.active) {
         gameLevelNotification.timer -= 1;
@@ -695,10 +706,23 @@ function keyPressed() {
     if (gameState.showAboutScreen && handleAboutScreenKeyPressed()) {
         return;
     }
+    if (gameState.showAchievementsScreen && handleAchievementsScreenKeyPressed()) {
+        return;
+    }
 
     // Show help screen when Escape is pressed during gameplay
-    if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen && keyCode === ESCAPE) {
+    if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
+        !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
+        keyCode === ESCAPE) {
         gameState.showHelpScreen = true;
+        return;
+    }
+
+    // Show achievements screen when 'A' key is pressed during gameplay
+    if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
+        !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
+        key === 'a') {
+        gameState.showAchievementsScreen = true;
         return;
     }
 
@@ -870,6 +894,7 @@ function restartGame() {
     gameState.showIntroScreen = false; // DO NOT show intro on restart
     gameState.showObjectInfoScreen = false; // Reset Object Info screen flag
     gameState.showAboutScreen = false; // Reset About screen flag
+    gameState.showAchievementsScreen = false; // Reset Achievements screen flag
     gameState.startTime = millis() / 1000;
     startAudioIfNeeded();
 }
