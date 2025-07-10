@@ -7,6 +7,7 @@ Dungeon mimics are greedy, hungry creatures. They need to eat anything edible an
 
 ## How to Play
 - **Move**: Left / Right Arrows
+- **Dash**: Double-tap Left / Right Arrows
 - **Jump / Double Jump**: Up Arrow
 - **Cast Shadow Bolt** (with Wizard Staff): Space
 - **Use Tentacles** (at level 5+): Z

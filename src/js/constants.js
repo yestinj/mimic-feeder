@@ -126,6 +126,12 @@ const MAGNETISM_COOLDOWN_FRAMES = 600;
 const MAGNETISM_ATTRACTION_SPEED_MULTIPLIER = 2.0;
 /** @const {number} MAGNETISM_DURATION_FRAMES - How long magnetism effect lasts (600 frames = 10 seconds at 60fps) */
 const MAGNETISM_DURATION_FRAMES = 600;
+/** @const {number} DASH_DISTANCE - Distance in pixels that the player dashes */
+const DASH_DISTANCE = 100;
+/** @const {number} DASH_COOLDOWN_FRAMES - Cooldown between dash ability uses (60 frames = 1 second at 60fps) */
+const DASH_COOLDOWN_FRAMES = 60;
+/** @const {number} DASH_DOUBLE_TAP_WINDOW_FRAMES - Time window in frames for detecting double tap (15 frames = 0.25 seconds at 60fps) */
+const DASH_DOUBLE_TAP_WINDOW_FRAMES = 15;
 
 /**
  * Object Pulling / Effects - Constants for visual effects and animations

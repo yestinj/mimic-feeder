@@ -170,6 +170,53 @@ function updateShadowBolts() {
     }
 }
 
+function handlePlayerDash() {
+    // Only process dash if cooldown is not active
+    if (playerState.dashCooldown <= 0) {
+        const currentFrame = frameCount;
+
+        // Check for left arrow double tap
+        if (keyCode === LEFT_ARROW) {
+            const timeSinceLastPress = currentFrame - playerState.lastLeftKeyPressTime;
+
+            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_FRAMES && timeSinceLastPress > 0) {
+                // Double tap detected - perform dash to the left
+                player.x -= DASH_DISTANCE;
+                player.x = constrain(player.x, 0, width - player.w); // Keep player within bounds
+                playerState.dashCooldown = DASH_COOLDOWN_FRAMES;
+                playerState.isDashing = true;
+
+                // Add visual feedback
+                triggerScreenShake(3);
+                playSound('cast_spell'); // Reuse existing sound for now
+            }
+
+            // Update last press time
+            playerState.lastLeftKeyPressTime = currentFrame;
+        }
+
+        // Check for right arrow double tap
+        else if (keyCode === RIGHT_ARROW) {
+            const timeSinceLastPress = currentFrame - playerState.lastRightKeyPressTime;
+
+            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_FRAMES && timeSinceLastPress > 0) {
+                // Double tap detected - perform dash to the right
+                player.x += DASH_DISTANCE;
+                player.x = constrain(player.x, 0, width - player.w); // Keep player within bounds
+                playerState.dashCooldown = DASH_COOLDOWN_FRAMES;
+                playerState.isDashing = true;
+
+                // Add visual feedback
+                triggerScreenShake(3);
+                playSound('cast_spell'); // Reuse existing sound for now
+            }
+
+            // Update last press time
+            playerState.lastRightKeyPressTime = currentFrame;
+        }
+    }
+}
+
 function handleMagnetismAbility() {
     if (key === '2' && playerState.hasMagnet && playerState.magnetismCooldown <= 0) {
         playerState.usingMagnetism = true;

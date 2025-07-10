@@ -73,6 +73,8 @@ function drawHelpScreen() {
     textStyle(NORMAL);
     text("Move:  Left / Right Arrows", leftMargin, currentY);
     currentY += 18;
+    text("Dash:  Double-tap Left / Right Arrows", leftMargin, currentY);
+    currentY += 18;
     text("Jump / Double Jump:  Up Arrow", leftMargin, currentY);
     currentY += 18;
     text("Help Screen: Escape (Esc)", leftMargin, currentY);
@@ -114,6 +116,11 @@ function drawHelpScreen() {
         " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it grants " +
         "the ability to attract non-humanoid objects towards the player. This ability has a cooldown.";
     text(magnetismText, leftMargin, currentY, textBlockWidth);
+    currentY += 50;
+
+    let dashText = "Dash: Double-tap the left or right arrow keys to quickly dash in that direction. " +
+        "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / 60) + " second(s).";
+    text(dashText, leftMargin, currentY, textBlockWidth);
 
     // 6. Navigation Instructions
     let bottomPadding = 10;
@@ -211,13 +218,13 @@ function calculateHelpContentHeight() {
     // 4. "Game Controls" heading (16px + 20px spacing)
     totalHeight += 16 + 20;
 
-    // 5. Controls List (3 items, 18px each)
-    totalHeight += 18 * 3 + 5;
+    // 5. Controls List (4 items, 18px each)
+    totalHeight += 18 * 4 + 5;
 
     // 6. "Special Abilities" heading (16px + 20px spacing)
     totalHeight += 16 + 20;
 
-    // 7. Abilities descriptions (3 abilities)
+    // 7. Abilities descriptions (4 abilities)
     // Tentacles description
     let tentaclesText = "Tentacles (1 key): At Player level " + PLAYER_LEVEL_FOR_TENTACLES +
         ", you gain the ability to extend tentacles that can grab multiple objects at once. " +
@@ -233,6 +240,10 @@ function calculateHelpContentHeight() {
         " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it grants " +
         "the ability to attract non-humanoid objects towards the player. This ability has a cooldown.";
 
+    // Dash description
+    let dashText = "Dash: Double-tap the left or right arrow keys to quickly dash in that direction. " +
+        "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / 60) + " second(s).";
+
     // Calculate abilities text height
     let abilitiesTextSize = 14;
     let abilitiesLineHeight = 16;
@@ -241,9 +252,10 @@ function calculateHelpContentHeight() {
     let tentaclesLines = Math.ceil(tentaclesText.length / charsPerLine) + 1;
     let shadowBoltLines = Math.ceil(shadowBoltText.length / charsPerLine) + 1;
     let magnetismLines = Math.ceil(magnetismText.length / charsPerLine) + 1;
+    let dashLines = Math.ceil(dashText.length / charsPerLine) + 1;
 
     // Calculate abilities height
-    let abilitiesHeight = (tentaclesLines + shadowBoltLines + magnetismLines) * abilitiesLineHeight;
+    let abilitiesHeight = (tentaclesLines + shadowBoltLines + magnetismLines + dashLines) * abilitiesLineHeight;
     totalHeight += abilitiesHeight + 10;
 
     // 8. Navigation instructions (3 lines, 18px each)

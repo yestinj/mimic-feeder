@@ -73,7 +73,11 @@ function initializeStates() {
         magnetismCooldown: 0,                         // Cooldown timer for magnetism ability
         usingMagnetism: false,                        // Whether magnetism is currently active
         magnetizedObjects: [],                        // Objects currently affected by magnetism
-        shadowBoltCooldown: 0                         // Cooldown timer for shadow bolt ability
+        shadowBoltCooldown: 0,                        // Cooldown timer for shadow bolt ability
+        dashCooldown: 0,                              // Cooldown timer for dash ability
+        lastLeftKeyPressTime: 0,                      // Frame count of last left arrow key press
+        lastRightKeyPressTime: 0,                     // Frame count of last right arrow key press
+        isDashing: false                              // Whether player is currently dashing
     };
 }
 
@@ -706,6 +710,7 @@ function keyPressed() {
     // Handle gameplay controls
     startAudioIfNeeded();
     handlePlayerJump();
+    handlePlayerDash();
     handleTentaclesAbility();
     handleShadowBolt();
     handleMagnetismAbility();

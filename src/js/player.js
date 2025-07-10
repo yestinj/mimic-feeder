@@ -25,12 +25,24 @@ function setupPlayer() {
 }
 
 function updatePlayer() {
-    if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) { // 65 is keyCode for 'A'
-        player.x -= player.speed;
+    // Only apply normal movement if not dashing
+    if (!playerState.isDashing) {
+        if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) { // 65 is keyCode for 'A'
+            player.x -= player.speed;
+        }
+        if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) { // 68 is keyCode for 'D'
+            player.x += player.speed;
+        }
+    } else {
+        // Reset isDashing after one frame
+        playerState.isDashing = false;
     }
-    if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) { // 68 is keyCode for 'D'
-        player.x += player.speed;
+
+    // Update dash cooldown
+    if (playerState.dashCooldown > 0) {
+        playerState.dashCooldown--;
     }
+
     player.x = constrain(player.x, 0, width - player.w);
 
     player.vy += PLAYER_GRAVITY;
