@@ -6,11 +6,11 @@ function drawGameOverScreen() {
     fill(0);
     stroke(0);
     strokeWeight(4);
-    text("Game Over", width / 2 + 4, height / 2 - 200 + 4); // Shadow/Outline
+    text("Game Over", width / 2 + 4, height / 2 - 250 + 4); // Shadow/Outline
     fill(255, 0, 0);
     noStroke();
     strokeWeight(0);
-    text("Game Over", width / 2, height / 2 - 200); // Red fill
+    text("Game Over", width / 2, height / 2 - 250); // Red fill
     textStyle(NORMAL); // Reset style
 
     // Draw retry button (using retryButton coords)
@@ -40,7 +40,9 @@ function drawGameOverScreen() {
     // --- Two Columns Below Stats ---
     // columnStartY uses the final value of statsY from above
     let columnStartY = statsY + 40;
-    let leftColumnX = width / 4; // Center X for left column content
+
+    // Position left column further to the left to avoid overlap with high score table
+    let leftColumnX = width * 0.2; // Reduced from width/4 (25%) to 20% of screen width
 
     // --- Left Column: Items Collected ---
     let itemY = columnStartY; // Start Y position for this column's content
@@ -70,16 +72,22 @@ function drawGameOverScreen() {
     }
 
     // --- Right Column: High Scores Table ---
-    // Define individual column widths
-    let dateColWidth = 75;
-    let nameColWidth = (NAME_INPUT_MAX_LENGTH * 8) + 35; // Approx. 8px per char + padding
-    let scoreColWidth = 75;
-    let gameLvlColWidth = 95;
-    let playerLvlColWidth = 65;
-    let timeColWidth = 70; // Approx. width for "XXm YYs"
+    // Adjust column widths based on screen width
+    // For smaller screens, reduce column widths and padding
+    const isSmallScreen = width < 800;
 
-    let headerPadding = 15; // Padding inside the table content area (left and right)
-    let rightSidePadding = 10; // Extra padding to the right of the last column content
+    // Define individual column widths with responsive adjustments
+    let dateColWidth = isSmallScreen ? 50 : 75;
+    let nameColWidth = isSmallScreen ?
+        (NAME_INPUT_MAX_LENGTH * 5) + 15 : // Smaller text on small screens
+        (NAME_INPUT_MAX_LENGTH * 8) + 35;  // Original size on larger screens
+    let scoreColWidth = isSmallScreen ? 50 : 75;
+    let gameLvlColWidth = isSmallScreen ? 65 : 95;
+    let playerLvlColWidth = isSmallScreen ? 40 : 65;
+    let timeColWidth = isSmallScreen ? 45 : 70; // Approx. width for "XXm YYs"
+
+    let headerPadding = isSmallScreen ? 10 : 15; // Reduced padding on small screens
+    let rightSidePadding = isSmallScreen ? 5 : 10; // Reduced padding on small screens
 
     // Calculate total content width
     let tableContentWidth = dateColWidth + nameColWidth + scoreColWidth + gameLvlColWidth + playerLvlColWidth + timeColWidth + rightSidePadding;
@@ -89,8 +97,14 @@ function drawGameOverScreen() {
     let tableHeight = 290; // Keep adjusted height
     let borderBoxPadding = 5; // Padding around the table border itself
 
-    // Position Table Left Edge at Screen Center
-    let tableX = (width / 2) - borderBoxPadding; // Left edge of the border box
+    // Position Table to ensure it's fully visible and doesn't overlap with left column
+    // Move the table to the right side of the screen, but ensure it doesn't go off-screen
+    let tableX = width * 0.55;
+
+    // Make sure the table doesn't extend beyond the right edge of the screen
+    if (tableX + tableBorderWidth > width - 10) {
+        tableX = width - tableBorderWidth - 10; // Keep 10px margin from right edge
+    }
 
     // Keep the Y position calculation as before for the table's top
     let tableTopY = columnStartY - 10; // Renamed tableY to tableTopY for clarity
@@ -112,7 +126,7 @@ function drawGameOverScreen() {
 
     // Table Title - Center it within the table's content bounds
     fill(255);
-    textSize(20);
+    textSize(isSmallScreen ? 16 : 20); // Smaller text on small screens
     textStyle(BOLD);
     textAlign(CENTER);
     text("High Scores", tableX + tableBorderWidth / 2, tableTitleY); // Use tableTitleY
@@ -120,7 +134,7 @@ function drawGameOverScreen() {
 
     // Table Headers - Position relative to tableX + headerPadding (content start)
     fill(200);
-    textSize(16);
+    textSize(isSmallScreen ? 12 : 16); // Smaller text on small screens
     textAlign(LEFT);
     textStyle(BOLD);
     let currentX = tableX + headerPadding; // Start of content drawing
@@ -139,7 +153,7 @@ function drawGameOverScreen() {
 
 
     // Table Rows - Position relative to tableX + headerPadding
-    textSize(14);
+    textSize(isSmallScreen ? 10 : 14); // Smaller text on small screens
     fill(220);
     let rowY = tableRowStartY; // Use tableRowStartY
     for (let i = 0; i < highScores.length && i < HIGH_SCORE_COUNT; i++) {

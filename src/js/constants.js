@@ -186,7 +186,7 @@ const STAFF_NOTIFICATION_DURATION = 180;
 /** @const {number} TENTACLE_NOTIFICATION_DURATION - How long tentacle ability notifications display (in frames) */
 const TENTACLE_NOTIFICATION_DURATION = 180;
 /** @const {number} HIGH_SCORE_COUNT - Number of high scores to track and display */
-const HIGH_SCORE_COUNT = 10;
+const HIGH_SCORE_COUNT = 5;
 /** @const {number} NAME_INPUT_MAX_LENGTH - Maximum length of player name input */
 const NAME_INPUT_MAX_LENGTH = 10;
 /** @const {number} MIN_SHADOW_BOLT_EXPLOSION_SIZE - Minimum size for shadow bolt explosion effects */
