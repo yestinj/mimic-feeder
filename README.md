@@ -52,8 +52,21 @@ This will create documentation in the `docs` directory and open it in your brows
 - JavaScript for game mechanics
 - esbuild for bundling
 
-## Contributing
-Interested in contributing? Check out the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines.
+## Project Status
+
+This project is feature-complete and shared primarily as a portfolio and learning reference.
+While the code is public and may be forked under the license terms, I’m not actively seeking contributions or maintaining feature requests.
 
 ## License
-GPLv3
+
+This project is licensed under the  
+**Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)**.
+
+You are free to:
+- Share and adapt the code for non-commercial purposes
+- Fork or modify the project for personal or educational use
+
+You may not:
+- Use this project or its derivatives for commercial purposes
+
+See the `LICENSE` file for full details.
