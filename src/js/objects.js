@@ -120,12 +120,23 @@ function spawnObjects() {
                 const canSpawnFireball = gameState.dungeonFloor > DUNGEON_FLOOR_FOR_FIREBALL_SPAWN ||
                                         (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_FIREBALL_SPAWN &&
                                          gameState.dungeonZone >= DUNGEON_ZONE_FOR_FIREBALL_SPAWN);
+
+                // Bias hazard spawns away from the player if too close to avoid unfair hits
+                const playerCenterX = player.x + player.w / 2;
+                const MIN_FAIR_DISTANCE = MIN_SPAWN_HORIZONTAL_DISTANCE + 30;
+                if (abs(bombX - playerCenterX) < MIN_FAIR_DISTANCE) {
+                    if (bombX <= playerCenterX) {
+                        bombX = max(0, playerCenterX - MIN_FAIR_DISTANCE);
+                    } else {
+                        bombX = min(width - 40, playerCenterX + MIN_FAIR_DISTANCE);
+                    }
+                }
+
                 if (random() < 0.5 || !canSpawnFireball) {
                     createObject(OBJ_SMALL_BOMB, bombX);
                 } else {
                     createObject(OBJ_FIREBALL, bombX);
                 }
-            }
         }
     }
 }
@@ -152,7 +163,8 @@ function createObject(type, xPosition) {
         pullProgress: 0,
         pullTarget: null,
         currentFrame: 0,
-        frameTimer: 0
+        frameTimer: 0,
+        spawnGlowTimer: 0
     };
 
     // Add dragon-specific properties if this is a dragon
@@ -181,6 +193,9 @@ function createObject(type, xPosition) {
             obj.w = 60;
             obj.h = 60;
         }
+    } else if (type === OBJ_CROWN || type === OBJ_DIAMOND) {
+        // Set a brief glow timer for valuable items and play a spawn cue
+        obj.spawnGlowTimer = 60;
     } else if (type === OBJ_FIREBALL) {
         if (fireballFrames.length > 0 && fireballFrames[0] && fireballFrames[0].width) {
             let scaleFactor = 2.5;
@@ -256,11 +271,19 @@ function createObject(type, xPosition) {
     if (recentSpawnXPositions.length > RECENT_SPAWN_X_POSITIONS_MAX) {
         recentSpawnXPositions.shift();
     }
+
+    // Play a subtle spawn cue for high-value items
+    if (type === OBJ_CROWN || type === OBJ_DIAMOND) {
+        playSound('bling');
+    }
 }
 
 function updateObjects() {
     for (let i = objects.length - 1; i >= 0; i--) {
         let obj = objects[i];
+        if (obj.spawnGlowTimer && obj.spawnGlowTimer > 0) {
+            obj.spawnGlowTimer -= 1;
+        }
         if (obj.beingPulled && obj.pullTarget) {
             obj.pullProgress += 1.0 / TENTACLE_PULL_DURATION_FRAMES;
             obj.pullProgress = min(obj.pullProgress, 1);
@@ -789,6 +812,19 @@ function updateObjects() {
                 push();
                 translate(obj.x, obj.y);
 
+                // Subtle spawn glow for high-value items
+                if ((obj.type === OBJ_CROWN || obj.type === OBJ_DIAMOND) && obj.spawnGlowTimer && obj.spawnGlowTimer > 0) {
+                    let alpha = map(obj.spawnGlowTimer, 60, 0, 120, 0, true);
+                    noStroke();
+                    if (obj.type === OBJ_CROWN) {
+                        fill(255, 215, 0, alpha);
+                    } else {
+                        fill(0, 200, 255, alpha);
+                    }
+                    let glowScale = 1.6;
+                    ellipse(0, 0, obj.w * glowScale, obj.h * glowScale);
+                }
+
                 // Apply fade effect for cats on the floor
                 if (obj.type === OBJ_CAT && obj.onFloor && obj.fadeAmount > 0) {
                     // Set transparency based on fade amount (255 = fully visible, 0 = invisible)
@@ -830,4 +866,5 @@ function updateObjects() {
             }
         }
     }
+}
 }

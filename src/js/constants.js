@@ -389,6 +389,7 @@ function setupSoundMap() {
         'lose_life': loseLifeSound,
         'shadowbolt_hit': popSound,
         'cast_spell': castSpellSound,
+        'bling': castSpellSound,
         'cat_meow': catMeowSound,
         'magnetism': magnetismSound,
         'background_music1': backgroundMusic1,
