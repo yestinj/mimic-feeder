@@ -43,6 +43,8 @@ function initializeStates() {
         showObjectInfoScreen: false,                   // Whether to show object info screen
         showAboutScreen: false,                        // Whether to show about screen
         showAchievementsScreen: false,                 // Whether to show achievements screen
+        isPaused: false,                               // Whether the game is paused
+        isMuted: false,                                // Whether the game is muted
         shouldTriggerGameOver: false,                  // Flag to trigger game over on next frame
         objectSpawnRate: BASE_OBJECT_SPAWN_RATE_FRAMES,// Rate at which objects spawn
         dropSpeedScale: INITIAL_DROP_SPEED_SCALE,      // Speed at which objects fall
@@ -300,10 +302,18 @@ function draw() {
         return;
     }
 
+    if (gameState.isPaused) {
+        drawPauseScreen();
+        return;
+    }
+
     if (!gameState.gameStarted) {
         gameState.startTime = millis() / 1000;
         gameState.gameStarted = true;
     }
+
+    // Update play time
+    gameState.playTime = (millis() / 1000) - gameState.startTime;
 
     updatePlayer();
     spawnObjects();
@@ -380,6 +390,7 @@ function draw() {
     fill(80, 80, 80);
     rect(0, height - VISUAL_GROUND_HEIGHT, width, VISUAL_GROUND_HEIGHT);
     drawPlayer();
+    drawOnboardingOverlays();
 
     if (gameLevelNotification.active) {
         fill(255, 255, 0);
@@ -707,6 +718,32 @@ function keyPressed() {
         return;
     }
     if (gameState.showAchievementsScreen && handleAchievementsScreenKeyPressed()) {
+        return;
+    }
+
+    // Handle Pause and Mute keys regardless of state (except during intro/gameover if desired)
+    // But P is mostly for during gameplay.
+    if (key === 'p' || key === 'P') {
+        if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
+            !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen) {
+            gameState.isPaused = !gameState.isPaused;
+            if (gameState.isPaused) {
+                if (backgroundMusic1 && backgroundMusic1.isPlaying()) backgroundMusic1.pause();
+                if (backgroundMusic2 && backgroundMusic2.isPlaying()) backgroundMusic2.pause();
+            } else {
+                updateBackgroundMusic();
+            }
+            return;
+        }
+    }
+
+    if (key === 'm' || key === 'M') {
+        gameState.isMuted = !gameState.isMuted;
+        if (gameState.isMuted) {
+            masterVolume(0);
+        } else {
+            masterVolume(1);
+        }
         return;
     }
 

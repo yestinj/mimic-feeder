@@ -33,7 +33,113 @@ function setupUI() {
     loadLastUsedName(); // This will now respect if URL already set a name
 }
 
+/**
+ * Draws the pause screen overlay
+ * @function
+ */
+function drawPauseScreen() {
+    // Draw semi-transparent overlay
+    fill(0, 0, 0, 150);
+    rect(0, 0, width, height);
+
+    // Heading
+    fill(255);
+    textSize(48);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    text("PAUSED", width / 2, height / 2 - 10);
+
+    // Instructions
+    textSize(20);
+    textStyle(NORMAL);
+    text("Press 'P' to Resume — 'M' to Mute/Unmute", width / 2, height / 2 + 30);
+
+    // Reset text parameters for other draws
+    textAlign(LEFT, BASELINE);
+}
+
+/**
+ * Draws onboarding overlays like eating zone highlight and keyboard reminders
+ * @function
+ */
+function drawOnboardingOverlays() {
+    // Safety: ensure player exists
+    if (typeof player === 'undefined' || !player) {
+        return;
+    }
+    // 1. Eating Zone and Ground highlight
+    if (gameState.playTime < 10 || gameState.collectedCount < 5) {
+        let alphaTime = map(gameState.playTime, 0, 10, 180, 0, true);
+        let alphaEaten = map(gameState.collectedCount, 0, 5, 180, 0, true);
+        let alpha = min(alphaTime, alphaEaten);
+
+        if (alpha > 0) {
+            push();
+            // Highlight the ground line
+            let groundY = height - PLAYER_GROUND_Y_OFFSET;
+            stroke(255, alpha);
+            strokeWeight(1);
+            line(0, groundY, width, groundY);
+
+            // Highlight the player's eating zone
+            noStroke();
+            fill(255, 255, 0, alpha * 0.3);
+            let eatingZoneHeight = player.h * PLAYER_EATING_ZONE_HEIGHT_FACTOR;
+            rect(player.x, player.y, player.w, eatingZoneHeight, 4);
+
+            // Labels
+            fill(255, alpha);
+            textSize(10);
+            textAlign(CENTER);
+            text("EATING ZONE", player.x + player.w / 2, player.y - 5);
+            textAlign(LEFT);
+            text("GROUND", 5, groundY - 3);
+            pop();
+        }
+    }
+
+    // 2. Keyboard reminder
+    if (gameState.playTime < 20) {
+        let alpha = map(gameState.playTime, 15, 20, 150, 0, true);
+        if (gameState.playTime < 15) alpha = 150;
+
+        if (alpha > 0) {
+            push();
+            fill(255, alpha);
+            textSize(12);
+            textAlign(RIGHT, BOTTOM);
+            let ctrlX = width - 10;
+            let ctrlY = height - 10;
+
+            let controlsText = "Controls:\n" +
+                               "← → : Move\n" +
+                               "↑ : Jump\n";
+
+            if (playerState.hasWizardStaff) {
+                controlsText += "Space : Shadow Bolt\n";
+            }
+            if (playerState.level >= PLAYER_LEVEL_FOR_TENTACLES) {
+                controlsText += "Z : Tentacles\n";
+            }
+            if (playerState.hasMagnet) {
+                controlsText += "X : Magnet\n";
+            }
+
+            text(controlsText, ctrlX, ctrlY);
+            pop();
+        }
+    }
+}
+
 function drawUI() {
+    // Draw Mute status indicator
+    if (gameState.isMuted) {
+        fill(255, 100, 100);
+        textSize(14);
+        textAlign(LEFT);
+        text('MUTED (M)', 10, height - 10);
+    }
+
     fill(255);
     textSize(24);
     textAlign(LEFT);
