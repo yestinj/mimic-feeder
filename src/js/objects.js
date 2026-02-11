@@ -32,33 +32,49 @@ function spawnObjects() {
             }
         }
 
-        // If no special item was selected, use probability-based selection
+        // If no special item was selected, use probability-weighted selection
         if (!typeToSpawn) {
+            let candidates = [];
+            let totalProb = 0;
             for (const entry of spawnTable) {
-                if (entry.probability) {
-                    // Skip dragon if not at required floor/zone
-                    if (entry.type === OBJ_DRAGON && 
-                        (gameState.dungeonFloor < DUNGEON_FLOOR_FOR_DRAGON_SPAWN || 
-                         (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_DRAGON_SPAWN && 
-                          gameState.dungeonZone < DUNGEON_ZONE_FOR_DRAGON_SPAWN))) {
-                        continue;
-                    }
+                if (!entry.probability) continue;
 
-                    cumulativeProb += entry.probability;
-                    if (spawnChance < cumulativeProb) {
-                        if (entry.condition && !entry.condition(currentState)) {
-                            continue;
-                        }
+                // Skip dragon if not at required floor/zone
+                if (entry.type === OBJ_DRAGON &&
+                    (gameState.dungeonFloor < DUNGEON_FLOOR_FOR_DRAGON_SPAWN ||
+                     (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_DRAGON_SPAWN &&
+                      gameState.dungeonZone < DUNGEON_ZONE_FOR_DRAGON_SPAWN))) {
+                    continue;
+                }
+
+                if (entry.condition && !entry.condition(currentState)) continue;
+
+                candidates.push(entry);
+                totalProb += entry.probability;
+            }
+
+            if (candidates.length > 0 && totalProb > 0) {
+                let pick = random() * totalProb;
+                let running = 0;
+                for (const entry of candidates) {
+                    running += entry.probability;
+                    if (pick <= running) {
                         typeToSpawn = entry.type;
                         break;
                     }
                 }
             }
         }
+        // Fallback: if still nothing selected, attempt last probabilistic entry if it's eligible
         if (!typeToSpawn && spawnTable.length > 0 && spawnTable[spawnTable.length - 1].probability) {
             const lastEntry = spawnTable[spawnTable.length - 1];
             if (!lastEntry.condition || lastEntry.condition(currentState)) {
-                typeToSpawn = lastEntry.type;
+                // Also ensure dragon gating if last is dragon
+                if (lastEntry.type !== OBJ_DRAGON ||
+                    gameState.dungeonFloor > DUNGEON_FLOOR_FOR_DRAGON_SPAWN ||
+                    (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_DRAGON_SPAWN && gameState.dungeonZone >= DUNGEON_ZONE_FOR_DRAGON_SPAWN)) {
+                    typeToSpawn = lastEntry.type;
+                }
             }
         }
         if (typeToSpawn) {
@@ -101,8 +117,8 @@ function spawnObjects() {
                     attempts++;
                 }
                 // Only spawn fireballs from the specified floor/zone, otherwise spawn bombs
-                const canSpawnFireball = gameState.dungeonFloor > DUNGEON_FLOOR_FOR_FIREBALL_SPAWN || 
-                                        (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_FIREBALL_SPAWN && 
+                const canSpawnFireball = gameState.dungeonFloor > DUNGEON_FLOOR_FOR_FIREBALL_SPAWN ||
+                                        (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_FIREBALL_SPAWN &&
                                          gameState.dungeonZone >= DUNGEON_ZONE_FOR_FIREBALL_SPAWN);
                 if (random() < 0.5 || !canSpawnFireball) {
                     createObject(OBJ_SMALL_BOMB, bombX);
@@ -117,7 +133,7 @@ function spawnObjects() {
 function createObject(type, xPosition) {
     let initialVariation = random(0.75, 1.25);
     let currentDropSpeedScale = gameState.dropSpeedScale;
-    let baseVy_pps = BASE_DROP_SPEED_PIXELS_PER_SEC * currentDropSpeedScale;
+    let baseVy_pxf = BASE_DROP_SPEED_PX_PER_FRAME * currentDropSpeedScale;
 
     // Apply 3x speed multiplier for fireballs
     let speedMultiplier = (type === OBJ_FIREBALL) ? 3 : 1;
@@ -128,8 +144,8 @@ function createObject(type, xPosition) {
         y: -20,
         w: 20,
         h: 20,
-        vy: baseVy_pps * initialVariation * speedMultiplier,
-        baseVy: baseVy_pps,
+        vy: baseVy_pxf * initialVariation * speedMultiplier,
+        baseVy: baseVy_pxf,
         initialVariation: initialVariation,
         speedMultiplier: speedMultiplier,  // Store the multiplier for level updates
         beingPulled: false,

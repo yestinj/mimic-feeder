@@ -59,8 +59,8 @@ const PLAYER_EATING_ZONE_HEIGHT_FACTOR = 0.3;
  */
 /** @const {number} BASE_OBJECT_SPAWN_RATE_FRAMES - Base rate at which objects spawn (in frames) */
 const BASE_OBJECT_SPAWN_RATE_FRAMES = 165;
-/** @const {number} BASE_DROP_SPEED_PIXELS_PER_SEC - Base speed at which objects fall (pixels per second) */
-const BASE_DROP_SPEED_PIXELS_PER_SEC = 60;
+/** @const {number} BASE_DROP_SPEED_PX_PER_FRAME - Base speed at which objects fall (pixels per frame) */
+const BASE_DROP_SPEED_PX_PER_FRAME = 60;
 /** @const {number} INITIAL_DROP_SPEED_SCALE - Initial scaling factor for drop speed */
 const INITIAL_DROP_SPEED_SCALE = 2.0;
 /** @const {number} GAME_LEVEL_SCALING_INCREASE - How much game difficulty increases per level */

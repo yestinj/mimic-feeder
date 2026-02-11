@@ -342,7 +342,7 @@ function checkForGameLevelUp() {
 
         for (let obj of objects) {
             if (obj.type !== OBJ_BOSS) { // Don't update boss speed
-                obj.baseVy = BASE_DROP_SPEED_PIXELS_PER_SEC * gameState.dropSpeedScale;
+                obj.baseVy = BASE_DROP_SPEED_PX_PER_FRAME * gameState.dropSpeedScale;
                 // Apply the stored speed multiplier (for fireballs)
                 let speedMultiplier = obj.speedMultiplier || 1;
                 obj.vy = obj.baseVy * obj.initialVariation * speedMultiplier;
