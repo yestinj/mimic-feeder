@@ -42,9 +42,11 @@ function drawObjectInfoScreen() {
     let col2X = leftMargin + 250;
     let textWidth = 30;
 
-    // Special sizes for human and wraith
+    // Special sizes for different objects
     let humanImageSize = 28;
     let wraithImageSize = 28;
+    let dragonImageSize = 32;
+    let catImageSize = 18;
 
     // Function to draw object info with image
     function drawObjectInfo(x, y, objType, objName) {
@@ -63,6 +65,10 @@ function drawObjectInfoScreen() {
             currentImageSize = humanImageSize;
         } else if (objType === OBJ_WRAITH) {
             currentImageSize = wraithImageSize;
+        } else if (objType === OBJ_DRAGON) {
+            currentImageSize = dragonImageSize;
+        } else if (objType === OBJ_CAT) {
+            currentImageSize = catImageSize;
         }
 
         // Draw image first, then text

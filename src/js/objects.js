@@ -183,6 +183,11 @@ function createObject(type, xPosition) {
         obj.frameTimer = 0;
     }
 
+    // Set a brief glow timer for valuable items
+    if (type === OBJ_CROWN || type === OBJ_DIAMOND) {
+        obj.spawnGlowTimer = 60;
+    }
+
     const staticImg = objectImages[type];
     if (type === OBJ_HEALTH_POTION) {
         if (healthPotionFrames.length > 0 && healthPotionFrames[0] && healthPotionFrames[0].width) {
@@ -193,9 +198,6 @@ function createObject(type, xPosition) {
             obj.w = 60;
             obj.h = 60;
         }
-    } else if (type === OBJ_CROWN || type === OBJ_DIAMOND) {
-        // Set a brief glow timer for valuable items and play a spawn cue
-        obj.spawnGlowTimer = 60;
     } else if (type === OBJ_FIREBALL) {
         if (fireballFrames.length > 0 && fireballFrames[0] && fireballFrames[0].width) {
             let scaleFactor = 2.5;
@@ -222,8 +224,8 @@ function createObject(type, xPosition) {
             obj.w = 45;
             obj.h = 45;
         } else if (type === OBJ_DIAMOND) {
-            obj.w = 45;
-            obj.h = 45;
+            obj.w = 35;
+            obj.h = 35;
         } else if (type === OBJ_WIZARD_STAFF) {
             obj.w = staticImg.width * 1.5;
             obj.h = staticImg.height * 1.5;
@@ -254,15 +256,13 @@ function createObject(type, xPosition) {
         }
     } else {
         if (type === OBJ_CROWN) {
-            obj.w = 60; // Doubled from 30
-            obj.h = 60; // Doubled from 30
+            obj.w = 60;
         } else if (type === OBJ_DIAMOND) {
-            obj.w = 60; // Doubled from 30
-            obj.h = 60; // Doubled from 30
+            obj.w = 45;
         } else {
-            obj.w = 40; // Doubled from 20
-            obj.h = 40; // Doubled from 20
+            obj.w = 40;
         }
+        obj.h = obj.w;
     }
 
     obj.x = constrain(obj.x, obj.w / 2, width - obj.w / 2);
@@ -332,7 +332,8 @@ function updateObjects() {
                     gameState.objectSpawnRate = BASE_OBJECT_SPAWN_RATE_FRAMES / levelMultiplier;
                     gameState.objectSpawnRate = max(10, Math.round(gameState.objectSpawnRate));
 
-                    // Remove the boss
+                    // Remove the boss and clear its fireballs
+                    bossFireballs.length = 0;
                     objects.splice(i, 1);
                     continue;
                 }

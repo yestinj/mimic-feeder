@@ -395,6 +395,22 @@ function setupSoundMap() {
         'background_music1': backgroundMusic1,
         'background_music2': backgroundMusic2
     };
+
+    // Ensure all sound effects have a default volume if they were loaded without it
+    // Note: this skips background music which has its own volume
+    for (const key in soundMap) {
+        const sound = soundMap[key];
+        if (sound && typeof sound.setVolume === 'function' &&
+            key !== 'background_music1' && key !== 'background_music2') {
+            // Only set if not already set by a specific HIGHER_SOUND_VOLUME call in assets.js
+            // p5.sound doesn't have a getVolume, so we just re-apply the default
+            // but we skip the ones we know are higher or music.
+            const higherVolumeSounds = ['collect', 'slurp', 'explode', 'cat_meow', 'magnetism'];
+            if (!higherVolumeSounds.includes(key)) {
+                sound.setVolume(DEFAULT_SOUND_VOLUME);
+            }
+        }
+    }
 }
 
 /**
