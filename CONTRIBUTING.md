@@ -1,6 +1,6 @@
 # Contributing to Mimic Feeder
 
-Thank you for considering contributing to Mimic Feeder! This document provides guidelines and instructions for contributing.
+I'm not open to contributions, but if you'd like to fork the project and make your own updates, keep reading.
 
 ## Development Setup
 
@@ -17,7 +17,6 @@ Thank you for considering contributing to Mimic Feeder! This document provides g
 4. Run the game: `npm start`
 5. Commit your changes with a descriptive commit message
 6. Push to your fork: `git push origin feature/your-feature-name`
-7. Create a pull request
 
 ## Code Style Guidelines
 
@@ -33,26 +32,3 @@ Thank you for considering contributing to Mimic Feeder! This document provides g
 - `src/assets/`: Game assets (images, sounds, etc.)
 - `src/index.html`: Main HTML file
 - `build.js`: Build script
-
-## Adding New Features
-
-When adding new features:
-
-1. Ensure they fit with the game's theme and mechanics
-2. Add appropriate documentation in code comments
-3. Update the README.md if necessary
-4. Test thoroughly before submitting a pull request
-
-## Reporting Bugs
-
-If you find a bug, please create an issue with:
-
-- A clear description of the bug
-- Steps to reproduce
-- Expected behavior
-- Screenshots if applicable
-- Browser and OS information
-
-## License
-
-By contributing to Mimic Feeder, you agree that your contributions will be licensed under the project's GPLv3 license.
