@@ -6,15 +6,15 @@ let gameLevelNotification = {
 };
 let staffNotification = {
     active: false, timer: 0, duration: STAFF_NOTIFICATION_DURATION,
-    line1: "Wizard Staff Obtained!", line2: "Press Spacebar to use"
+    line1: "Wizard Staff acquired", line2: "Press Space to cast Shadow Bolt"
 };
 let tentacleNotification = {
     active: false, timer: 0, duration: TENTACLE_NOTIFICATION_DURATION,
-    line1: "Tentacles Unlocked!", line2: "Press '1' Key to use"
+    line1: "Tentacles Unlocked!", line2: "Press 'Z' Key to use"
 };
 let magnetNotification = {
     active: false, timer: 0, duration: STAFF_NOTIFICATION_DURATION,
-    line1: "Magnet Obtained!", line2: "Press '2' Key to use"
+    line1: "Magnet acquired", line2: "Press 'X' Key to use"
 };
 let extraLifeNotification = {
     active: false, timer: 0, duration: 180,
@@ -215,7 +215,7 @@ function drawNameInputScreen() {
     text(gameState.currentNameInput, inputX + 10, inputY);
 
     // Calculate cursor position based on text width
-    let textWidthValue = gameState.currentNameInput.length > 0 ? 
+    let textWidthValue = gameState.currentNameInput.length > 0 ?
         textWidth(gameState.currentNameInput) : 0;
 
     // Draw a static underscore at the end of the input text

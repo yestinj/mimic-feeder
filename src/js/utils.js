@@ -195,7 +195,7 @@ function checkForPlayerLevelUp() {
         if (playerState.level >= PLAYER_LEVEL_FOR_TENTACLES) {
             if (oldLevel < PLAYER_LEVEL_FOR_TENTACLES) {
                 tentacleNotification.line1 = "Tentacles Unlocked!";
-                tentacleNotification.line2 = "Press '1' Key to use";
+                tentacleNotification.line2 = "Press 'Z' Key to use";
             } else {
                 playerState.tentacleTargetLimit += 1;
                 tentacleNotification.line1 = "Tentacles +1";

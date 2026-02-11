@@ -57,17 +57,16 @@ function drawIntroScreen() {
     } catch (e) {
         textWrap('word');
     }
-    let description = "Dungeon mimics are greedy, hungry creatures. " +
-        "They need to eat, anything edible, and love collecting shinies.\n\n" +
-        "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.\n\n" +
-        "Letting perfectly good food (creatures) perish will cause damage.\n\n" +
-        "Eat the food, collect the shinies and powerups, and avoid the bombs!";
+    let description = "Dungeon mimic-feeding chaos. Eat creatures, nab shinies, dodge bombs, and unlock powers.\n\n" +
+        "Control the mimic to collect food and shinies. Avoid or destroy bombs.\n\n" +
+        "Don't let perfectly good food perish - it hurts!\n\n" +
+        "Eat, collect, and survive!";
     text(description, leftMargin, currentY, textBlockWidth);
 
     // Estimate description height for positioning elements below it
     let explicitNewlinesInDesc = (description.match(/\n\n/g) || []).length * 2;
-    let approxLinesInDesc = 8 + explicitNewlinesInDesc; // Base 8 lines + explicit breaks
-    currentY += approxLinesInDesc * (16 * 0.8); // Adjusted factor for tighter lines
+    let approxLinesInDesc = 6 + explicitNewlinesInDesc; // Reduced base lines
+    currentY += approxLinesInDesc * (16 * 0.85);
     //currentY += 15; // Padding after description
 
     // 3. "Game Controls" Heading
@@ -94,7 +93,7 @@ function drawIntroScreen() {
     fill(0);
     textAlign(CENTER, BOTTOM);
     text(
-        "Press Enter to start",
+        "Click or press any key to start",
         overlayX + overlayWidth / 2,
         overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight // Position above bottom texts
     );
@@ -145,11 +144,10 @@ function calculateIntroContentHeight() {
     totalHeight += 28 + 40;
 
     // 2. Description text
-    let description = "Dungeon mimics are greedy, hungry creatures. " +
-        "They need to eat, anything edible, and love collecting shinies.\n\n" +
-        "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.\n\n" +
-        "Letting perfectly good food (creatures) perish will cause damage.\n\n" +
-        "Eat the food, collect the shinies and powerups, and avoid the bombs!";
+    let description = "Dungeon mimic-feeding chaos. Eat creatures, nab shinies, dodge bombs, and unlock powers.\n\n" +
+        "Control the mimic to collect food and shinies. Avoid or destroy bombs.\n\n" +
+        "Don't let perfectly good food perish - it hurts!\n\n" +
+        "Eat, collect, and survive!";
 
     // Calculate description height based on text wrapping
     let descTextSize = 14;
@@ -194,12 +192,25 @@ function calculateIntroContentHeight() {
  */
 function handleIntroScreenKeyPressed() {
     if (gameState.showIntroScreen) {
-        if (keyCode === ENTER) {
-            startAudioIfNeeded();
-            gameState.showIntroScreen = false;
-            gameState.gameStarted = false; // Ensure startTime is reset in draw()
-            return true;
-        }
+        startAudioIfNeeded();
+        gameState.showIntroScreen = false;
+        gameState.gameStarted = false; // Ensure startTime is reset in draw()
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Handles mouse input on the intro screen
+ * Processes mouse clicks when the intro screen is active
+ * @function
+ * @returns {boolean} True if the mouse click was handled, false otherwise
+ */
+function handleIntroScreenMousePressed() {
+    if (gameState.showIntroScreen) {
+        startAudioIfNeeded();
+        gameState.showIntroScreen = false;
+        gameState.gameStarted = false; // Ensure startTime is reset in draw()
         return true;
     }
     return false;

@@ -3,7 +3,7 @@ let shadowBolts = []; // This array is for the projectiles themselves
 let openChestTimer = 0; // For tentacles ability visual
 
 function handleTentaclesAbility() {
-    if (key === '1' && playerState.level >= PLAYER_LEVEL_FOR_TENTACLES && playerState.tentaclesCooldown <= 0) {
+    if ((key === 'z' || key === 'Z') && playerState.level >= PLAYER_LEVEL_FOR_TENTACLES && playerState.tentaclesCooldown <= 0) {
         tongues = [];
         let foundTarget = false;
         const humanoidTypes = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_CAT, OBJ_DRAGON];
@@ -218,7 +218,7 @@ function handlePlayerDash() {
 }
 
 function handleMagnetismAbility() {
-    if (key === '2' && playerState.hasMagnet && playerState.magnetismCooldown <= 0) {
+    if ((key === 'x' || key === 'X') && playerState.hasMagnet && playerState.magnetismCooldown <= 0) {
         playerState.usingMagnetism = true;
         playerState.magnetismCooldown = MAGNETISM_COOLDOWN_FRAMES;
         playerState.magnetismDuration = MAGNETISM_DURATION_FRAMES;

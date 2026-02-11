@@ -3,7 +3,7 @@
 A fun little game created with the help of AI - Grok, Copilot, Google AI Studio (Claude), and Jetbrains Junie.
 
 ## Game Description
-Dungeon mimics are greedy, hungry creatures. They need to eat anything edible and love collecting shinies. Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs. Letting perfectly good food (creatures) perish will cause damage.
+Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock powers. Dungeon mimics are greedy, hungry creatures - keep them fed!
 
 ## How to Play
 - **Move**: Left / Right Arrows
