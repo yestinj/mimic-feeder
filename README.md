@@ -63,7 +63,7 @@ While the code is public and may be forked under the license terms, I’m not ac
 
 ## Attributions
 
-All assets used in this project are either original, public domain, or used under free licenses that do not require attribution. I'll be filling this section in with specific credits soon.
+All assets used in this project are either original, public domain, or used under free licenses that do not require attribution.
 
 ## License
 

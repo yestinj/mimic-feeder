@@ -93,7 +93,7 @@ function drawIntroScreen() {
     fill(0);
     textAlign(CENTER, BOTTOM);
     text(
-        "Click or press any key to start",
+        "Click or press any key to start (activates audio)",
         overlayX + overlayWidth / 2,
         overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight // Position above bottom texts
     );
