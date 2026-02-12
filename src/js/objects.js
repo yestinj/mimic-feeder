@@ -42,8 +42,8 @@ function spawnObjects() {
                 // Skip dragon if not at required floor/zone
                 if (entry.type === OBJ_DRAGON &&
                     (gameState.dungeonFloor < DUNGEON_FLOOR_FOR_DRAGON_SPAWN ||
-                     (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_DRAGON_SPAWN &&
-                      gameState.dungeonZone < DUNGEON_ZONE_FOR_DRAGON_SPAWN))) {
+                        (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_DRAGON_SPAWN &&
+                            gameState.dungeonZone < DUNGEON_ZONE_FOR_DRAGON_SPAWN))) {
                     continue;
                 }
 
@@ -118,8 +118,8 @@ function spawnObjects() {
                 }
                 // Only spawn fireballs from the specified floor/zone, otherwise spawn bombs
                 const canSpawnFireball = gameState.dungeonFloor > DUNGEON_FLOOR_FOR_FIREBALL_SPAWN ||
-                                        (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_FIREBALL_SPAWN &&
-                                         gameState.dungeonZone >= DUNGEON_ZONE_FOR_FIREBALL_SPAWN);
+                    (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_FIREBALL_SPAWN &&
+                        gameState.dungeonZone >= DUNGEON_ZONE_FOR_FIREBALL_SPAWN);
 
                 // Bias hazard spawns away from the player if too close to avoid unfair hits
                 const playerCenterX = player.x + player.w / 2;
@@ -137,6 +137,7 @@ function spawnObjects() {
                 } else {
                     createObject(OBJ_FIREBALL, bombX);
                 }
+            }
         }
     }
 }
@@ -412,7 +413,7 @@ function updateObjects() {
 
                     let fireball = {
                         x: obj.x,
-                        y: obj.y + obj.h/2,
+                        y: obj.y + obj.h / 2,
                         w: 60,
                         h: 60,
                         speed: BOSS_FIREBALL_SPEED * floorSpeedMultiplier,
@@ -867,5 +868,4 @@ function updateObjects() {
             }
         }
     }
-}
 }

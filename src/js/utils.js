@@ -216,7 +216,7 @@ function getCurrentLevel() {
 function getLevelFloorAndZone(level) {
     const floor = Math.floor((level - 1) / 5) + 1;
     const zone = ((level - 1) % 5) + 1;
-    return { floor, zone };
+    return {floor, zone};
 }
 
 // Function to clear all objects on screen with appropriate animations

@@ -169,7 +169,7 @@ function drawGameOverScreen() {
         // Convert game level to floor/zone format if available
         let floorZoneText = '?';
         if (entry.gameLevel) {
-            const { floor, zone } = getLevelFloorAndZone(entry.gameLevel);
+            const {floor, zone} = getLevelFloorAndZone(entry.gameLevel);
             floorZoneText = `${floor}/${zone}`;
         } else if (entry.dungeonFloor && entry.dungeonZone) {
             floorZoneText = `${entry.dungeonFloor}/${entry.dungeonZone}`;

@@ -626,8 +626,8 @@ function updateBossFireballs() {
             push();
             translate(fireball.x, fireball.y);
             // Rotate 90 degrees clockwise (PI/2 radians)
-            rotate(PI/2);
-            image(bossFireballFrames[fireball.currentFrame], -fireball.w/2, -fireball.h/2, fireball.w, fireball.h);
+            rotate(PI / 2);
+            image(bossFireballFrames[fireball.currentFrame], -fireball.w / 2, -fireball.h / 2, fireball.w, fireball.h);
             pop();
         } else {
             // Fallback if image not loaded
@@ -640,7 +640,7 @@ function updateBossFireballs() {
 
         // Check for collision with player
         if (collideRectRect(
-            fireball.x - fireball.w/2, fireball.y - fireball.h/2, fireball.w, fireball.h,
+            fireball.x - fireball.w / 2, fireball.y - fireball.h / 2, fireball.w, fireball.h,
             player.x, player.y, player.w, player.h
         )) {
             // Player hit by fireball
@@ -670,11 +670,11 @@ function updateBossFireballs() {
 
         // Check if fireball hit ground
         let groundLevel = height - PLAYER_GROUND_Y_OFFSET;
-        if (fireball.y + fireball.h/2 >= groundLevel) {
+        if (fireball.y + fireball.h / 2 >= groundLevel) {
             // Create explosion
             bombExplosions.push({
                 x: fireball.x,
-                y: groundLevel - fireball.h/2,
+                y: groundLevel - fireball.h / 2,
                 currentFrame: 0,
                 frameTimer: 0,
                 objWidth: fireball.w,

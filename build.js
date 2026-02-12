@@ -7,6 +7,7 @@ const esbuild = require('esbuild');
 const OUTPUT_DIR = 'dist';
 const ASSET_DIR = 'src/assets';
 const JS_DIR = 'src/js';
+const BUILD_CACHE_BUSTER = Date.now();
 
 // Minify HTML and update script references
 async function minifyHTML(inputDir, outputDir) {
@@ -20,7 +21,7 @@ async function minifyHTML(inputDir, outputDir) {
             // Replace multiple JS script tags with a single bundled script tag
             // Find all script tags for JS files in the js/ directory
             const scriptTagsRegex = /<script src="js\/[^"]+\.js" defer><\/script>/g;
-            const bundleScriptTag = '<script src="app.min.js" defer></script>';
+            const bundleScriptTag = `<script src="app.min.js?v=${BUILD_CACHE_BUSTER}" defer></script>`;
 
             // Get all matches
             const matches = content.match(scriptTagsRegex) || [];

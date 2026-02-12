@@ -112,8 +112,8 @@ function drawOnboardingOverlays() {
             let ctrlY = height - 10;
 
             let controlsText = "Controls:\n" +
-                               "← → : Move\n" +
-                               "↑ : Jump\n";
+                "← → : Move\n" +
+                "↑ : Jump\n";
 
             if (playerState.hasWizardStaff) {
                 controlsText += "Space : Shadow Bolt\n";

@@ -339,7 +339,11 @@ const spawnTable = [
             state.game.dungeonZone === DUNGEON_ZONE_FOR_MAGNET_DROP
     },
     /** Dragon - Rare high-value enemy that only appears in later floors */
-    {type: OBJ_DRAGON, probability: 0.05, condition: (state) => state.game.dungeonFloor >= DUNGEON_FLOOR_FOR_DRAGON_SPAWN && state.game.dungeonZone >= DUNGEON_ZONE_FOR_DRAGON_SPAWN},
+    {
+        type: OBJ_DRAGON,
+        probability: 0.05,
+        condition: (state) => state.game.dungeonFloor >= DUNGEON_FLOOR_FOR_DRAGON_SPAWN && state.game.dungeonZone >= DUNGEON_ZONE_FOR_DRAGON_SPAWN
+    },
     /** Crown - Rare high-value collectible */
     {type: OBJ_CROWN, probability: 0.03 * 1.111},
     /** Diamond - Very rare highest-value collectible */

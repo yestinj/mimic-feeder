@@ -73,7 +73,7 @@ function drawObjectInfoScreen() {
 
         // Draw image first, then text
         if (objImage && objImage.width) {
-            image(objImage, x, y - currentImageSize/2, currentImageSize, currentImageSize);
+            image(objImage, x, y - currentImageSize / 2, currentImageSize, currentImageSize);
         }
 
         text(pointsText, x + currentImageSize + textWidth, y);
@@ -146,10 +146,10 @@ function drawObjectInfoScreen() {
     let fireballFrameIndex = floor((frameCount % (FIREBALL_TOTAL_FRAMES * FIREBALL_FRAME_DURATION)) / FIREBALL_FRAME_DURATION);
     if (fireballFrames && fireballFrames.length > 0 && fireballFrames[fireballFrameIndex]) {
         push();
-        translate(col2X + imageSize/2, currentY);
+        translate(col2X + imageSize / 2, currentY);
         // Rotate 90 degrees clockwise (PI/2 radians) to match game display
         rotate(PI / 2);
-        image(fireballFrames[fireballFrameIndex], -imageSize/2, -imageSize/2, imageSize, imageSize);
+        image(fireballFrames[fireballFrameIndex], -imageSize / 2, -imageSize / 2, imageSize, imageSize);
         pop();
     }
 
@@ -173,18 +173,18 @@ function drawObjectInfoScreen() {
     // Wizard Staff
     let staffText = "Wizard Staff - Shadow Bolt";
     if (objectImages[OBJ_WIZARD_STAFF] && objectImages[OBJ_WIZARD_STAFF].width) {
-        image(objectImages[OBJ_WIZARD_STAFF], col1X, currentY - imageSize/2, imageSize, imageSize);
+        image(objectImages[OBJ_WIZARD_STAFF], col1X, currentY - imageSize / 2, imageSize, imageSize);
     }
     text(staffText, col1X + imageSize + textWidth, currentY);
 
     // Magnet
     let magnetText = "Magnet - Magnetism";
     if (magnetFrames[0] && magnetFrames[0].width) {
-        image(magnetFrames[0], col2X, currentY - imageSize/2, imageSize, imageSize);
+        image(magnetFrames[0], col2X, currentY - imageSize / 2, imageSize, imageSize);
     } else {
         fill(0, 100, 255);
         noStroke();
-        ellipse(col2X + imageSize/2, currentY, imageSize * 0.6, imageSize * 0.6);
+        ellipse(col2X + imageSize / 2, currentY, imageSize * 0.6, imageSize * 0.6);
     }
     text(magnetText, col2X + imageSize + textWidth, currentY);
 
