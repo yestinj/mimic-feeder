@@ -71,15 +71,15 @@ function drawHelpScreen() {
     // Controls List
     textSize(12);
     textStyle(NORMAL);
-    text("Move:  Left / Right Arrows", leftMargin, currentY);
+    text("Move:  Left / Right Arrows or A / D", leftMargin, currentY);
     currentY += 18;
-    text("Dash:  Double-tap Left / Right Arrows", leftMargin, currentY);
+    text("Dash:  Double-tap Left / Right Arrows or A / D", leftMargin, currentY);
     currentY += 18;
-    text("Jump / Double Jump:  Up Arrow", leftMargin, currentY);
+    text("Jump / Double Jump:  Up Arrow or W", leftMargin, currentY);
     currentY += 18;
     text("Help Screen: Escape (Esc)", leftMargin, currentY);
     currentY += 18;
-    text("Achievements: A key", leftMargin, currentY);
+    text("Achievements: K key", leftMargin, currentY);
     currentY += 23;
 
     // 5. Abilities
@@ -102,7 +102,7 @@ function drawHelpScreen() {
         textWrap('word');
     }
 
-    let tentaclesText = "Tentacles (1 key): At Player level " + PLAYER_LEVEL_FOR_TENTACLES +
+    let tentaclesText = "Tentacles (Z key): At Player level " + PLAYER_LEVEL_FOR_TENTACLES +
         ", you gain the ability to extend tentacles that can grab multiple objects at once. " +
         "This ability has a cooldown.";
     text(tentaclesText, leftMargin, currentY, textBlockWidth);
@@ -114,13 +114,13 @@ function drawHelpScreen() {
     text(shadowBoltText, leftMargin, currentY, textBlockWidth);
     currentY += 55;
 
-    let magnetismText = "Magnetism (2 key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
+    let magnetismText = "Magnetism (X key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
         " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it grants " +
         "the ability to attract non-humanoid objects towards the player. This ability has a cooldown.";
     text(magnetismText, leftMargin, currentY, textBlockWidth);
     currentY += 55;
 
-    let dashText = "Dash: Double-tap the left or right arrow keys to quickly dash in that direction. " +
+    let dashText = "Dash: Double-tap Left/Right Arrow keys or A/D to quickly dash in that direction. " +
         "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / 60) + " second(s).";
     text(dashText, leftMargin, currentY, textBlockWidth);
 
@@ -228,7 +228,7 @@ function calculateHelpContentHeight() {
 
     // 7. Abilities descriptions (4 abilities)
     // Tentacles description
-    let tentaclesText = "Tentacles (1 key): At Player level " + PLAYER_LEVEL_FOR_TENTACLES +
+    let tentaclesText = "Tentacles (Z key): At Player level " + PLAYER_LEVEL_FOR_TENTACLES +
         ", you gain the ability to extend tentacles that can grab multiple objects at once. " +
         "This ability has a cooldown.";
 
@@ -238,12 +238,12 @@ function calculateHelpContentHeight() {
         "that can destroy objects at a distance.";
 
     // Magnetism description
-    let magnetismText = "Magnetism (2 key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
+    let magnetismText = "Magnetism (X key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
         " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it grants " +
         "the ability to attract non-humanoid objects towards the player. This ability has a cooldown.";
 
     // Dash description
-    let dashText = "Dash: Double-tap the left or right arrow keys to quickly dash in that direction. " +
+    let dashText = "Dash: Double-tap Left/Right Arrow keys or A/D to quickly dash in that direction. " +
         "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / 60) + " second(s).";
 
     // Calculate abilities text height

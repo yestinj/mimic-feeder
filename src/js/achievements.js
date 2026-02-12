@@ -192,10 +192,23 @@ function saveAchievements() {
  */
 function loadAchievements() {
     const savedAchievements = localStorage.getItem('mimicAchievements');
-    if (savedAchievements) {
-        gameState.achievements = JSON.parse(savedAchievements);
-    } else {
+    if (!savedAchievements) {
         gameState.achievements = {};
+        return;
+    }
+
+    try {
+        const parsedAchievements = JSON.parse(savedAchievements);
+        if (parsedAchievements && typeof parsedAchievements === 'object' && !Array.isArray(parsedAchievements)) {
+            gameState.achievements = parsedAchievements;
+        } else {
+            gameState.achievements = {};
+            localStorage.removeItem('mimicAchievements');
+        }
+    } catch (error) {
+        console.warn('Failed to parse saved achievements. Resetting achievements storage.', error);
+        gameState.achievements = {};
+        localStorage.removeItem('mimicAchievements');
     }
 }
 

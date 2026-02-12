@@ -79,8 +79,8 @@ function initializeStates() {
         magnetizedObjects: [],                        // Objects currently affected by magnetism
         shadowBoltCooldown: 0,                        // Cooldown timer for shadow bolt ability
         dashCooldown: 0,                              // Cooldown timer for dash ability
-        lastLeftKeyPressTime: 0,                      // Frame count of last left arrow key press
-        lastRightKeyPressTime: 0,                     // Frame count of last right arrow key press
+        lastLeftKeyPressTime: 0,                      // Frame count of last left movement key press
+        lastRightKeyPressTime: 0,                     // Frame count of last right movement key press
         isDashing: false                              // Whether player is currently dashing
     };
 }
@@ -755,10 +755,10 @@ function keyPressed() {
         return;
     }
 
-    // Show achievements screen when 'A' key is pressed during gameplay
+    // Show achievements screen when 'K' key is pressed during gameplay
     if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
         !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
-        key === 'a') {
+        (key === 'k' || key === 'K')) {
         gameState.showAchievementsScreen = true;
         return;
     }
@@ -887,6 +887,7 @@ function restartGame() {
     // Stop all sounds and reset game state
     stopAllSounds(false, false); // Stop all sounds including background music
     initializeStates(); // This resets gameState.lastUsedName to "Player"
+    loadAchievements(); // Restore persisted achievements after state initialization
 
     // Load name from localStorage and set up name input
     loadLastUsedName();

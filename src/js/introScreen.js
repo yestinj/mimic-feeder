@@ -80,9 +80,9 @@ function drawIntroScreen() {
     // 4. Controls List
     textSize(12);
     textStyle(NORMAL);
-    text("Move:  Left / Right Arrows", leftMargin, currentY);
+    text("Move:  Left / Right Arrows or A / D", leftMargin, currentY);
     currentY += 20;
-    text("Jump / Double Jump:  Up Arrow", leftMargin, currentY);
+    text("Jump / Double Jump:  Up Arrow or W", leftMargin, currentY);
 
     // 5. Start Instruction & Bottom Corner Texts
     let bottomPadding = 10;

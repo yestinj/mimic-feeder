@@ -7,13 +7,13 @@ Arcade mimic-feeding chaos. Eat creatures, grab shinies, dodge bombs, and unlock
 *Desktop recommended. Keyboard required.*
 
 ## How to Play
-- **Move**: Left / Right Arrows
-- **Dash**: Double-tap Left / Right Arrows
-- **Jump / Double Jump**: Up Arrow
+- **Move**: Left / Right Arrows or A / D
+- **Dash**: Double-tap Left / Right Arrows or A / D
+- **Jump / Double Jump**: Up Arrow or W
 - **Cast Shadow Bolt** (with Wizard Staff): Space
 - **Use Tentacles** (at level 5+): Z
 - **Use Magnetism** (with Magnet): X
-- **View Achievements**: A
+- **View Achievements**: K
 
 ## Installation and Running
 1. Clone the repository

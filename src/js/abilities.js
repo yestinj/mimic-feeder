@@ -174,9 +174,11 @@ function handlePlayerDash() {
     // Only process dash if cooldown is not active
     if (playerState.dashCooldown <= 0) {
         const currentFrame = frameCount;
+        const leftDashPressed = keyCode === LEFT_ARROW || keyCode === 65; // LEFT or A
+        const rightDashPressed = keyCode === RIGHT_ARROW || keyCode === 68; // RIGHT or D
 
-        // Check for left arrow double tap
-        if (keyCode === LEFT_ARROW) {
+        // Check for left movement key double tap
+        if (leftDashPressed) {
             const timeSinceLastPress = currentFrame - playerState.lastLeftKeyPressTime;
 
             if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_FRAMES && timeSinceLastPress > 0) {
@@ -195,8 +197,8 @@ function handlePlayerDash() {
             playerState.lastLeftKeyPressTime = currentFrame;
         }
 
-        // Check for right arrow double tap
-        else if (keyCode === RIGHT_ARROW) {
+        // Check for right movement key double tap
+        else if (rightDashPressed) {
             const timeSinceLastPress = currentFrame - playerState.lastRightKeyPressTime;
 
             if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_FRAMES && timeSinceLastPress > 0) {
