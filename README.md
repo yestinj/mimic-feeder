@@ -1,9 +1,10 @@
 # Mimic Feeder
 
-A fun little game created with the help of AI - Grok, Copilot, Google AI Studio (Claude), and Jetbrains Junie.
+**Play now: [mimicfeeder.yest.dev](https://mimicfeeder.yest.dev/)**
 
-## Game Description
-Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock powers. Dungeon mimics are greedy, hungry creatures - keep them fed!
+Arcade mimic-feeding chaos. Eat creatures, grab shinies, dodge bombs, and unlock powers.
+
+*Desktop recommended. Keyboard required.*
 
 ## How to Play
 - **Move**: Left / Right Arrows
@@ -21,6 +22,9 @@ Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock power
 4. Start the local server: `npm start` (this will open the game in your browser)
 
 Alternatively, after building, you can open `dist/index.html` directly in your browser.
+
+### Common Issues
+- **No Audio**: If audio is muted on first load, click anywhere on the page or press any key to activate the audio context.
 
 ## Development
 - Source code is in the `src` directory
@@ -56,6 +60,10 @@ This will create documentation in the `docs` directory and open it in your brows
 
 This project is feature-complete and shared primarily as a portfolio and learning reference.
 While the code is public and may be forked under the license terms, I’m not actively seeking contributions or maintaining feature requests.
+
+## Attributions
+
+All assets used in this project are either original, public domain, or used under free licenses that do not require attribution. I'll be filling this section in with specific credits soon.
 
 ## License
 
