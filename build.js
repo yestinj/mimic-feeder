@@ -8,6 +8,33 @@ const OUTPUT_DIR = 'dist';
 const ASSET_DIR = 'src/assets';
 const JS_DIR = 'src/js';
 const BUILD_CACHE_BUSTER = Date.now();
+const GAME_SCRIPT_MARKER_START = '<!-- BUILD:GAME_SCRIPTS_START -->';
+const GAME_SCRIPT_MARKER_END = '<!-- BUILD:GAME_SCRIPTS_END -->';
+const GAME_SCRIPT_TAG_REGEX = /<script src="js\/[^"]+\.js" defer><\/script>\s*/g;
+
+function replaceGameScriptsWithBundle(content, bundleScriptTag) {
+    const markerStartIndex = content.indexOf(GAME_SCRIPT_MARKER_START);
+    const markerEndIndex = content.indexOf(GAME_SCRIPT_MARKER_END);
+
+    if (markerStartIndex !== -1 && markerEndIndex !== -1 && markerEndIndex > markerStartIndex) {
+        const beforeMarkerEnd = markerStartIndex + GAME_SCRIPT_MARKER_START.length;
+        const before = content.slice(0, beforeMarkerEnd);
+        const after = content.slice(markerEndIndex);
+        return `${before}\n    ${bundleScriptTag}\n    ${after}`;
+    }
+
+    if (!GAME_SCRIPT_TAG_REGEX.test(content)) {
+        return content;
+    }
+
+    // Reset regex state after test() on a global regex.
+    GAME_SCRIPT_TAG_REGEX.lastIndex = 0;
+    const withoutGameScripts = content.replace(GAME_SCRIPT_TAG_REGEX, '');
+    if (withoutGameScripts.includes('</head>')) {
+        return withoutGameScripts.replace('</head>', `    ${bundleScriptTag}\n</head>`);
+    }
+    return `${withoutGameScripts}\n${bundleScriptTag}`;
+}
 
 // Minify HTML and update script references
 async function minifyHTML(inputDir, outputDir) {
@@ -18,30 +45,9 @@ async function minifyHTML(inputDir, outputDir) {
             const outputPath = path.join(outputDir, file);
             let content = await fs.readFile(inputPath, 'utf8');
 
-            // Replace multiple JS script tags with a single bundled script tag
-            // Find all script tags for JS files in the js/ directory
-            const scriptTagsRegex = /<script src="js\/[^"]+\.js" defer><\/script>/g;
+            // Replace game JS script tags with one bundled script tag.
             const bundleScriptTag = `<script src="app.min.js?v=${BUILD_CACHE_BUSTER}" defer></script>`;
-
-            // Get all matches
-            const matches = content.match(scriptTagsRegex) || [];
-
-            if (matches.length > 0) {
-                // Replace all script tags with empty string first
-                content = content.replace(scriptTagsRegex, '');
-
-                // Find the position where the first script tag was
-                const firstScriptPos = content.indexOf('<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js" defer></script>');
-
-                if (firstScriptPos !== -1) {
-                    // Insert the bundle script tag after the p5.sound.min.js script
-                    const insertPos = firstScriptPos + '<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js" defer></script>'.length;
-                    content = content.slice(0, insertPos) + bundleScriptTag + content.slice(insertPos);
-                } else {
-                    // Fallback: just add it before </head>
-                    content = content.replace('</head>', bundleScriptTag + '</head>');
-                }
-            }
+            content = replaceGameScriptsWithBundle(content, bundleScriptTag);
 
             const minified = htmlMinifier.minify(content, {
                 collapseWhitespace: true,
@@ -139,6 +145,10 @@ async function copyAssets(inputDir, outputDir) {
         const outputPath = path.join(outputDir, item.name);
 
         if (item.isDirectory()) {
+            if (item.name === '_unused') {
+                console.log(`Skipping quarantined assets directory: ${inputPath}`);
+                continue;
+            }
             await fs.mkdir(outputPath, { recursive: true });
             await copyAssets(inputPath, outputPath);
         } else if (item.isFile()) {

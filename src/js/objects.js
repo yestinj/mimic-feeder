@@ -568,15 +568,17 @@ function updateObjects() {
                     obj.isFlying = true;
                     obj.flightDuration = 0;
 
-                    // Set a random flight duration between 60 and 120 frames (1-2 seconds at 60fps)
-                    obj.maxFlightDuration = Math.floor(random(60, 120));
+                    // Set a random flight duration between 1x and 2x the base duration.
+                    obj.maxFlightDuration = Math.floor(
+                        random(DRAGON_FLIGHT_DURATION_FRAMES, DRAGON_FLIGHT_DURATION_FRAMES * 2)
+                    );
 
                     // Calculate a random angle for diagonal upward movement
                     let angle = random(DRAGON_FLIGHT_DIRECTION_MIN_ANGLE, DRAGON_FLIGHT_DIRECTION_MAX_ANGLE);
                     angle = angle * (Math.PI / 180); // Convert to radians
 
                     // Calculate flight direction components based on the angle
-                    let speed = 2 * abs(obj.baseVy);
+                    let speed = DRAGON_FLIGHT_SPEED_MULTIPLIER * abs(obj.baseVy);
                     obj.flightDirectionX = speed * Math.cos(angle);
                     obj.flightDirectionY = speed * Math.sin(angle); // Negative for upward movement
                     obj.originalVy = obj.vy;

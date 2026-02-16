@@ -127,10 +127,10 @@ const DUNGEON_ZONE_FOR_FIREBALL_SPAWN = 1;
 /**
  * Dragon Behavior - Constants controlling dragon movement and actions
  */
-/** @const {number} DRAGON_FLIGHT_DURATION_FRAMES - How long dragons fly in a direction (60 frames = 1 second at 60fps) */
+/** @const {number} DRAGON_FLIGHT_DURATION_FRAMES - Base dragon flight duration; runtime range is this value to 2x this value */
 const DRAGON_FLIGHT_DURATION_FRAMES = 60;
 /** @const {number} DRAGON_FLIGHT_SPEED_MULTIPLIER - How much faster dragons move compared to other objects */
-const DRAGON_FLIGHT_SPEED_MULTIPLIER = 3;
+const DRAGON_FLIGHT_SPEED_MULTIPLIER = 2;
 /** @const {number} DRAGON_FLIGHT_DIRECTION_MIN_ANGLE - Minimum angle for dragon flight direction (in degrees) */
 const DRAGON_FLIGHT_DIRECTION_MIN_ANGLE = -160;
 /** @const {number} DRAGON_FLIGHT_DIRECTION_MAX_ANGLE - Maximum angle for dragon flight direction (in degrees) */
