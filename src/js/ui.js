@@ -52,7 +52,7 @@ function drawPauseScreen() {
     // Instructions
     textSize(20);
     textStyle(NORMAL);
-    text("Press 'P' to Resume — 'M' to Mute/Unmute", width / 2, height / 2 + 30);
+    text("Press 'P' to Resume", width / 2, height / 2 + 30);
 
     // Reset text parameters for other draws
     textAlign(LEFT, BASELINE);
@@ -132,14 +132,6 @@ function drawOnboardingOverlays() {
 }
 
 function drawUI() {
-    // Draw Mute status indicator
-    if (gameState.isMuted) {
-        fill(255, 100, 100);
-        textSize(14);
-        textAlign(LEFT);
-        text('MUTED (M)', 10, height - 10);
-    }
-
     fill(255);
     textSize(24);
     textAlign(LEFT);

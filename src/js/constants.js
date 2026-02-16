@@ -464,6 +464,20 @@ function playSound(soundName) {
     if (!soundName) {
         return;
     }
+
+    // Respect muted state and temporary audio silencing while gameplay overlays are open.
+    if (typeof gameState !== 'undefined' && gameState) {
+        const shouldSilence = gameState.isMuted ||
+            gameState.isPaused ||
+            gameState.showHelpScreen ||
+            gameState.showObjectInfoScreen ||
+            gameState.showAboutScreen ||
+            gameState.showAchievementsScreen;
+        if (shouldSilence) {
+            return;
+        }
+    }
+
     const sound = soundMap[soundName];
     if (sound && typeof sound.isLoaded === 'function' && sound.isLoaded()) {
         sound.play();

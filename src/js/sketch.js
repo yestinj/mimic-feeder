@@ -153,6 +153,49 @@ let isInitialPageLoad = true;
  * @type {number}
  */
 let screenShakeAmount = 0;
+/**
+ * Tracks whether game audio was silenced in the previous sync pass
+ * @type {?boolean}
+ */
+let wasGameAudioSilenced = null;
+
+/**
+ * Returns whether gameplay audio should currently be silenced
+ * @returns {boolean}
+ * @function
+ */
+function shouldSilenceGameAudio() {
+    return !!(
+        gameState.isMuted ||
+        gameState.isPaused ||
+        gameState.showHelpScreen ||
+        gameState.showObjectInfoScreen ||
+        gameState.showAboutScreen ||
+        gameState.showAchievementsScreen
+    );
+}
+
+/**
+ * Synchronizes audio output with the current game UI/state
+ * @function
+ */
+function syncGameAudioState() {
+    const shouldSilence = shouldSilenceGameAudio();
+    if (wasGameAudioSilenced === shouldSilence) {
+        return;
+    }
+
+    wasGameAudioSilenced = shouldSilence;
+    if (typeof masterVolume === 'function') {
+        masterVolume(shouldSilence ? 0 : 1);
+    }
+
+    if (shouldSilence) {
+        stopAllSounds(false, false);
+    } else if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen) {
+        updateBackgroundMusic();
+    }
+}
 
 /**
  * p5.js setup function - Called once at the beginning
@@ -249,6 +292,9 @@ function windowResized() {
 function draw() {
     const frameDelta = getFrameDelta();
 
+    // Keep audio state aligned with pause/help/mute state.
+    syncGameAudioState();
+
     // Apply screen shake effect if active
     if (screenShakeAmount > 0) {
         translate(random(-screenShakeAmount, screenShakeAmount), random(-screenShakeAmount, screenShakeAmount));
@@ -257,7 +303,7 @@ function draw() {
     }
 
     // Update background music based on level
-    if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen) {
+    if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen && !shouldSilenceGameAudio()) {
         updateBackgroundMusic();
     }
 
@@ -738,23 +784,14 @@ function keyPressed() {
         if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
             !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen) {
             gameState.isPaused = !gameState.isPaused;
-            if (gameState.isPaused) {
-                if (backgroundMusic1 && backgroundMusic1.isPlaying()) backgroundMusic1.pause();
-                if (backgroundMusic2 && backgroundMusic2.isPlaying()) backgroundMusic2.pause();
-            } else {
-                updateBackgroundMusic();
-            }
+            syncGameAudioState();
             return;
         }
     }
 
     if (key === 'm' || key === 'M') {
         gameState.isMuted = !gameState.isMuted;
-        if (gameState.isMuted) {
-            masterVolume(0);
-        } else {
-            masterVolume(1);
-        }
+        syncGameAudioState();
         return;
     }
 
@@ -853,6 +890,10 @@ function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) 
  * @function
  */
 function updateBackgroundMusic() {
+    if (shouldSilenceGameAudio()) {
+        return;
+    }
+
     // Determine which background music should be playing based on floor
     // Floors 1-2, 5-6, etc. use backgroundMusic1
     // Floors 3-4, 7-8, etc. use backgroundMusic2
