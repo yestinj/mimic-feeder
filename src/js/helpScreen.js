@@ -115,10 +115,11 @@ function drawHelpScreen() {
     currentY += 55;
 
     let magnetismText = "Magnetism (X key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
-        " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it grants " +
-        "the ability to attract non-humanoid objects towards the player. This ability has a cooldown.";
+        " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it lets you attract " +
+        "only non-humanoid objects that were on screen when activated; those objects stay affected until eaten/removed. " +
+        "Cooldown only gates re-use.";
     text(magnetismText, leftMargin, currentY, textBlockWidth);
-    currentY += 55;
+    currentY += 70;
 
     let dashText = "Dash: Double-tap Left/Right Arrow keys or A/D to quickly dash in that direction. " +
         "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / 60) + " second(s).";
@@ -239,8 +240,9 @@ function calculateHelpContentHeight() {
 
     // Magnetism description
     let magnetismText = "Magnetism (X key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
-        " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it grants " +
-        "the ability to attract non-humanoid objects towards the player. This ability has a cooldown.";
+        " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it lets you attract " +
+        "only non-humanoid objects that were on screen when activated; those objects stay affected until eaten/removed. " +
+        "Cooldown only gates re-use.";
 
     // Dash description
     let dashText = "Dash: Double-tap Left/Right Arrow keys or A/D to quickly dash in that direction. " +

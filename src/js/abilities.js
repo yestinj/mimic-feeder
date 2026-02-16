@@ -219,58 +219,47 @@ function handlePlayerDash() {
     }
 }
 
+const MAGNETISM_HUMANOID_TYPES = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_CAT, OBJ_DRAGON];
+const MAGNETISM_HAZARD_TYPES = [OBJ_FIREBALL];
+const MAGNETISM_EXCLUDED_TYPES = [OBJ_WIZARD_STAFF, OBJ_HEALTH_POTION, OBJ_BOSS];
+
+function isObjectMagnetizable(obj) {
+    return !MAGNETISM_HUMANOID_TYPES.includes(obj.type) &&
+        !MAGNETISM_HAZARD_TYPES.includes(obj.type) &&
+        !MAGNETISM_EXCLUDED_TYPES.includes(obj.type);
+}
+
 function handleMagnetismAbility() {
     if ((key === 'x' || key === 'X') && playerState.hasMagnet && playerState.magnetismCooldown <= 0) {
-        playerState.usingMagnetism = true;
         playerState.magnetismCooldown = MAGNETISM_COOLDOWN_FRAMES;
-        playerState.magnetismDuration = MAGNETISM_DURATION_FRAMES;
+        playerState.usingMagnetism = true;
 
-        // Store the objects that are on screen when the ability is activated
-        playerState.magnetizedObjects = [...objects];
+        // Magnetism contract:
+        // Snapshot eligible on-screen objects at activation and do not add newly spawned objects.
+        const snapshotObjects = objects.filter(isObjectMagnetizable);
+        playerState.magnetizedObjects = snapshotObjects;
+
+        // Mark snapshot objects immediately so they continue being affected until eaten/removed.
+        for (let obj of snapshotObjects) {
+            obj.magnetized = true;
+            if (!obj.initialFallingSpeed) {
+                obj.initialFallingSpeed = abs(obj.vy);
+            }
+        }
 
         playSound('magnetism');
     }
 }
 
 function updateMagnetism() {
-    // Process all magnetized objects, regardless of whether the ability is active
-    const humanoidTypes = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_CAT, OBJ_DRAGON];
-    const hazardTypes = [OBJ_FIREBALL];
-    const nonMagnetizedItems = [OBJ_WIZARD_STAFF, OBJ_HEALTH_POTION, OBJ_BOSS]; // Staff, potion, and boss should not be magnetized
-
     if (playerState.usingMagnetism) {
-        playerState.magnetismDuration -= 1;
-        if (playerState.magnetismDuration <= 0) {
-            playerState.usingMagnetism = false;
-        }
+        // Cooldown gates re-activation only; existing magnetized snapshot keeps pulling.
+        playerState.usingMagnetism = false;
+    }
 
-        // Only magnetize objects that were on screen when the ability was activated
-        if (playerState.magnetizedObjects) {
-            for (let obj of playerState.magnetizedObjects) {
-                // Skip if the object is no longer in the game
-                if (!objects.includes(obj)) {
-                    continue;
-                }
-
-                // Skip humanoids, hazards, and non-magnetized items
-                if (humanoidTypes.includes(obj.type) || hazardTypes.includes(obj.type) || nonMagnetizedItems.includes(obj.type)) {
-                    continue;
-                }
-
-                // Skip objects that are already being pulled by tentacles
-                if (obj.beingPulled) {
-                    continue;
-                }
-
-                // Mark the object as magnetized when the ability is active
-                obj.magnetized = true;
-
-                // Store the initial falling speed when the object becomes magnetized
-                if (!obj.initialFallingSpeed) {
-                    obj.initialFallingSpeed = abs(obj.vy);
-                }
-            }
-        }
+    if (playerState.magnetizedObjects && playerState.magnetizedObjects.length > 0) {
+        // Keep only live references to avoid stale snapshot entries.
+        playerState.magnetizedObjects = playerState.magnetizedObjects.filter(obj => objects.includes(obj));
     }
 
     for (let obj of objects) {
@@ -303,11 +292,11 @@ function updateMagnetism() {
 
             // Move horizontally towards player at exactly 5x the object's initial falling speed
             // Use deltaTime to ensure consistent movement regardless of frame rate
-            obj.x += dx * 5 * obj.initialFallingSpeed * (deltaTime / 1000.0);
+            obj.x += dx * MAGNETISM_ATTRACTION_SPEED_MULTIPLIER * obj.initialFallingSpeed * (deltaTime / 1000.0);
 
             // Move vertically towards player (both upwards and downwards)
             // Override the normal vertical movement with magnetism-controlled movement
-            obj.y += dy * 5 * obj.initialFallingSpeed * (deltaTime / 1000.0);
+            obj.y += dy * MAGNETISM_ATTRACTION_SPEED_MULTIPLIER * obj.initialFallingSpeed * (deltaTime / 1000.0);
             // Since we're manually moving the object vertically, we need to prevent the normal
             // downward movement in updateObjects() by setting vy to 0
             obj.vy = 0;

@@ -75,8 +75,8 @@ function initializeStates() {
         usingTentacles: false,                        // Whether tentacles are currently active
         tentacleTargetLimit: INITIAL_TENTACLE_TARGET_LIMIT, // Max objects tentacles can target
         magnetismCooldown: 0,                         // Cooldown timer for magnetism ability
-        usingMagnetism: false,                        // Whether magnetism is currently active
-        magnetizedObjects: [],                        // Objects currently affected by magnetism
+        usingMagnetism: false,                        // Activation pulse flag for magnetism (cooldown gates re-use)
+        magnetizedObjects: [],                        // Snapshot objects marked for persistent pull until removed
         shadowBoltCooldown: 0,                        // Cooldown timer for shadow bolt ability
         dashCooldown: 0,                              // Cooldown timer for dash ability
         lastLeftKeyPressTime: 0,                      // Frame count of last left movement key press

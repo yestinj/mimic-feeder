@@ -122,10 +122,8 @@ const SHADOW_BOLT_FRAME_DURATION = 5;
 const SHADOW_BOLT_BOMB_POINTS = 10;
 /** @const {number} MAGNETISM_COOLDOWN_FRAMES - Cooldown between magnetism ability uses (600 frames = 10 seconds at 60fps) */
 const MAGNETISM_COOLDOWN_FRAMES = 600;
-/** @const {number} MAGNETISM_ATTRACTION_SPEED_MULTIPLIER - How much faster objects move when magnetized */
-const MAGNETISM_ATTRACTION_SPEED_MULTIPLIER = 2.0;
-/** @const {number} MAGNETISM_DURATION_FRAMES - How long magnetism effect lasts (600 frames = 10 seconds at 60fps) */
-const MAGNETISM_DURATION_FRAMES = 600;
+/** @const {number} MAGNETISM_ATTRACTION_SPEED_MULTIPLIER - Attraction speed multiplier for magnetized objects */
+const MAGNETISM_ATTRACTION_SPEED_MULTIPLIER = 5.0;
 /** @const {number} DASH_DISTANCE - Distance in pixels that the player dashes */
 const DASH_DISTANCE = 100;
 /** @const {number} DASH_COOLDOWN_FRAMES - Cooldown between dash ability uses (60 frames = 1 second at 60fps) */
