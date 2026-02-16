@@ -49,13 +49,15 @@ function handleShadowBolt() {
 }
 
 function updateShadowBolts() {
+    const frameDelta = getFrameDelta();
+
     for (let i = shadowBolts.length - 1; i >= 0; i--) {
         let bolt = shadowBolts[i];
-        bolt.y += bolt.vy;
-        bolt.frameTimer += 1;
+        bolt.y += bolt.vy * frameDelta;
+        bolt.frameTimer += frameDelta;
         if (bolt.frameTimer >= SHADOW_BOLT_FRAME_DURATION) {
             bolt.currentFrame = (bolt.currentFrame + 1) % 4;
-            bolt.frameTimer = 0;
+            bolt.frameTimer -= SHADOW_BOLT_FRAME_DURATION;
         }
         const displaySize = SHADOW_BOLT_SIZE;
         if (shadowBoltFrames[bolt.currentFrame] && shadowBoltFrames[bolt.currentFrame].width) {
@@ -173,15 +175,15 @@ function updateShadowBolts() {
 function handlePlayerDash() {
     // Only process dash if cooldown is not active
     if (playerState.dashCooldown <= 0) {
-        const currentFrame = frameCount;
+        const currentTimeMs = millis();
         const leftDashPressed = keyCode === LEFT_ARROW || keyCode === 65; // LEFT or A
         const rightDashPressed = keyCode === RIGHT_ARROW || keyCode === 68; // RIGHT or D
 
         // Check for left movement key double tap
         if (leftDashPressed) {
-            const timeSinceLastPress = currentFrame - playerState.lastLeftKeyPressTime;
+            const timeSinceLastPress = currentTimeMs - playerState.lastLeftKeyPressAtMs;
 
-            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_FRAMES && timeSinceLastPress > 0) {
+            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_MS && timeSinceLastPress > 0) {
                 // Double tap detected - perform dash to the left
                 player.x -= DASH_DISTANCE;
                 player.x = constrain(player.x, 0, width - player.w); // Keep player within bounds
@@ -194,14 +196,14 @@ function handlePlayerDash() {
             }
 
             // Update last press time
-            playerState.lastLeftKeyPressTime = currentFrame;
+            playerState.lastLeftKeyPressAtMs = currentTimeMs;
         }
 
         // Check for right movement key double tap
         else if (rightDashPressed) {
-            const timeSinceLastPress = currentFrame - playerState.lastRightKeyPressTime;
+            const timeSinceLastPress = currentTimeMs - playerState.lastRightKeyPressAtMs;
 
-            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_FRAMES && timeSinceLastPress > 0) {
+            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_MS && timeSinceLastPress > 0) {
                 // Double tap detected - perform dash to the right
                 player.x += DASH_DISTANCE;
                 player.x = constrain(player.x, 0, width - player.w); // Keep player within bounds
@@ -214,7 +216,7 @@ function handlePlayerDash() {
             }
 
             // Update last press time
-            playerState.lastRightKeyPressTime = currentFrame;
+            playerState.lastRightKeyPressAtMs = currentTimeMs;
         }
     }
 }
@@ -252,6 +254,8 @@ function handleMagnetismAbility() {
 }
 
 function updateMagnetism() {
+    const deltaSeconds = getDeltaSeconds();
+
     if (playerState.usingMagnetism) {
         // Cooldown gates re-activation only; existing magnetized snapshot keeps pulling.
         playerState.usingMagnetism = false;
@@ -292,11 +296,11 @@ function updateMagnetism() {
 
             // Move horizontally towards player at exactly 5x the object's initial falling speed
             // Use deltaTime to ensure consistent movement regardless of frame rate
-            obj.x += dx * MAGNETISM_ATTRACTION_SPEED_MULTIPLIER * obj.initialFallingSpeed * (deltaTime / 1000.0);
+            obj.x += dx * MAGNETISM_ATTRACTION_SPEED_MULTIPLIER * obj.initialFallingSpeed * deltaSeconds;
 
             // Move vertically towards player (both upwards and downwards)
             // Override the normal vertical movement with magnetism-controlled movement
-            obj.y += dy * MAGNETISM_ATTRACTION_SPEED_MULTIPLIER * obj.initialFallingSpeed * (deltaTime / 1000.0);
+            obj.y += dy * MAGNETISM_ATTRACTION_SPEED_MULTIPLIER * obj.initialFallingSpeed * deltaSeconds;
             // Since we're manually moving the object vertically, we need to prevent the normal
             // downward movement in updateObjects() by setting vy to 0
             obj.vy = 0;
@@ -305,6 +309,8 @@ function updateMagnetism() {
 }
 
 function updateTongues() {
+    const frameDelta = getFrameDelta();
+
     for (let i = tongues.length - 1; i >= 0; i--) {
         let tongue = tongues[i];
         let objIndex = objects.indexOf(tongue.target);
@@ -314,7 +320,7 @@ function updateTongues() {
         }
         let obj = objects[objIndex];
         if (!tongue.isPulling) {
-            tongue.progress += 1.0 / TENTACLE_EXTENSION_DURATION_FRAMES;
+            tongue.progress += frameDelta / TENTACLE_EXTENSION_DURATION_FRAMES;
             tongue.progress = min(tongue.progress, 1);
             if (tongue.progress >= 1) {
                 tongue.isPulling = true;

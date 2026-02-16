@@ -47,6 +47,7 @@ function initializeStates() {
         isMuted: false,                                // Whether the game is muted
         shouldTriggerGameOver: false,                  // Flag to trigger game over on next frame
         objectSpawnRate: BASE_OBJECT_SPAWN_RATE_FRAMES,// Rate at which objects spawn
+        objectSpawnTimer: 0,                           // Frame-equivalent accumulator for spawn cadence
         dropSpeedScale: INITIAL_DROP_SPEED_SCALE,      // Speed at which objects fall
         lastHealthPotionLevel: 0,                      // Last level a health potion appeared
         humansForNextMaxLife: HUMANS_PER_MAX_LIFE_INCREASE, // Humans needed for next max life increase
@@ -79,8 +80,8 @@ function initializeStates() {
         magnetizedObjects: [],                        // Snapshot objects marked for persistent pull until removed
         shadowBoltCooldown: 0,                        // Cooldown timer for shadow bolt ability
         dashCooldown: 0,                              // Cooldown timer for dash ability
-        lastLeftKeyPressTime: 0,                      // Frame count of last left movement key press
-        lastRightKeyPressTime: 0,                     // Frame count of last right movement key press
+        lastLeftKeyPressAtMs: 0,                      // Timestamp of last left movement key press
+        lastRightKeyPressAtMs: 0,                     // Timestamp of last right movement key press
         isDashing: false                              // Whether player is currently dashing
     };
 }
@@ -246,10 +247,12 @@ function windowResized() {
  * @function
  */
 function draw() {
+    const frameDelta = getFrameDelta();
+
     // Apply screen shake effect if active
     if (screenShakeAmount > 0) {
         translate(random(-screenShakeAmount, screenShakeAmount), random(-screenShakeAmount, screenShakeAmount));
-        screenShakeAmount *= 0.9; // Decay
+        screenShakeAmount *= Math.pow(0.9, frameDelta); // Decay at a stable real-time rate
         if (screenShakeAmount < 0.5) screenShakeAmount = 0;
     }
 
@@ -332,53 +335,53 @@ function draw() {
     updateAchievementNotification();
 
     if (gameLevelNotification.active) {
-        gameLevelNotification.timer -= 1;
+        gameLevelNotification.timer = max(0, gameLevelNotification.timer - frameDelta);
         if (gameLevelNotification.timer <= 0) {
             gameLevelNotification.active = false;
         }
     }
     if (staffNotification.active) {
-        staffNotification.timer -= 1;
+        staffNotification.timer = max(0, staffNotification.timer - frameDelta);
         if (staffNotification.timer <= 0) {
             staffNotification.active = false;
         }
     }
     if (tentacleNotification.active) {
-        tentacleNotification.timer -= 1;
+        tentacleNotification.timer = max(0, tentacleNotification.timer - frameDelta);
         if (tentacleNotification.timer <= 0) {
             tentacleNotification.active = false;
         }
     }
     if (magnetNotification.active) {
-        magnetNotification.timer -= 1;
+        magnetNotification.timer = max(0, magnetNotification.timer - frameDelta);
         if (magnetNotification.timer <= 0) {
             magnetNotification.active = false;
         }
     }
     if (extraLifeNotification.active) {
-        extraLifeNotification.timer -= 1;
+        extraLifeNotification.timer = max(0, extraLifeNotification.timer - frameDelta);
         if (extraLifeNotification.timer <= 0) {
             extraLifeNotification.active = false;
         }
     }
 
     if (playerState.tentaclesCooldown > 0) {
-        playerState.tentaclesCooldown -= 1;
+        playerState.tentaclesCooldown = max(0, playerState.tentaclesCooldown - frameDelta);
     }
     if (playerState.magnetismCooldown > 0) {
-        playerState.magnetismCooldown -= 1;
+        playerState.magnetismCooldown = max(0, playerState.magnetismCooldown - frameDelta);
     }
     if (playerState.shadowBoltCooldown > 0) {
-        playerState.shadowBoltCooldown -= 1;
+        playerState.shadowBoltCooldown = max(0, playerState.shadowBoltCooldown - frameDelta);
     }
     if (openChestTimer > 0) {
-        openChestTimer -= 1;
+        openChestTimer = max(0, openChestTimer - frameDelta);
     }
     if (shadowBoltAjarTimer > 0) {
-        shadowBoltAjarTimer -= 1;
+        shadowBoltAjarTimer = max(0, shadowBoltAjarTimer - frameDelta);
     }
     if (jumpEatOpenTimer > 0) {
-        jumpEatOpenTimer -= 1;
+        jumpEatOpenTimer = max(0, jumpEatOpenTimer - frameDelta);
     }
 
 
@@ -502,12 +505,14 @@ function startAudioIfNeeded() {
  * @function
  */
 function updateBombExplosions() {
+    const frameDelta = getFrameDelta();
+
     for (let i = bombExplosions.length - 1; i >= 0; i--) {
         let explosion = bombExplosions[i];
-        explosion.frameTimer++;
+        explosion.frameTimer += frameDelta;
         if (explosion.frameTimer >= EXPLOSION_FRAME_DURATION) {
             explosion.currentFrame++;
-            explosion.frameTimer = 0;
+            explosion.frameTimer -= EXPLOSION_FRAME_DURATION;
         }
 
         // Determine which frames to use based on explosion type
@@ -544,9 +549,11 @@ function updateBombExplosions() {
 }
 
 function updateShadowBoltExplosions() {
+    const frameDelta = getFrameDelta();
+
     for (let i = shadowBoltExplosions.length - 1; i >= 0; i--) {
         let effect = shadowBoltExplosions[i];
-        effect.lifetime -= 1;
+        effect.lifetime -= frameDelta;
         if (effect.lifetime <= 0) {
             shadowBoltExplosions.splice(i, 1);
             continue;
@@ -578,12 +585,14 @@ function updateShadowBoltExplosions() {
 
 
 function updateGroundSplats() {
+    const frameDelta = getFrameDelta();
+
     for (let i = groundSplats.length - 1; i >= 0; i--) {
         let splat = groundSplats[i];
-        splat.frameTimer += 1;
+        splat.frameTimer += frameDelta;
         if (splat.frameTimer >= GROUND_SPLAT_FRAME_DURATION) {
             splat.currentFrame += 1;
-            splat.frameTimer = 0;
+            splat.frameTimer -= GROUND_SPLAT_FRAME_DURATION;
         }
         if (splat.currentFrame >= GROUND_SPLAT_TOTAL_FRAMES) {
             groundSplats.splice(i, 1);
@@ -608,17 +617,19 @@ function updateGroundSplats() {
 }
 
 function updateBossFireballs() {
+    const frameDelta = getFrameDelta();
+
     for (let i = bossFireballs.length - 1; i >= 0; i--) {
         let fireball = bossFireballs[i];
 
         // Update position
-        fireball.y += fireball.speed;
+        fireball.y += fireball.speed * frameDelta;
 
         // Update animation
-        fireball.frameTimer++;
+        fireball.frameTimer += frameDelta;
         if (fireball.frameTimer >= BOSS_FIREBALL_FRAME_DURATION) {
             fireball.currentFrame = (fireball.currentFrame + 1) % BOSS_FIREBALL_TOTAL_FRAMES;
-            fireball.frameTimer = 0;
+            fireball.frameTimer -= BOSS_FIREBALL_FRAME_DURATION;
         }
 
         // Draw fireball

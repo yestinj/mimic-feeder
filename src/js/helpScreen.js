@@ -122,7 +122,7 @@ function drawHelpScreen() {
     currentY += 70;
 
     let dashText = "Dash: Double-tap Left/Right Arrow keys or A/D to quickly dash in that direction. " +
-        "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / 60) + " second(s).";
+        "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / TARGET_FPS) + " second(s).";
     text(dashText, leftMargin, currentY, textBlockWidth);
 
     // 6. Navigation Instructions
@@ -246,7 +246,7 @@ function calculateHelpContentHeight() {
 
     // Dash description
     let dashText = "Dash: Double-tap Left/Right Arrow keys or A/D to quickly dash in that direction. " +
-        "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / 60) + " second(s).";
+        "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / TARGET_FPS) + " second(s).";
 
     // Calculate abilities text height
     let abilitiesTextSize = 14;

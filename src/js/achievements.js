@@ -148,7 +148,7 @@ function showAchievementNotification(name) {
  */
 function updateAchievementNotification() {
     if (achievementNotification.active) {
-        achievementNotification.timer -= 1;
+        achievementNotification.timer -= getFrameDelta();
         if (achievementNotification.timer <= 0) {
             achievementNotification.active = false;
             return;

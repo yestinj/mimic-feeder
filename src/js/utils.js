@@ -15,10 +15,12 @@ function collideRectRect(x1, y1, w1, h1, x2, y2, w2, h2) {
 }
 
 function updatePopups() {
+    const frameDelta = getFrameDelta();
+
     for (let i = popups.length - 1; i >= 0; i--) {
         let popup = popups[i];
-        popup.y += POPUP_SPEED;
-        popup.lifetime -= 1;
+        popup.y += POPUP_SPEED * frameDelta;
+        popup.lifetime -= frameDelta;
         popup.alpha = map(popup.lifetime, POPUP_LIFETIME_FRAMES, 0, 255, 0);
         fill(255, 255, 0, popup.alpha);
         textSize(16);
@@ -342,7 +344,7 @@ function checkForGameLevelUp() {
 
         for (let obj of objects) {
             if (obj.type !== OBJ_BOSS) { // Don't update boss speed
-                obj.baseVy = BASE_DROP_SPEED_PX_PER_FRAME * gameState.dropSpeedScale;
+                obj.baseVy = BASE_DROP_SPEED_PX_PER_SECOND * gameState.dropSpeedScale;
                 // Apply the stored speed multiplier (for fireballs)
                 let speedMultiplier = obj.speedMultiplier || 1;
                 obj.vy = obj.baseVy * obj.initialVariation * speedMultiplier;

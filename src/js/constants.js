@@ -22,10 +22,44 @@ const HUMANS_PER_MAX_LIFE_INCREASE = 50;
 const OBJECTS_PER_GAME_LEVEL = 10;
 /** @const {number} HEALTH_POTION_LEVEL_INTERVAL - Level interval for health potion spawns */
 const HEALTH_POTION_LEVEL_INTERVAL = 5;
+/** @const {number} TARGET_FPS - Reference frame rate used for frame-based tuning */
+const TARGET_FPS = 60;
+/** @const {number} FRAME_TIME_MS - Duration of a single reference frame in milliseconds */
+const FRAME_TIME_MS = 1000 / TARGET_FPS;
+/** @const {number} MAX_FRAME_DELTA - Maximum frame-step used for per-frame timers/movement */
+const MAX_FRAME_DELTA = 2.5;
+
+/**
+ * Returns frame-equivalent delta at TARGET_FPS (clamped for stability after long stalls).
+ * @returns {number}
+ */
+function getFrameDelta() {
+    if (typeof deltaTime !== 'number' || !Number.isFinite(deltaTime) || deltaTime <= 0) {
+        return 1;
+    }
+    return Math.min(deltaTime / FRAME_TIME_MS, MAX_FRAME_DELTA);
+}
+
+/**
+ * Returns elapsed seconds derived from clamped frame delta.
+ * @returns {number}
+ */
+function getDeltaSeconds() {
+    return getFrameDelta() / TARGET_FPS;
+}
+
+/**
+ * Converts 60fps frame-equivalent units to milliseconds.
+ * @param {number} frameUnits
+ * @returns {number}
+ */
+function frameUnitsToMs(frameUnits) {
+    return (frameUnits / TARGET_FPS) * 1000;
+}
 
 /**
  * Player Stats - Constants related to player movement, abilities, and progression
- * These values are frame/implicit deltaTime based
+ * Movement values are tuned as pixels-per-reference-frame at 60fps.
  */
 /** @const {number} PLAYER_INITIAL_SPEED - Initial movement speed of the player */
 const PLAYER_INITIAL_SPEED = 6;
@@ -59,8 +93,8 @@ const PLAYER_EATING_ZONE_HEIGHT_FACTOR = 0.3;
  */
 /** @const {number} BASE_OBJECT_SPAWN_RATE_FRAMES - Base rate at which objects spawn (in frames) */
 const BASE_OBJECT_SPAWN_RATE_FRAMES = 165;
-/** @const {number} BASE_DROP_SPEED_PX_PER_FRAME - Base speed at which objects fall (pixels per frame) */
-const BASE_DROP_SPEED_PX_PER_FRAME = 60;
+/** @const {number} BASE_DROP_SPEED_PX_PER_SECOND - Base speed at which objects fall (pixels per second) */
+const BASE_DROP_SPEED_PX_PER_SECOND = 60;
 /** @const {number} INITIAL_DROP_SPEED_SCALE - Initial scaling factor for drop speed */
 const INITIAL_DROP_SPEED_SCALE = 2.0;
 /** @const {number} GAME_LEVEL_SCALING_INCREASE - How much game difficulty increases per level */
@@ -104,9 +138,9 @@ const DRAGON_FLIGHT_DIRECTION_MAX_ANGLE = -20;
 
 /**
  * Abilities - Constants related to player special abilities
- * These values are frame/implicit deltaTime based
+ * Cooldowns/durations use frame-equivalent units at 60fps.
  */
-/** @const {number} SHADOW_BOLT_SPEED - Speed of shadow bolt projectiles (negative for upward movement) */
+/** @const {number} SHADOW_BOLT_SPEED - Speed of shadow bolt projectiles in px per 60fps frame (negative is upward) */
 const SHADOW_BOLT_SPEED = -7;
 /** @const {number} SHADOW_BOLT_COOLDOWN_FRAMES - Cooldown between shadow bolt casts (15 frames = 0.5 seconds at 60fps) */
 const SHADOW_BOLT_COOLDOWN_FRAMES = 15;
@@ -130,6 +164,8 @@ const DASH_DISTANCE = 100;
 const DASH_COOLDOWN_FRAMES = 60;
 /** @const {number} DASH_DOUBLE_TAP_WINDOW_FRAMES - Time window in frames for detecting double tap (15 frames = 0.25 seconds at 60fps) */
 const DASH_DOUBLE_TAP_WINDOW_FRAMES = 15;
+/** @const {number} DASH_DOUBLE_TAP_WINDOW_MS - Time window in milliseconds for double tap detection */
+const DASH_DOUBLE_TAP_WINDOW_MS = frameUnitsToMs(DASH_DOUBLE_TAP_WINDOW_FRAMES);
 
 /**
  * Object Pulling / Effects - Constants for visual effects and animations
@@ -251,7 +287,7 @@ const BOSS_HIT_FRAME_DURATION = 5;
 const BOSS_HIT_TOTAL_FRAMES = 7;
 /** @const {number} BOSS_FIREBALL_COOLDOWN_FRAMES - Cooldown between boss fireball attacks (180 frames = 3 seconds at 60fps) */
 const BOSS_FIREBALL_COOLDOWN_FRAMES = 180;
-/** @const {number} BOSS_FIREBALL_SPEED - Speed of boss fireballs in pixels per frame */
+/** @const {number} BOSS_FIREBALL_SPEED - Speed of boss fireballs in px per 60fps frame */
 const BOSS_FIREBALL_SPEED = 10;
 /** @const {number} BOSS_FIREBALL_FRAME_DURATION - Duration of each boss fireball animation frame */
 const BOSS_FIREBALL_FRAME_DURATION = 3;
