@@ -225,6 +225,10 @@ const HIGH_SCORE_COUNT = 5;
 const NAME_INPUT_MAX_LENGTH = 10;
 /** @const {number} MIN_SHADOW_BOLT_EXPLOSION_SIZE - Minimum size for shadow bolt explosion effects */
 const MIN_SHADOW_BOLT_EXPLOSION_SIZE = SHADOW_BOLT_SIZE * 1.5;
+/** @const {number} MIN_OVERLAY_VIEWPORT_WIDTH - Minimum canvas width for full text-heavy overlays */
+const MIN_OVERLAY_VIEWPORT_WIDTH = 840;
+/** @const {number} MIN_OVERLAY_VIEWPORT_HEIGHT - Minimum canvas height for full text-heavy overlays */
+const MIN_OVERLAY_VIEWPORT_HEIGHT = 630;
 
 /**
  * Sound Volumes - Constants for audio volume levels

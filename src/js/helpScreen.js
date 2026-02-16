@@ -3,19 +3,139 @@ function drawHelpScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    // Calculate content height dynamically
-    let contentHeight = calculateHelpContentHeight();
-
-    // Overlay Size Calculation
-    let overlayWidth = width * 0.6;
-    // Add padding to the content height
-    let overlayHeight = contentHeight + 50;
-
-    if (overlayWidth < 550) { // Min width
-        overlayWidth = 550;
+    if (!isOverlayViewportSupported()) {
+        drawOverlayViewportWarning("Help", [
+            "Press Right Arrow to view Object Info",
+            "Press Left Arrow to view About",
+            "Press Escape to close"
+        ]);
+        return;
     }
-    let overlayX = (width - overlayWidth) / 2;
-    let overlayY = (height - overlayHeight) / 2;
+
+    const howToPlayLines = [
+        "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.",
+        "Letting perfectly good food (creatures) perish or getting hit by a dangerous object will cause damage.",
+        "Cats are special..."
+    ];
+    const controls = [
+        "Move: Left / Right Arrows or A / D",
+        "Dash: Double-tap Left / Right Arrows or A / D",
+        "Jump / Double Jump: Up Arrow or W",
+        "Help: Esc",
+        "Achievements: K",
+        "Pause / Resume: P",
+        "Mute / Unmute: M"
+    ];
+    const specialAbilityLines = [
+        `Tentacles (Z): unlocks at Player level ${PLAYER_LEVEL_FOR_TENTACLES}.`,
+        "Grabs multiple nearby objects at once. Cooldown applies.",
+        `Shadow Bolt (Space): staff can appear at Floor ${DUNGEON_FLOOR_FOR_STAFF_DROP} Zone ${DUNGEON_ZONE_FOR_STAFF_DROP}.`,
+        "Fires a ranged bolt that destroys objects.",
+        `Magnetism (X): magnet can appear at Floor ${DUNGEON_FLOOR_FOR_MAGNET_DROP} Zone ${DUNGEON_ZONE_FOR_MAGNET_DROP}.`,
+        "Affects only on-screen non-humanoid objects at activation.",
+        "Affected objects stay pulled until eaten/removed.",
+        "Cooldown only gates re-use.",
+        `Dash cooldown: ${DASH_COOLDOWN_FRAMES / TARGET_FPS} second(s).`
+    ];
+
+    textStyle(NORMAL);
+    textSize(14);
+    const longestHowToLineWidth = Math.max(...howToPlayLines.map((line) => textWidth(line)));
+    const targetOverlayWidth = constrain(
+        longestHowToLineWidth + 72,
+        Math.min(520, width - 24),
+        Math.min(780, width - 24)
+    );
+
+    const computeLayoutMetrics = (layoutScale, resolvedOverlayWidth, resolvedOverlayHeight) => {
+        const scalePx = (value) => value * layoutScale;
+        const headingSize = scalePx(28);
+        const sectionHeadingSize = scalePx(16);
+        const bodySize = scalePx(13.5);
+        const controlSize = scalePx(12);
+        const bodyLineHeight = scalePx(16);
+        const controlLineHeight = scalePx(16.5);
+        const abilityLineHeight = scalePx(15.5);
+        const sidePadding = scalePx(30);
+        const topPadding = scalePx(22);
+        const titleHeight = scalePx(34);
+        const sectionHeadingBlockHeight = scalePx(21);
+        const sectionGap = scalePx(6);
+        const blockGap = scalePx(8);
+        const abilityGap = scalePx(2);
+        const contentSafetyGap = scalePx(8);
+        const footerReserve = scalePx(84);
+        const textBlockWidth = resolvedOverlayWidth - (2 * sidePadding);
+        const availableHeight = resolvedOverlayHeight - topPadding - footerReserve;
+
+        textStyle(NORMAL);
+        textSize(bodySize);
+        const howToHeight = howToPlayLines.length * bodyLineHeight;
+        const abilityHeight = specialAbilityLines.reduce((total, line, index) => {
+            const lineHeight = measureWrappedTextHeight(line, textBlockWidth, abilityLineHeight);
+            const spacing = index < specialAbilityLines.length - 1 ? abilityGap : 0;
+            return total + lineHeight + spacing;
+        }, 0);
+
+        const requiredHeight =
+            titleHeight +
+            sectionHeadingBlockHeight + sectionGap + howToHeight + blockGap +
+            sectionHeadingBlockHeight + sectionGap + (controls.length * controlLineHeight) + blockGap +
+            sectionHeadingBlockHeight + sectionGap + abilityHeight +
+            contentSafetyGap;
+
+        return {
+            headingSize,
+            sectionHeadingSize,
+            bodySize,
+            controlSize,
+            bodyLineHeight,
+            controlLineHeight,
+            abilityLineHeight,
+            sidePadding,
+            topPadding,
+            titleHeight,
+            sectionHeadingBlockHeight,
+            sectionGap,
+            blockGap,
+            abilityGap,
+            contentSafetyGap,
+            footerReserve,
+            textBlockWidth,
+            availableHeight,
+            requiredHeight
+        };
+    };
+
+    const baseMetrics = computeLayoutMetrics(1, targetOverlayWidth, height);
+    const targetOverlayHeight = constrain(
+        baseMetrics.requiredHeight + baseMetrics.topPadding + baseMetrics.footerReserve + 8,
+        Math.min(430, height - 24),
+        Math.min(690, height - 24)
+    );
+    const overlayBounds = {
+        overlayWidth: targetOverlayWidth,
+        overlayHeight: targetOverlayHeight,
+        overlayX: (width - targetOverlayWidth) / 2,
+        overlayY: (height - targetOverlayHeight) / 2
+    };
+
+    const layout = computeAdaptiveOverlayLayout(
+        overlayBounds,
+        computeLayoutMetrics,
+        { minScale: 0.82, maxIterations: 6, fitBias: 0.98 }
+    );
+
+    if (!layout) {
+        drawOverlayViewportWarning("Help", [
+            "Press Right Arrow to view Object Info",
+            "Press Left Arrow to view About",
+            "Press Escape to close"
+        ]);
+        return;
+    }
+    ({ overlayWidth, overlayHeight, overlayX, overlayY } = layout);
+    const { metrics, scalePx } = layout;
 
     // Draw the overlay background
     fill(160, 160, 160); // Darker grey
@@ -23,136 +143,103 @@ function drawHelpScreen() {
     rect(overlayX, overlayY, overlayWidth, overlayHeight, 10);
 
     // Text Content
-    let leftMargin = overlayX + 30;
-    let textBlockWidth = overlayWidth - (2 * 30); // Max width for most text
-    let currentY = overlayY + 25;
+    let leftMargin = overlayX + metrics.sidePadding;
+    let textBlockWidth = metrics.textBlockWidth;
+    let currentY = overlayY + metrics.topPadding;
 
     // 1. Heading: "Help"
     fill(0);
-    textSize(28);
+    textSize(metrics.headingSize);
     textAlign(LEFT, TOP);
     textStyle(BOLD);
     text(`Help`, leftMargin, currentY);
-    currentY += 40;
+    currentY += metrics.titleHeight;
 
     // 2. How to Play
-    textSize(16);
+    textSize(metrics.sectionHeadingSize);
     textStyle(BOLD);
     fill(0); // Black for heading
     textAlign(LEFT, TOP);
     text("How to Play:", leftMargin, currentY);
-    currentY += 25;
+    currentY += metrics.sectionHeadingBlockHeight;
+    currentY += metrics.sectionGap;
 
-    // Game Controls
-    textSize(14);
+    // How To Play body
+    textSize(metrics.bodySize);
     textStyle(NORMAL);
-    textLeading(16);
-    // In p5.js 1.9.4, WORD constant might need to be accessed differently
-    // Using string literal 'word' as a fallback
-    try {
-        textWrap(WORD);
-    } catch (e) {
-        textWrap('word');
+    for (const howToLine of howToPlayLines) {
+        text(howToLine, leftMargin, currentY);
+        currentY += metrics.bodyLineHeight;
     }
-    let howToPlayText = "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.\n" +
-        "Letting perfectly good food (creatures) perish or getting hit by a dangerous object will cause damage.\n" +
-        "Cats are special...";
-    text(howToPlayText, leftMargin, currentY, textBlockWidth);
-    currentY += 90;
+    currentY += metrics.blockGap;
 
     // 3. Game Controls
-    textSize(16);
+    textSize(metrics.sectionHeadingSize);
     textStyle(BOLD);
     fill(0); // Black for heading
     textAlign(LEFT, TOP);
     text("Game Controls:", leftMargin, currentY);
-    currentY += 25;
+    currentY += metrics.sectionHeadingBlockHeight;
+    currentY += metrics.sectionGap;
 
     // Controls List
-    textSize(12);
+    textSize(metrics.controlSize);
     textStyle(NORMAL);
-    text("Move:  Left / Right Arrows or A / D", leftMargin, currentY);
-    currentY += 18;
-    text("Dash:  Double-tap Left / Right Arrows or A / D", leftMargin, currentY);
-    currentY += 18;
-    text("Jump / Double Jump:  Up Arrow or W", leftMargin, currentY);
-    currentY += 18;
-    text("Help Screen: Escape (Esc)", leftMargin, currentY);
-    currentY += 18;
-    text("Achievements: K key", leftMargin, currentY);
-    currentY += 23;
+    for (const controlLine of controls) {
+        text(controlLine, leftMargin, currentY);
+        currentY += metrics.controlLineHeight;
+    }
+    currentY += metrics.blockGap;
 
     // 5. Abilities
-    textSize(16);
+    textSize(metrics.sectionHeadingSize);
     textStyle(BOLD);
     fill(0); // Black for heading
     textAlign(LEFT, TOP);
     text("Special Abilities:", leftMargin, currentY);
-    currentY += 25;
+    currentY += metrics.sectionHeadingBlockHeight;
+    currentY += metrics.sectionGap;
 
     // Abilities Description
-    textSize(14);
+    textSize(metrics.bodySize);
     textStyle(NORMAL);
-    textLeading(16);
-    // In p5.js 1.9.4, WORD constant might need to be accessed differently
-    // Using string literal 'word' as a fallback
-    try {
-        textWrap(WORD);
-    } catch (e) {
-        textWrap('word');
+    for (let i = 0; i < specialAbilityLines.length; i++) {
+        currentY += drawWrappedTextBlock(specialAbilityLines[i], leftMargin, currentY, textBlockWidth, metrics.abilityLineHeight);
+        if (i < specialAbilityLines.length - 1) {
+            currentY += metrics.abilityGap;
+        }
     }
 
-    let tentaclesText = "Tentacles (Z key): At Player level " + PLAYER_LEVEL_FOR_TENTACLES +
-        ", you gain the ability to extend tentacles that can grab multiple objects at once. " +
-        "This ability has a cooldown.";
-    text(tentaclesText, leftMargin, currentY, textBlockWidth);
-    currentY += 45;
-
-    let shadowBoltText = "Shadow Bolt (spacebar): At Floor " + DUNGEON_FLOOR_FOR_STAFF_DROP +
-        " Zone " + DUNGEON_ZONE_FOR_STAFF_DROP + ", a wizard staff may appear. Collecting it grants the ability to shoot shadow bolts " +
-        "that can destroy objects at a distance.";
-    text(shadowBoltText, leftMargin, currentY, textBlockWidth);
-    currentY += 55;
-
-    let magnetismText = "Magnetism (X key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
-        " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it lets you attract " +
-        "only non-humanoid objects that were on screen when activated; those objects stay affected until eaten/removed. " +
-        "Cooldown only gates re-use.";
-    text(magnetismText, leftMargin, currentY, textBlockWidth);
-    currentY += 70;
-
-    let dashText = "Dash: Double-tap Left/Right Arrow keys or A/D to quickly dash in that direction. " +
-        "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / TARGET_FPS) + " second(s).";
-    text(dashText, leftMargin, currentY, textBlockWidth);
-
     // 6. Navigation Instructions
-    let bottomPadding = 10;
-    let authorAndVersionTextHeight = 12 + 5; // textSize for author/version + small gap
+    let bottomPadding = scalePx(10);
+    let authorAndVersionTextHeight = scalePx(12 + 5); // textSize for author/version + small gap
+    const navBaseY = overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight;
+    const navLineHeight = scalePx(18);
 
-    textSize(14);
+    textSize(scalePx(14));
     textStyle(ITALIC);
     fill(0);
     textAlign(CENTER, BOTTOM);
     text(
         "Press Right Arrow to view Object Info",
         overlayX + overlayWidth / 2,
-        overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight - 40
+        navBaseY - (2 * navLineHeight)
     );
 
     text(
         "Press Left Arrow to view About screen",
         overlayX + overlayWidth / 2,
-        overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight - 20
+        navBaseY - navLineHeight
     );
 
     text(
         "Press Escape to close",
         overlayX + overlayWidth / 2,
-        overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight
+        navBaseY
     );
 
     // Game Version (Bottom-Left)
-    textSize(12);
+    textSize(scalePx(12));
     textStyle(NORMAL);
     fill(50); // Dark grey
     textAlign(LEFT, BOTTOM);
@@ -163,7 +250,7 @@ function drawHelpScreen() {
     );
 
     // Author Name (Bottom-Right)
-    textSize(12);
+    textSize(scalePx(12));
     textStyle(NORMAL);
     fill(50);
     textAlign(RIGHT, BOTTOM);
@@ -175,103 +262,6 @@ function drawHelpScreen() {
 
     textStyle(NORMAL);
     textAlign(LEFT, BASELINE); // Reset for other potential text drawing
-}
-
-// Function to calculate the required height for the help screen content
-function calculateHelpContentHeight() {
-    // Get the width for text wrapping calculations
-    let overlayWidth = width * 0.6;
-    if (overlayWidth < 550) {
-        overlayWidth = 550;
-    }
-    let textBlockWidth = overlayWidth - (2 * 30); // Max width for text (with 30px margins)
-
-    let totalHeight = 0;
-
-    // 1. Heading: "Help" (28px + 30px spacing)
-    totalHeight += 28 + 30;
-
-    // 2. "How to Play" heading (16px + 20px spacing)
-    totalHeight += 16 + 20;
-
-    // 3. How to Play text
-    let howToPlayText = "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.\n" +
-        "Letting perfectly good food (creatures) perish or getting hit by a dangerous object will cause damage.\n" +
-        "Cats are special...";
-
-    // Calculate how to play text height
-    let howToPlayTextSize = 14;
-    let howToPlayLineHeight = 16;
-
-    // Count explicit line breaks
-    let explicitNewlinesInHowToPlay = (howToPlayText.match(/\n/g) || []).length;
-
-    // Estimate wrapped lines based on text width and available space
-    let avgCharWidth = howToPlayTextSize * 0.6; // Approximate average character width
-    let charsPerLine = Math.floor(textBlockWidth / avgCharWidth);
-    let howToPlayLines = Math.ceil(howToPlayText.length / charsPerLine);
-
-    // Add explicit line breaks
-    howToPlayLines += explicitNewlinesInHowToPlay;
-
-    // Calculate how to play text height
-    let howToPlayHeight = howToPlayLines * howToPlayLineHeight;
-    totalHeight += howToPlayHeight + 5;
-
-    // 4. "Game Controls" heading (16px + 20px spacing)
-    totalHeight += 16 + 20;
-
-    // 5. Controls List (5 items, 18px each)
-    totalHeight += 18 * 5 + 5;
-
-    // 6. "Special Abilities" heading (16px + 20px spacing)
-    totalHeight += 16 + 20;
-
-    // 7. Abilities descriptions (4 abilities)
-    // Tentacles description
-    let tentaclesText = "Tentacles (Z key): At Player level " + PLAYER_LEVEL_FOR_TENTACLES +
-        ", you gain the ability to extend tentacles that can grab multiple objects at once. " +
-        "This ability has a cooldown.";
-
-    // Shadow Bolt description
-    let shadowBoltText = "Shadow Bolt (spacebar): At Floor " + DUNGEON_FLOOR_FOR_STAFF_DROP +
-        " Zone " + DUNGEON_ZONE_FOR_STAFF_DROP + ", a wizard staff may appear. Collecting it grants the ability to shoot shadow bolts " +
-        "that can destroy objects at a distance.";
-
-    // Magnetism description
-    let magnetismText = "Magnetism (X key): At Floor " + DUNGEON_FLOOR_FOR_MAGNET_DROP +
-        " Zone " + DUNGEON_ZONE_FOR_MAGNET_DROP + ", a magnet may appear. Collecting it lets you attract " +
-        "only non-humanoid objects that were on screen when activated; those objects stay affected until eaten/removed. " +
-        "Cooldown only gates re-use.";
-
-    // Dash description
-    let dashText = "Dash: Double-tap Left/Right Arrow keys or A/D to quickly dash in that direction. " +
-        "This ability has a cooldown of " + (DASH_COOLDOWN_FRAMES / TARGET_FPS) + " second(s).";
-
-    // Calculate abilities text height
-    let abilitiesTextSize = 14;
-    let abilitiesLineHeight = 16;
-
-    // Estimate lines for each ability description
-    let tentaclesLines = Math.ceil(tentaclesText.length / charsPerLine) + 1;
-    let shadowBoltLines = Math.ceil(shadowBoltText.length / charsPerLine) + 1;
-    let magnetismLines = Math.ceil(magnetismText.length / charsPerLine) + 1;
-    let dashLines = Math.ceil(dashText.length / charsPerLine) + 1;
-
-    // Calculate abilities height
-    let abilitiesHeight = (tentaclesLines + shadowBoltLines + magnetismLines + dashLines) * abilitiesLineHeight;
-    totalHeight += abilitiesHeight + 10;
-
-    // 8. Navigation instructions (3 lines, 18px each)
-    totalHeight += 18 * 3 + 10;
-
-    // 9. Version and author info
-    totalHeight += 15;
-
-    // somehow this is much too big, lets try this
-    totalHeight -= 120;
-
-    return totalHeight;
 }
 
 function handleHelpScreenKeyPressed() {

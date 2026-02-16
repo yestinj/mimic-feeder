@@ -3,19 +3,105 @@ function drawObjectInfoScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    // Calculate content height dynamically
-    let contentHeight = calculateObjectInfoContentHeight();
-
-    // Overlay Size Calculation
-    let overlayWidth = width * 0.6;
-    // Add padding to the content height
-    let overlayHeight = contentHeight + 50; // Reduced from 60 to 50
-
-    if (overlayWidth < 550) { // Min width
-        overlayWidth = 550;
+    if (!isOverlayViewportSupported()) {
+        drawOverlayViewportWarning("Object Info", [
+            "Press Left Arrow to return to Help",
+            "Press Right Arrow to view About",
+            "Press Escape to close"
+        ]);
+        return;
     }
-    let overlayX = (width - overlayWidth) / 2;
-    let overlayY = (height - overlayHeight) / 2;
+
+    const overlayBounds = getResponsiveOverlayBounds(0.76, 0.9, 640, 540, 940, 760);
+    const objectDescText = "Consumables are creatures you can eat for points. " +
+        "Shinies are valuable objects that give high points. " +
+        "Hazards are dangerous objects that can damage you. " +
+        "Power-ups grant special abilities.";
+
+    const computeLayoutMetrics = (layoutScale, resolvedOverlayWidth, resolvedOverlayHeight) => {
+        const scalePx = (value) => value * layoutScale;
+        const topPadding = scalePx(24);
+        const sidePadding = scalePx(30);
+        const footerReserve = scalePx(108);
+        const titleHeight = scalePx(36);
+        const sectionHeadingSize = scalePx(16);
+        const sectionHeadingBlockHeight = scalePx(24);
+        const rowTextSize = scalePx(12);
+        const rowHeight = scalePx(30);
+        const rowGap = scalePx(3);
+        const sectionGap = scalePx(8);
+        const blockGap = scalePx(12);
+        const contentSafetyGap = scalePx(8);
+        const descHeadingSize = scalePx(16);
+        const descTextSize = scalePx(14);
+        const descLineHeight = scalePx(16);
+        const textBlockWidth = resolvedOverlayWidth - (2 * sidePadding);
+        const availableHeight = resolvedOverlayHeight - topPadding - footerReserve;
+
+        textStyle(NORMAL);
+        textSize(descTextSize);
+        const descHeight = measureWrappedTextHeight(objectDescText, textBlockWidth, descLineHeight);
+
+        const requiredHeight =
+            titleHeight +
+            sectionHeadingBlockHeight + sectionGap + ((rowHeight * 4) + (rowGap * 3)) + blockGap +
+            sectionHeadingBlockHeight + sectionGap + rowHeight + blockGap +
+            sectionHeadingBlockHeight + sectionGap + rowHeight + blockGap +
+            sectionHeadingBlockHeight + sectionGap + rowHeight + blockGap +
+            sectionHeadingBlockHeight + sectionGap + descHeight +
+            contentSafetyGap;
+
+        return {
+            topPadding,
+            sidePadding,
+            footerReserve,
+            titleHeight,
+            sectionHeadingSize,
+            sectionHeadingBlockHeight,
+            rowTextSize,
+            rowHeight,
+            rowGap,
+            sectionGap,
+            blockGap,
+            contentSafetyGap,
+            descHeadingSize,
+            descTextSize,
+            descLineHeight,
+            textBlockWidth,
+            availableHeight,
+            requiredHeight
+        };
+    };
+
+    const baseMetrics = computeLayoutMetrics(1, overlayBounds.overlayWidth, height);
+    const targetOverlayHeight = constrain(
+        baseMetrics.requiredHeight + baseMetrics.topPadding + baseMetrics.footerReserve + 8,
+        Math.min(470, height - 24),
+        Math.min(730, height - 24)
+    );
+    const targetOverlayBounds = {
+        overlayWidth: overlayBounds.overlayWidth,
+        overlayHeight: targetOverlayHeight,
+        overlayX: (width - overlayBounds.overlayWidth) / 2,
+        overlayY: (height - targetOverlayHeight) / 2
+    };
+
+    const layout = computeAdaptiveOverlayLayout(
+        targetOverlayBounds,
+        computeLayoutMetrics,
+        { minScale: 0.82, maxIterations: 6, fitBias: 0.98 }
+    );
+
+    if (!layout) {
+        drawOverlayViewportWarning("Object Info", [
+            "Press Left Arrow to return to Help",
+            "Press Right Arrow to view About",
+            "Press Escape to close"
+        ]);
+        return;
+    }
+    ({ overlayWidth, overlayHeight, overlayX, overlayY } = layout);
+    const { metrics, scalePx } = layout;
 
     // Draw the overlay background
     fill(160, 160, 160); // Darker grey
@@ -23,33 +109,36 @@ function drawObjectInfoScreen() {
     rect(overlayX, overlayY, overlayWidth, overlayHeight, 10);
 
     // Text Content
-    let leftMargin = overlayX + 30;
-    let textBlockWidth = overlayWidth - (2 * 30); // Max width for most text
-    let currentY = overlayY + 25; // Reduced from 30 to 25
+    let leftMargin = overlayX + metrics.sidePadding;
+    let textBlockWidth = metrics.textBlockWidth; // Max width for most text
+    let currentY = overlayY + metrics.topPadding;
+    const contentWidth = textBlockWidth;
+    const columnGap = scalePx(26);
+    const colWidth = (contentWidth - columnGap) / 2;
+    const col1X = leftMargin;
+    const col2X = leftMargin + colWidth + columnGap;
 
     // 1. Heading: "Object Info"
     fill(0);
-    textSize(28);
+    textSize(scalePx(28));
     textAlign(LEFT, TOP);
     textStyle(BOLD);
     text(`Object Info`, leftMargin, currentY);
-    currentY += 35;
+    currentY += metrics.titleHeight;
 
     // Define spacing and image size
-    let imageSize = 24;
-    let rowHeight = 30;
-    let col1X = leftMargin;
-    let col2X = leftMargin + 250;
-    let textWidth = 30;
+    const imageSize = scalePx(24);
+    const textGap = scalePx(12);
+    const rowTextYOffset = scalePx(6);
 
     // Special sizes for different objects
-    let humanImageSize = 28;
-    let wraithImageSize = 28;
-    let dragonImageSize = 32;
-    let catImageSize = 18;
+    const humanImageSize = scalePx(28);
+    const wraithImageSize = scalePx(28);
+    const dragonImageSize = scalePx(32);
+    const catImageSize = scalePx(18);
 
     // Function to draw object info with image
-    function drawObjectInfo(x, y, objType, objName) {
+    function drawObjectInfo(x, y, columnWidth, objType, objName) {
         let objImage = objectImages[objType];
         let pointsText;
 
@@ -73,71 +162,80 @@ function drawObjectInfoScreen() {
 
         // Draw image first, then text
         if (objImage && objImage.width) {
-            image(objImage, x, y - currentImageSize / 2, currentImageSize, currentImageSize);
+            image(objImage, x, y + (metrics.rowHeight - currentImageSize) / 2, currentImageSize, currentImageSize);
         }
 
-        text(pointsText, x + currentImageSize + textWidth, y);
+        const textX = x + currentImageSize + textGap;
+        text(pointsText, textX, y + rowTextYOffset, columnWidth - (textX - x), metrics.rowHeight - rowTextYOffset);
     }
 
     // 2. Consumables Section
-    textSize(16);
+    textSize(metrics.sectionHeadingSize);
     textStyle(BOLD);
     fill(0); // Black for heading
     textAlign(LEFT, TOP);
     text("Consumables:", leftMargin, currentY);
-    currentY += 35;
+    currentY += metrics.sectionHeadingBlockHeight;
+    currentY += metrics.sectionGap;
 
     // Points List with Images for Consumables
-    textSize(12);
+    textSize(metrics.rowTextSize);
     textStyle(NORMAL);
+    textAlign(LEFT, TOP);
 
     // Draw humanoid objects in alphabetical order
-    drawObjectInfo(col1X, currentY, OBJ_CAT, "Cat");
-    drawObjectInfo(col2X, currentY, OBJ_DRAGON, "Dragon");
-    currentY += rowHeight;
+    drawObjectInfo(col1X, currentY, colWidth, OBJ_CAT, "Cat");
+    drawObjectInfo(col2X, currentY, colWidth, OBJ_DRAGON, "Dragon");
+    currentY += metrics.rowHeight + metrics.rowGap;
 
-    drawObjectInfo(col1X, currentY, OBJ_DWARF, "Dwarf");
-    drawObjectInfo(col2X, currentY, OBJ_ELF, "Elf");
-    currentY += rowHeight;
+    drawObjectInfo(col1X, currentY, colWidth, OBJ_DWARF, "Dwarf");
+    drawObjectInfo(col2X, currentY, colWidth, OBJ_ELF, "Elf");
+    currentY += metrics.rowHeight + metrics.rowGap;
 
-    drawObjectInfo(col1X, currentY, OBJ_GOBLIN, "Goblin");
-    drawObjectInfo(col2X, currentY, OBJ_HUMAN, "Human");
-    currentY += rowHeight;
+    drawObjectInfo(col1X, currentY, colWidth, OBJ_GOBLIN, "Goblin");
+    drawObjectInfo(col2X, currentY, colWidth, OBJ_HUMAN, "Human");
+    currentY += metrics.rowHeight + metrics.rowGap;
 
-    drawObjectInfo(col1X, currentY, OBJ_WRAITH, "Wraith");
-    currentY += rowHeight + 2; // Reduced from 3 to 2
+    drawObjectInfo(col1X, currentY, colWidth, OBJ_WRAITH, "Wraith");
+    currentY += metrics.rowHeight;
+    currentY += metrics.blockGap;
 
     // 3. Shinies Section
-    textSize(16);
+    textSize(metrics.sectionHeadingSize);
     textStyle(BOLD);
     fill(0);
     textAlign(LEFT, TOP);
     text("Shinies:", leftMargin, currentY);
-    currentY += 35;
+    currentY += metrics.sectionHeadingBlockHeight;
+    currentY += metrics.sectionGap;
 
     // Points List with Images for Shinies
-    textSize(12);
+    textSize(metrics.rowTextSize);
     textStyle(NORMAL);
+    textAlign(LEFT, TOP);
 
     // Draw non-humanoid edible objects with points
-    drawObjectInfo(col1X, currentY, OBJ_CROWN, "Crown");
-    drawObjectInfo(col2X, currentY, OBJ_DIAMOND, "Diamond");
-    currentY += rowHeight + 2; // Reduced from 3 to 2
+    drawObjectInfo(col1X, currentY, colWidth, OBJ_CROWN, "Crown");
+    drawObjectInfo(col2X, currentY, colWidth, OBJ_DIAMOND, "Diamond");
+    currentY += metrics.rowHeight;
+    currentY += metrics.blockGap;
 
     // 4. Hazards Section
-    textSize(16);
+    textSize(metrics.sectionHeadingSize);
     textStyle(BOLD);
     fill(0);
     textAlign(LEFT, TOP);
     text("Hazards:", leftMargin, currentY);
-    currentY += 35;
+    currentY += metrics.sectionHeadingBlockHeight;
+    currentY += metrics.sectionGap;
 
     // Points List with Images for Hazards
-    textSize(12);
+    textSize(metrics.rowTextSize);
     textStyle(NORMAL);
+    textAlign(LEFT, TOP);
 
     // Draw hazardous objects
-    drawObjectInfo(col1X, currentY, OBJ_SMALL_BOMB, "Bomb");
+    drawObjectInfo(col1X, currentY, colWidth, OBJ_SMALL_BOMB, "Bomb");
 
     // Add Fireball
     let fireballText = "Fireball";
@@ -146,7 +244,7 @@ function drawObjectInfoScreen() {
     let fireballFrameIndex = floor((frameCount % (FIREBALL_TOTAL_FRAMES * FIREBALL_FRAME_DURATION)) / FIREBALL_FRAME_DURATION);
     if (fireballFrames && fireballFrames.length > 0 && fireballFrames[fireballFrameIndex]) {
         push();
-        translate(col2X + imageSize / 2, currentY);
+        translate(col2X + imageSize / 2, currentY + metrics.rowHeight / 2);
         // Rotate 90 degrees clockwise (PI/2 radians) to match game display
         rotate(PI / 2);
         image(fireballFrames[fireballFrameIndex], -imageSize / 2, -imageSize / 2, imageSize, imageSize);
@@ -154,98 +252,92 @@ function drawObjectInfoScreen() {
     }
 
     // Display text after image
-    text(fireballText, col2X + imageSize + textWidth, currentY);
+    text(fireballText, col2X + imageSize + textGap, currentY + rowTextYOffset, colWidth - imageSize - textGap, metrics.rowHeight);
 
-    currentY += rowHeight + 3; // Reduced from 5 to 3
+    currentY += metrics.rowHeight;
+    currentY += metrics.blockGap;
 
-    // 4. Power-ups Section
-    textSize(16);
+    // 5. Power-ups Section
+    textSize(metrics.sectionHeadingSize);
     textStyle(BOLD);
     fill(0);
     textAlign(LEFT, TOP);
     text("Power-ups:", leftMargin, currentY);
-    currentY += 35;
+    currentY += metrics.sectionHeadingBlockHeight;
+    currentY += metrics.sectionGap;
 
     // Points List with Images for Power-ups
-    textSize(12);
+    textSize(metrics.rowTextSize);
     textStyle(NORMAL);
+    textAlign(LEFT, TOP);
 
     // Wizard Staff
     let staffText = "Wizard Staff - Shadow Bolt";
     if (objectImages[OBJ_WIZARD_STAFF] && objectImages[OBJ_WIZARD_STAFF].width) {
-        image(objectImages[OBJ_WIZARD_STAFF], col1X, currentY - imageSize / 2, imageSize, imageSize);
+        image(objectImages[OBJ_WIZARD_STAFF], col1X, currentY + (metrics.rowHeight - imageSize) / 2, imageSize, imageSize);
     }
-    text(staffText, col1X + imageSize + textWidth, currentY);
+    text(staffText, col1X + imageSize + textGap, currentY + rowTextYOffset, colWidth - imageSize - textGap, metrics.rowHeight);
 
     // Magnet
     let magnetText = "Magnet - Magnetism";
     if (magnetFrames[0] && magnetFrames[0].width) {
-        image(magnetFrames[0], col2X, currentY - imageSize / 2, imageSize, imageSize);
+        image(magnetFrames[0], col2X, currentY + (metrics.rowHeight - imageSize) / 2, imageSize, imageSize);
     } else {
         fill(0, 100, 255);
         noStroke();
-        ellipse(col2X + imageSize / 2, currentY, imageSize * 0.6, imageSize * 0.6);
+        ellipse(col2X + imageSize / 2, currentY + metrics.rowHeight / 2, imageSize * 0.6, imageSize * 0.6);
     }
-    text(magnetText, col2X + imageSize + textWidth, currentY);
+    fill(0);
+    text(magnetText, col2X + imageSize + textGap, currentY + rowTextYOffset, colWidth - imageSize - textGap, metrics.rowHeight);
 
-    currentY += rowHeight + 8;
+    currentY += metrics.rowHeight;
+    currentY += metrics.blockGap;
 
-    // 3. Object Descriptions (optional)
-    textSize(16);
+    // 6. Object Descriptions
+    textSize(metrics.descHeadingSize);
     textStyle(BOLD);
     fill(0);
     textAlign(LEFT, TOP);
     text("Object Descriptions:", leftMargin, currentY);
-    currentY += 25;
+    currentY += metrics.sectionHeadingBlockHeight;
+    currentY += metrics.sectionGap;
 
-    // Object descriptions
-    textSize(14);
+    // Object description body
+    textSize(metrics.descTextSize);
     textStyle(NORMAL);
-    textLeading(16);
-    // In p5.js 1.9.4, WORD constant might need to be accessed differently
-    // Using string literal 'word' as a fallback
-    try {
-        textWrap(WORD);
-    } catch (e) {
-        textWrap('word');
-    }
-
-    let objectDescText = "Consumables are creatures you can eat for points. " +
-        "Shinies are valuable objects that give high points. " +
-        "Hazards are dangerous objects that can damage you. " +
-        "Power-ups grant special abilities.";
-    text(objectDescText, leftMargin, currentY, textBlockWidth);
-    currentY += 40;
+    currentY += drawWrappedTextBlock(objectDescText, leftMargin, currentY, textBlockWidth, metrics.descLineHeight);
 
     // Navigation instructions at bottom
-    let bottomPadding = 10;
-    let authorAndVersionTextHeight = 12 + 5;
+    let bottomPadding = scalePx(10);
+    let authorAndVersionTextHeight = scalePx(12 + 5);
+    const navBaseY = overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight;
+    const navLineHeight = scalePx(18);
 
     // Navigation instructions
-    textSize(14);
+    textSize(scalePx(14));
     textStyle(ITALIC);
     fill(0);
     textAlign(CENTER, BOTTOM);
     text(
         "Press Left Arrow to return to Help screen",
         overlayX + overlayWidth / 2,
-        overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight - 40
+        navBaseY - (2 * navLineHeight)
     );
 
     text(
         "Press Right Arrow to view About screen",
         overlayX + overlayWidth / 2,
-        overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight - 20
+        navBaseY - navLineHeight
     );
 
     text(
         "Press Escape to close",
         overlayX + overlayWidth / 2,
-        overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight
+        navBaseY
     );
 
     // Game Version (Bottom-Left)
-    textSize(12);
+    textSize(scalePx(12));
     textStyle(NORMAL);
     fill(50); // Dark grey
     textAlign(LEFT, BOTTOM);
@@ -256,7 +348,7 @@ function drawObjectInfoScreen() {
     );
 
     // Author Name (Bottom-Right)
-    textSize(12);
+    textSize(scalePx(12));
     textStyle(NORMAL);
     fill(50);
     textAlign(RIGHT, BOTTOM);
@@ -268,81 +360,6 @@ function drawObjectInfoScreen() {
 
     textStyle(NORMAL);
     textAlign(LEFT, BASELINE); // Reset for other potential text drawing
-}
-
-// Function to calculate the required height for the object info screen content
-function calculateObjectInfoContentHeight() {
-    // Get the width for text wrapping calculations
-    let overlayWidth = width * 0.6;
-    if (overlayWidth < 550) {
-        overlayWidth = 550;
-    }
-    let textBlockWidth = overlayWidth - (2 * 30); // Max width for text (with 30px margins)
-
-    let totalHeight = 0;
-
-    // 1. Heading: "Object Info" (28px + 30px spacing)
-    totalHeight += 28 + 30; // Reduced from 40
-
-    // Define spacing and row heights
-    let rowHeight = 25; // Reduced from 30
-
-    // 2. Consumables Section (16px + 25px spacing)
-    totalHeight += 16 + 25; // Reduced from 40
-
-    // Consumables list (4 rows, rowHeight each)
-    totalHeight += rowHeight * 4 + 2; // Reduced extra spacing from 3 to 2
-
-    // 3. Shinies Section (16px + 25px spacing)
-    totalHeight += 16 + 25; // Reduced from 33
-
-    // Shinies list (1 row, rowHeight each)
-    totalHeight += rowHeight + 2; // Reduced extra spacing from 3 to 2
-
-    // 4. Hazards Section (16px + 25px spacing)
-    totalHeight += 16 + 25; // Reduced from 32
-
-    // Hazards list (1 row, rowHeight each)
-    totalHeight += rowHeight + 3; // Reduced from 5
-
-    // 5. Power-ups Section (16px + 25px spacing)
-    totalHeight += 16 + 25; // Reduced from 40
-
-    // Power-ups list (1 row, rowHeight each)
-    totalHeight += rowHeight + 8; // Reduced from 15
-
-    // 6. Object Descriptions (16px + 20px spacing)
-    totalHeight += 16 + 20; // Reduced from 26
-
-    // Object descriptions text
-    let objectDescText = "Consumables are creatures you can eat for points. " +
-        "Shinies are valuable objects that give high points. " +
-        "Hazards are dangerous objects that can damage you. " +
-        "Power-ups grant special abilities.";
-
-    // Calculate description height
-    let descTextSize = 14;
-    let descLineHeight = 16; // Reduced from 18
-
-    // Estimate wrapped lines based on text width and available space
-    let avgCharWidth = descTextSize * 0.6; // Approximate average character width
-    let charsPerLine = Math.floor(textBlockWidth / avgCharWidth);
-    let descLines = Math.ceil(objectDescText.length / charsPerLine);
-
-    // Calculate description height
-    let descriptionHeight = descLines * descLineHeight;
-    totalHeight += descriptionHeight + 40;
-
-    // 7. Navigation instructions (3 lines, 18px each)
-    totalHeight += 18 * 3 + 10;
-
-    // 8. Version and author info
-    totalHeight += 15;
-
-    // somehow this is much too big, lets try this
-    totalHeight -= 100;
-
-    return totalHeight;
 }
 
 function handleObjectInfoScreenKeyPressed() {

@@ -13,6 +13,9 @@ Arcade mimic-feeding chaos. Eat creatures, grab shinies, dodge bombs, and unlock
 - **Cast Shadow Bolt** (with Wizard Staff): Space
 - **Use Tentacles** (at level 5+): Z
 - **Use Magnetism** (with Magnet): X
+- **Pause / Resume**: P
+- **Mute / Unmute**: M
+- **Help Overlay**: Esc
 - **View Achievements**: K
 
 ## Installation and Running

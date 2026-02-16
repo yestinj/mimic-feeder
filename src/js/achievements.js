@@ -216,6 +216,61 @@ function loadAchievements() {
 // Current page for achievements pagination
 let achievementsCurrentPage = 0;
 
+function getAchievementsLayoutState() {
+    const overlayBounds = getResponsiveOverlayBounds(0.86, 0.88, 340, 260, 980, 760);
+
+    const computeLayoutMetrics = (layoutScale, resolvedOverlayWidth, resolvedOverlayHeight) => {
+        const scalePx = (value) => value * layoutScale;
+        const sidePadding = scalePx(30);
+        const topPadding = scalePx(24);
+        const footerReserve = scalePx(62);
+        const titleSize = scalePx(28);
+        const titleHeight = scalePx(40);
+        const progressSize = scalePx(16);
+        const progressHeight = scalePx(30);
+        const achievementHeight = scalePx(60);
+        const achievementSpacing = scalePx(10);
+        const availableHeight = resolvedOverlayHeight - topPadding - footerReserve - titleHeight - progressHeight;
+        const requiredHeight = achievementHeight; // Ensure at least one card can fit.
+
+        return {
+            sidePadding,
+            topPadding,
+            footerReserve,
+            titleSize,
+            titleHeight,
+            progressSize,
+            progressHeight,
+            achievementHeight,
+            achievementSpacing,
+            availableHeight,
+            requiredHeight
+        };
+    };
+
+    const layout = computeAdaptiveOverlayLayout(
+        overlayBounds,
+        computeLayoutMetrics,
+        { minScale: 0.86, maxIterations: 6, fitBias: 0.98 }
+    );
+
+    if (!layout) {
+        return null;
+    }
+
+    const achievementsPerPage = Math.max(
+        1,
+        Math.floor(layout.metrics.availableHeight / (layout.metrics.achievementHeight + layout.metrics.achievementSpacing))
+    );
+    const totalPages = Math.max(1, Math.ceil(ACHIEVEMENTS.length / achievementsPerPage));
+
+    return {
+        ...layout,
+        achievementsPerPage,
+        totalPages
+    };
+}
+
 /**
  * Draws the achievements screen
  * @function
@@ -225,40 +280,22 @@ function drawAchievementsScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    // Overlay Size Calculation - Make it responsive to window size
-    let overlayWidth = width * 0.8;
-    let overlayHeight = height * 0.85;
-
-    if (overlayWidth < 550) { // Min width
-        overlayWidth = 550;
+    const layoutState = getAchievementsLayoutState();
+    if (!layoutState) {
+        drawOverlayViewportWarning("Achievements", [
+            "Press Escape to close"
+        ], 340, 260);
+        return;
     }
-    let overlayX = (width - overlayWidth) / 2;
-    let overlayY = (height - overlayHeight) / 2;
-
-    // Calculate how many achievements can fit on one page
-    const achievementHeight = 60;
-    const achievementSpacing = 10;
-    const headerHeight = 95; // Space for title and unlocked count
-    const footerHeight = 40; // Space for navigation instructions
-
-    // Calculate available height for achievements
-    const availableHeight = overlayHeight - headerHeight - footerHeight;
-
-    // Calculate how many achievements can fit on one page
-    const achievementsPerPage = Math.floor(availableHeight / (achievementHeight + achievementSpacing));
-
-    // Ensure at least one achievement fits
-    const effectiveAchievementsPerPage = Math.max(1, achievementsPerPage);
-
-    // Calculate total number of pages
-    const totalPages = Math.ceil(ACHIEVEMENTS.length / effectiveAchievementsPerPage);
+    let { overlayWidth, overlayHeight, overlayX, overlayY } = layoutState;
+    const { metrics, scalePx, achievementsPerPage, totalPages } = layoutState;
 
     // Ensure current page is valid
     achievementsCurrentPage = Math.max(0, Math.min(achievementsCurrentPage, totalPages - 1));
 
     // Calculate which achievements to show on current page
-    const startIndex = achievementsCurrentPage * effectiveAchievementsPerPage;
-    const endIndex = Math.min(startIndex + effectiveAchievementsPerPage, ACHIEVEMENTS.length);
+    const startIndex = achievementsCurrentPage * achievementsPerPage;
+    const endIndex = Math.min(startIndex + achievementsPerPage, ACHIEVEMENTS.length);
 
     // Draw the overlay background
     fill(160, 160, 160); // Grey
@@ -266,16 +303,16 @@ function drawAchievementsScreen() {
     rect(overlayX, overlayY, overlayWidth, overlayHeight, 10);
 
     // Text Content
-    let leftMargin = overlayX + 30;
-    let currentY = overlayY + 25;
+    let leftMargin = overlayX + metrics.sidePadding;
+    let currentY = overlayY + metrics.topPadding;
 
     // Heading: "Achievements"
     fill(0);
-    textSize(28);
+    textSize(metrics.titleSize);
     textAlign(LEFT, TOP);
     textStyle(BOLD);
     text(`Achievements`, leftMargin, currentY);
-    currentY += 40;
+    currentY += metrics.titleHeight;
 
     // Count unlocked achievements
     let unlockedCount = 0;
@@ -286,23 +323,23 @@ function drawAchievementsScreen() {
     }
 
     // Show progress and page indicator
-    textSize(16);
+    textSize(metrics.progressSize);
     textStyle(NORMAL);
     text(`Unlocked: ${unlockedCount}/${ACHIEVEMENTS.length}`, leftMargin, currentY);
 
     // Show page indicator if multiple pages
     if (totalPages > 1) {
         textAlign(RIGHT, TOP);
-        text(`Page ${achievementsCurrentPage + 1}/${totalPages}`, overlayX + overlayWidth - 30, currentY);
+        text(`Page ${achievementsCurrentPage + 1}/${totalPages}`, overlayX + overlayWidth - metrics.sidePadding, currentY);
         textAlign(LEFT, TOP);
     }
 
-    currentY += 30;
+    currentY += metrics.progressHeight;
 
     // List achievements for current page
-    textSize(18);
+    textSize(scalePx(18));
     let achievementY = currentY;
-    let achievementWidth = overlayWidth - 60;
+    let achievementWidth = overlayWidth - (metrics.sidePadding * 2);
 
     for (let i = startIndex; i < endIndex; i++) {
         const achievement = ACHIEVEMENTS[i];
@@ -314,7 +351,7 @@ function drawAchievementsScreen() {
         } else {
             fill(100, 100, 100, 100); // Grey for locked
         }
-        rect(leftMargin, achievementY, achievementWidth, achievementHeight, 5);
+        rect(leftMargin, achievementY, achievementWidth, metrics.achievementHeight, scalePx(5));
 
         // Draw achievement name
         textAlign(LEFT, TOP);
@@ -324,37 +361,45 @@ function drawAchievementsScreen() {
         } else {
             fill(50, 50, 50); // Dark grey for locked
         }
-        text(achievement.name, leftMargin + 10, achievementY + 10);
+        textSize(scalePx(18));
+        text(achievement.name, leftMargin + scalePx(10), achievementY + scalePx(10));
 
         // Draw achievement description
         textStyle(NORMAL);
-        textSize(14);
+        textSize(scalePx(14));
         if (isUnlocked) {
             fill(0);
         } else {
             fill(80, 80, 80);
         }
-        text(achievement.description, leftMargin + 10, achievementY + 35);
+        text(
+            achievement.description,
+            leftMargin + scalePx(10),
+            achievementY + scalePx(35),
+            achievementWidth - scalePx(110),
+            metrics.achievementHeight - scalePx(40)
+        );
 
         // Draw unlocked status
         textAlign(RIGHT, TOP);
-        textSize(14);
+        textSize(scalePx(14));
         if (isUnlocked) {
             fill(0, 150, 0);
-            text("UNLOCKED", leftMargin + achievementWidth - 10, achievementY + 10);
+            text("UNLOCKED", leftMargin + achievementWidth - scalePx(10), achievementY + scalePx(10));
         } else {
             fill(100, 100, 100);
-            text("LOCKED", leftMargin + achievementWidth - 10, achievementY + 10);
+            text("LOCKED", leftMargin + achievementWidth - scalePx(10), achievementY + scalePx(10));
         }
 
-        achievementY += achievementHeight + achievementSpacing;
+        achievementY += metrics.achievementHeight + metrics.achievementSpacing;
     }
 
     // Navigation Instructions
-    textSize(14);
+    textSize(scalePx(14));
     textStyle(ITALIC);
     fill(0);
     textAlign(CENTER, BOTTOM);
+    const navBaseY = overlayY + overlayHeight - scalePx(20);
 
     // Show page navigation instructions if multiple pages
     if (totalPages > 1) {
@@ -365,13 +410,13 @@ function drawAchievementsScreen() {
         if (achievementsCurrentPage < totalPages - 1) {
             navText += "Press Right Arrow for next page   ";
         }
-        text(navText, overlayX + overlayWidth / 2, overlayY + overlayHeight - 40);
+        text(navText, overlayX + overlayWidth / 2, navBaseY - scalePx(20));
     }
 
     text(
         "Press Escape to close",
         overlayX + overlayWidth / 2,
-        overlayY + overlayHeight - 20
+        navBaseY
     );
 
     textStyle(NORMAL);
@@ -391,15 +436,8 @@ function handleAchievementsScreenKeyPressed() {
             return true;
         }
 
-        // Calculate how many achievements can fit on one page (same logic as in drawAchievementsScreen)
-        const overlayHeight = height * 0.85;
-        const headerHeight = 95;
-        const footerHeight = 40;
-        const achievementHeight = 60;
-        const achievementSpacing = 10;
-        const availableHeight = overlayHeight - headerHeight - footerHeight;
-        const achievementsPerPage = Math.max(1, Math.floor(availableHeight / (achievementHeight + achievementSpacing)));
-        const totalPages = Math.ceil(ACHIEVEMENTS.length / achievementsPerPage);
+        const layoutState = getAchievementsLayoutState();
+        const totalPages = layoutState ? layoutState.totalPages : 1;
 
         // Handle page navigation
         if (keyCode === RIGHT_ARROW && achievementsCurrentPage < totalPages - 1) {

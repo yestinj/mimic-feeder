@@ -14,6 +14,141 @@ function collideRectRect(x1, y1, w1, h1, x2, y2, w2, h2) {
     return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
 }
 
+function isOverlayViewportSupported(minWidth = MIN_OVERLAY_VIEWPORT_WIDTH, minHeight = MIN_OVERLAY_VIEWPORT_HEIGHT) {
+    return width >= minWidth && height >= minHeight;
+}
+
+function getResponsiveOverlayBounds(
+    widthRatio,
+    heightRatio,
+    minWidth,
+    minHeight,
+    maxWidth = Infinity,
+    maxHeight = Infinity,
+    edgePadding = 24
+) {
+    const availableWidth = Math.max(240, width - edgePadding);
+    const availableHeight = Math.max(180, height - edgePadding);
+    const widthCap = Math.min(maxWidth, availableWidth);
+    const heightCap = Math.min(maxHeight, availableHeight);
+
+    const overlayWidth = Math.max(Math.min(width * widthRatio, widthCap), Math.min(minWidth, widthCap));
+    const overlayHeight = Math.max(Math.min(height * heightRatio, heightCap), Math.min(minHeight, heightCap));
+
+    return {
+        overlayWidth,
+        overlayHeight,
+        overlayX: (width - overlayWidth) / 2,
+        overlayY: (height - overlayHeight) / 2
+    };
+}
+
+function drawOverlayViewportWarning(title, navigationLines = [], minWidth = MIN_OVERLAY_VIEWPORT_WIDTH, minHeight = MIN_OVERLAY_VIEWPORT_HEIGHT) {
+    const bounds = getResponsiveOverlayBounds(0.8, 0.45, 320, 220, 760, 360);
+    const padding = 18;
+    const centerX = bounds.overlayX + bounds.overlayWidth / 2;
+    let currentY = bounds.overlayY + padding;
+
+    fill(160, 160, 160);
+    noStroke();
+    rect(bounds.overlayX, bounds.overlayY, bounds.overlayWidth, bounds.overlayHeight, 10);
+
+    fill(0);
+    textAlign(LEFT, TOP);
+    textStyle(BOLD);
+    textSize(24);
+    text(title, bounds.overlayX + padding, currentY);
+    currentY += 34;
+
+    textStyle(NORMAL);
+    textSize(14);
+    textLeading(18);
+    const statusText = `Resize window for full overlay view.\nMinimum canvas: ${minWidth} x ${minHeight}\nCurrent canvas: ${Math.round(width)} x ${Math.round(height)}`;
+    text(statusText, bounds.overlayX + padding, currentY, bounds.overlayWidth - (padding * 2));
+
+    textAlign(CENTER, BOTTOM);
+    textStyle(ITALIC);
+    textSize(13);
+    let navY = bounds.overlayY + bounds.overlayHeight - 16;
+    for (let i = navigationLines.length - 1; i >= 0; i--) {
+        text(navigationLines[i], centerX, navY);
+        navY -= 16;
+    }
+
+    textStyle(NORMAL);
+    textAlign(LEFT, BASELINE);
+}
+
+function computeAdaptiveOverlayLayout(overlayBounds, metricsBuilder, options = {}) {
+    const minScale = typeof options.minScale === 'number' ? options.minScale : 0.82;
+    const maxIterations = typeof options.maxIterations === 'number' ? options.maxIterations : 6;
+    const fitBias = typeof options.fitBias === 'number' ? options.fitBias : 0.98;
+    let layoutScale = typeof options.startScale === 'number' ? options.startScale : 1;
+
+    let metrics = metricsBuilder(layoutScale, overlayBounds.overlayWidth, overlayBounds.overlayHeight);
+    for (let i = 0; i < maxIterations && metrics.requiredHeight > metrics.availableHeight && layoutScale > minScale; i++) {
+        const fitRatio = metrics.availableHeight / Math.max(metrics.requiredHeight, 1);
+        layoutScale = Math.max(minScale, layoutScale * fitRatio * fitBias);
+        metrics = metricsBuilder(layoutScale, overlayBounds.overlayWidth, overlayBounds.overlayHeight);
+    }
+
+    if (metrics.requiredHeight > metrics.availableHeight) {
+        return null;
+    }
+
+    return {
+        ...overlayBounds,
+        layoutScale,
+        metrics,
+        scalePx: (value) => value * layoutScale
+    };
+}
+
+function wrapTextToLines(textValue, maxWidth) {
+    const lines = [];
+    const paragraphs = String(textValue ?? '').split('\n');
+
+    for (const paragraph of paragraphs) {
+        if (paragraph.length === 0) {
+            lines.push('');
+            continue;
+        }
+
+        const words = paragraph.split(/\s+/).filter(Boolean);
+        if (words.length === 0) {
+            lines.push('');
+            continue;
+        }
+
+        let line = words[0];
+        for (let i = 1; i < words.length; i++) {
+            const candidate = `${line} ${words[i]}`;
+            if (textWidth(candidate) <= maxWidth) {
+                line = candidate;
+            } else {
+                lines.push(line);
+                line = words[i];
+            }
+        }
+        lines.push(line);
+    }
+
+    return lines;
+}
+
+function measureWrappedTextHeight(textValue, maxWidth, lineHeight) {
+    const lines = wrapTextToLines(textValue, maxWidth);
+    return lines.length * lineHeight;
+}
+
+function drawWrappedTextBlock(textValue, x, y, maxWidth, lineHeight) {
+    const lines = wrapTextToLines(textValue, maxWidth);
+    for (let i = 0; i < lines.length; i++) {
+        text(lines[i], x, y + (i * lineHeight));
+    }
+    return lines.length * lineHeight;
+}
+
 function updatePopups() {
     const frameDelta = getFrameDelta();
 
