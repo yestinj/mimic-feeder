@@ -46,7 +46,7 @@ function drawAboutScreen() {
     } catch (e) {
         textWrap('word');
     }
-    let aboutText = "This game was created by Yestin. It's currently in alpha, and is just a fun side project.";
+    let aboutText = "This game was created by Yestin. It's currently in beta, and is just a fun side project.";
     text(aboutText, leftMargin, currentY, textBlockWidth);
     currentY += 50; // Reduced from 100 to 50
 
@@ -135,7 +135,7 @@ function calculateAboutContentHeight() {
     totalHeight += 28 + 30; // Reduced from 40
 
     // 2. Author and Game Status
-    let aboutText = "This game was created by Yestin. It's currently in alpha, and is just a fun side project.";
+    let aboutText = "This game was created by Yestin. It's currently in beta, and is just a fun side project.";
 
     // Calculate about text height
     let aboutTextSize = 16;

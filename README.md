@@ -58,8 +58,8 @@ This will create documentation in the `docs` directory and open it in your brows
 
 ## Project Status
 
-This project is feature-complete and shared primarily as a portfolio and learning reference.
-While the code is public and may be forked under the license terms, I’m not actively seeking contributions or maintaining feature requests.
+This project is in playable beta and shared primarily as a portfolio and learning reference.
+While the code is public and may be forked under the license terms, maintenance cadence is variable and major feature requests may not be prioritized.
 
 ## Attributions
 
