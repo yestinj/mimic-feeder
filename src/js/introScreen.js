@@ -21,7 +21,6 @@ function drawIntroScreen() {
         return;
     }
 
-    const overlayBounds = getResponsiveOverlayBounds(0.62, 0.74, 460, 360, 760, 700);
     const description = "Dungeon mimic-feeding chaos. Eat creatures, nab shinies, dodge bombs, and unlock powers.\n\n" +
         "Control the mimic to collect food and shinies. Avoid or destroy bombs.\n\n" +
         "Don't let perfectly good food perish - it hurts!\n\n" +
@@ -34,12 +33,35 @@ function drawIntroScreen() {
         "Pause / Resume: P    Mute / Unmute: M",
         "Ability Keys (unlock later): Space, Z, X"
     ];
+    const startPrompt = "Click or press any key to start (activates audio)";
+
+    textStyle(BOLD);
+    textSize(28);
+    const titleWidth = textWidth("Mimic Feeder");
+
+    textStyle(NORMAL);
+    textSize(14);
+    const descriptionLines = description.split('\n').filter((line) => line.length > 0);
+    const longestDescriptionLineWidth = Math.max(...descriptionLines.map((line) => textWidth(line)));
+
+    textSize(12);
+    const longestControlLineWidth = Math.max(...controls.map((line) => textWidth(line)));
+
+    textStyle(ITALIC);
+    textSize(14);
+    const startPromptWidth = textWidth(startPrompt);
+
+    const targetOverlayWidth = constrain(
+        Math.max(titleWidth, longestDescriptionLineWidth, longestControlLineWidth, startPromptWidth) + 72,
+        Math.min(430, width - 24),
+        Math.min(760, width - 24)
+    );
 
     const computeLayoutMetrics = (layoutScale, resolvedOverlayWidth, resolvedOverlayHeight) => {
         const scalePx = (value) => value * layoutScale;
         const topPadding = scalePx(30);
         const sidePadding = scalePx(30);
-        const footerReserve = scalePx(70);
+        const footerReserve = scalePx(56);
         const titleSize = scalePx(28);
         const titleHeight = scalePx(40);
         const descriptionSize = scalePx(14);
@@ -86,8 +108,21 @@ function drawIntroScreen() {
         };
     };
 
+    const baseMetrics = computeLayoutMetrics(1, targetOverlayWidth, height);
+    const targetOverlayHeight = constrain(
+        baseMetrics.requiredHeight + baseMetrics.topPadding + baseMetrics.footerReserve + 8,
+        Math.min(340, height - 24),
+        Math.min(560, height - 24)
+    );
+    const targetOverlayBounds = {
+        overlayWidth: targetOverlayWidth,
+        overlayHeight: targetOverlayHeight,
+        overlayX: (width - targetOverlayWidth) / 2,
+        overlayY: (height - targetOverlayHeight) / 2
+    };
+
     const layout = computeAdaptiveOverlayLayout(
-        overlayBounds,
+        targetOverlayBounds,
         computeLayoutMetrics,
         { minScale: 0.86, maxIterations: 6, fitBias: 0.98 }
     );
@@ -152,7 +187,7 @@ function drawIntroScreen() {
     fill(0);
     textAlign(CENTER, BOTTOM);
     text(
-        "Click or press any key to start (activates audio)",
+        startPrompt,
         overlayX + overlayWidth / 2,
         overlayY + overlayHeight - bottomPadding - authorAndVersionTextHeight // Position above bottom texts
     );
