@@ -8,79 +8,258 @@
  * Achievement definitions - Each achievement has an id, name, description, and check function
  * @type {Array<Object>}
  */
+const ACHIEVEMENT_TIER_EARLY = 'early';
+const ACHIEVEMENT_TIER_MID = 'mid';
+const ACHIEVEMENT_TIER_LATE = 'late';
+
+const ACHIEVEMENT_TIER_POINTS = {
+    [ACHIEVEMENT_TIER_EARLY]: 25,
+    [ACHIEVEMENT_TIER_MID]: 50,
+    [ACHIEVEMENT_TIER_LATE]: 100
+};
+
+function getHazardDetonations(collectedCounts) {
+    if (!collectedCounts || typeof collectedCounts !== 'object') {
+        return 0;
+    }
+    const smallBombCount = Number.isFinite(collectedCounts.small_bomb) ? collectedCounts.small_bomb : 0;
+    const fireballCount = Number.isFinite(collectedCounts.fireball) ? collectedCounts.fireball : 0;
+    return smallBombCount + fireballCount;
+}
+
+function getAchievementPoints(achievement) {
+    if (Number.isFinite(achievement.points)) {
+        return achievement.points;
+    }
+    return ACHIEVEMENT_TIER_POINTS[achievement.tier] || ACHIEVEMENT_TIER_POINTS[ACHIEVEMENT_TIER_MID];
+}
+
 const ACHIEVEMENTS = [
     {
         id: 'first_blood',
         name: 'First Blood',
         description: 'Collect your first human',
+        tier: ACHIEVEMENT_TIER_EARLY,
         check: (state) => state.collectedCounts.human >= 1
     },
     {
-        id: 'bomb_squad',
-        name: 'Bomb Squad',
-        description: 'Destroy 10 bombs',
-        check: (state) => state.collectedCounts.small_bomb >= 10
+        id: 'staff_initiate',
+        name: 'Staff Initiate',
+        description: 'Obtain the wizard staff',
+        tier: ACHIEVEMENT_TIER_EARLY,
+        check: (state) => state.player.hasWizardStaff
+    },
+    {
+        id: 'magnet_novice',
+        name: 'Magnet Novice',
+        description: 'Obtain the magnet',
+        tier: ACHIEVEMENT_TIER_EARLY,
+        check: (state) => state.player.hasMagnet
     },
     {
         id: 'cat_lover',
         name: 'Cat Lover',
-        description: 'Rescue 5 cats',
-        check: (state) => state.game.catsRescued >= 5
+        description: 'Rescue 3 cats',
+        tier: ACHIEVEMENT_TIER_EARLY,
+        check: (state) => state.game.catsRescued >= 3
+    },
+    {
+        id: 'volatile_rookie',
+        name: 'Volatile Rookie',
+        description: 'Detonate 10 hazards',
+        tier: ACHIEVEMENT_TIER_EARLY,
+        check: (state) => getHazardDetonations(state.collectedCounts) >= 10
     },
     {
         id: 'treasure_hunter',
         name: 'Treasure Hunter',
         description: 'Collect 3 crowns',
+        tier: ACHIEVEMENT_TIER_EARLY,
         check: (state) => state.collectedCounts.crown >= 3
-    },
-    {
-        id: 'diamond_collector',
-        name: 'Diamond Collector',
-        description: 'Collect 3 diamonds',
-        check: (state) => state.collectedCounts.diamond >= 3
-    },
-    {
-        id: 'dragon_slayer',
-        name: 'Dragon Slayer',
-        description: 'Collect 5 dragons',
-        check: (state) => state.collectedCounts.dragon >= 5
-    },
-    {
-        id: 'level_up',
-        name: 'Level Up',
-        description: 'Reach player level 5',
-        check: (state) => state.player.level >= 5
     },
     {
         id: 'dungeon_explorer',
         name: 'Dungeon Explorer',
         description: 'Reach dungeon floor 3',
+        tier: ACHIEVEMENT_TIER_EARLY,
         check: (state) => state.game.dungeonFloor >= 3
-    },
-    {
-        id: 'high_score',
-        name: 'High Score',
-        description: 'Score 1000 points',
-        check: (state) => state.game.score >= 1000
     },
     {
         id: 'survivor',
         name: 'Survivor',
         description: 'Play for 3 minutes',
+        tier: ACHIEVEMENT_TIER_EARLY,
         check: (state) => state.game.playTime >= 180
+    },
+    {
+        id: 'bomb_squad',
+        name: 'Bomb Squad',
+        description: 'Detonate 25 hazards',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => getHazardDetonations(state.collectedCounts) >= 25
+    },
+    {
+        id: 'diamond_collector',
+        name: 'Diamond Collector',
+        description: 'Collect 5 diamonds',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.collectedCounts.diamond >= 5
+    },
+    {
+        id: 'dragon_slayer',
+        name: 'Dragon Slayer',
+        description: 'Collect 10 dragons',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.collectedCounts.dragon >= 10
+    },
+    {
+        id: 'high_score',
+        name: 'Score Chaser',
+        description: 'Score 5000 points',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.game.score >= 5000
+    },
+    {
+        id: 'level_up',
+        name: 'Veteran',
+        description: 'Reach player level 8',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.player.level >= 8
+    },
+    {
+        id: 'dungeon_delver',
+        name: 'Dungeon Delver',
+        description: 'Reach dungeon floor 5',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.game.dungeonFloor >= 5
+    },
+    {
+        id: 'demolisher',
+        name: 'Demolisher',
+        description: 'Destroy 75 objects',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.game.destroyedCount >= 75
+    },
+    {
+        id: 'cat_sanctuary',
+        name: 'Cat Sanctuary',
+        description: 'Rescue 10 cats',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.game.catsRescued >= 10
+    },
+    {
+        id: 'boss_hunter',
+        name: 'Boss Hunter',
+        description: 'Defeat 1 boss',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.achievementStats.bossesDefeated >= 1
+    },
+    {
+        id: 'spell_slinger',
+        name: 'Spell Slinger',
+        description: 'Cast 250 shadow bolts',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.achievementStats.shadowBoltsCast >= 250
+    },
+    {
+        id: 'tentacle_tactician',
+        name: 'Tentacle Tactician',
+        description: 'Use tentacles 50 times',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.achievementStats.tentaclesUsed >= 50
+    },
+    {
+        id: 'blink_striker',
+        name: 'Blink Striker',
+        description: 'Dash 125 times',
+        tier: ACHIEVEMENT_TIER_MID,
+        check: (state) => state.achievementStats.dashesUsed >= 125
+    },
+    {
+        id: 'abyss_walker',
+        name: 'Abyss Walker',
+        description: 'Reach dungeon floor 8',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.game.dungeonFloor >= 8
+    },
+    {
+        id: 'apex_mimic',
+        name: 'Apex Mimic',
+        description: 'Reach player level 12',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.player.level >= 12
+    },
+    {
+        id: 'dragon_feast',
+        name: 'Dragon Feast',
+        description: 'Collect 25 dragons',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.collectedCounts.dragon >= 25
+    },
+    {
+        id: 'legend_score',
+        name: 'Legend Score',
+        description: 'Score 20000 points',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.game.score >= 20000
+    },
+    {
+        id: 'iron_stomach',
+        name: 'Iron Stomach',
+        description: 'Collect 300 total objects',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.game.collectedCount >= 300
+    },
+    {
+        id: 'cat_kingdom',
+        name: 'Cat Kingdom',
+        description: 'Rescue 25 cats',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.game.catsRescued >= 25
+    },
+    {
+        id: 'long_haul',
+        name: 'Long Haul',
+        description: 'Play for 30 minutes',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.game.playTime >= 1800
+    },
+    {
+        id: 'boss_slayer',
+        name: 'Boss Slayer',
+        description: 'Defeat 3 bosses',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.achievementStats.bossesDefeated >= 3
+    },
+    {
+        id: 'arcane_battery',
+        name: 'Arcane Battery',
+        description: 'Cast 600 shadow bolts',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.achievementStats.shadowBoltsCast >= 600
+    },
+    {
+        id: 'tentacle_overlord',
+        name: 'Tentacle Overlord',
+        description: 'Use tentacles 150 times',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.achievementStats.tentaclesUsed >= 150
+    },
+    {
+        id: 'dash_phantom',
+        name: 'Dash Phantom',
+        description: 'Dash 300 times',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => state.achievementStats.dashesUsed >= 300
+    },
+    {
+        id: 'hazard_warden',
+        name: 'Hazard Warden',
+        description: 'Detonate 60 hazards',
+        tier: ACHIEVEMENT_TIER_LATE,
+        check: (state) => getHazardDetonations(state.collectedCounts) >= 60
     }
 ];
-
-/**
- * Achievement notification object
- * @type {Object}
- */
-let achievementNotification = {
-    active: false,
-    name: '',
-    timer: 0,
-    duration: 180 // 3 seconds at 60fps
-};
 
 /**
  * Checks all achievements and unlocks any that have been completed
@@ -96,7 +275,13 @@ function checkAchievements() {
     const state = {
         game: gameState,
         player: playerState,
-        collectedCounts: gameState.collectedCounts
+        collectedCounts: gameState.collectedCounts,
+        achievementStats: gameState.achievementStats || {
+            shadowBoltsCast: 0,
+            tentaclesUsed: 0,
+            dashesUsed: 0,
+            bossesDefeated: 0
+        }
     };
 
     // Check each achievement
@@ -115,14 +300,16 @@ function checkAchievements() {
  * @function
  */
 function unlockAchievement(achievement) {
+    const rewardPoints = getAchievementPoints(achievement);
+
     // Mark the achievement as unlocked
     gameState.achievements[achievement.id] = true;
 
-    // Add 100 points to the score
-    gameState.score += 100;
+    // Add points based on achievement tier
+    gameState.score += rewardPoints;
 
     // Show notification
-    showAchievementNotification(achievement.name);
+    showAchievementNotification(achievement.name, rewardPoints);
 
     // Play sound
     playSound('player_level_up');
@@ -134,48 +321,11 @@ function unlockAchievement(achievement) {
 /**
  * Shows an achievement notification
  * @param {string} name - The name of the achievement
+ * @param {number} points - Points awarded for this achievement
  * @function
  */
-function showAchievementNotification(name) {
-    achievementNotification.active = true;
-    achievementNotification.name = name;
-    achievementNotification.timer = achievementNotification.duration;
-}
-
-/**
- * Updates and draws the achievement notification
- * @function
- */
-function updateAchievementNotification() {
-    if (achievementNotification.active) {
-        achievementNotification.timer -= getFrameDelta();
-        if (achievementNotification.timer <= 0) {
-            achievementNotification.active = false;
-            return;
-        }
-
-        // Draw notification background
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 80, 340, 80, 10);
-
-        // Draw notification text
-        fill(255, 215, 0); // Gold color
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text("Achievement Unlocked!", width / 2, height / 2 - 50);
-
-        textSize(22);
-        fill(255);
-        text(achievementNotification.name, width / 2, height / 2 - 20);
-
-        textSize(18);
-        fill(0, 255, 0); // Green color
-        text("+100 points", width / 2, height / 2 + 10);
-
-        textStyle(NORMAL);
-    }
+function showAchievementNotification(name, points) {
+    queueAchievementNotification(name, points);
 }
 
 /**
@@ -315,12 +465,10 @@ function drawAchievementsScreen() {
     currentY += metrics.titleHeight;
 
     // Count unlocked achievements
-    let unlockedCount = 0;
-    for (const id in gameState.achievements) {
-        if (gameState.achievements[id]) {
-            unlockedCount++;
-        }
-    }
+    const unlockedCount = ACHIEVEMENTS.reduce(
+        (count, achievement) => count + (gameState.achievements[achievement.id] ? 1 : 0),
+        0
+    );
 
     // Show progress and page indicator
     textSize(metrics.progressSize);
@@ -376,7 +524,7 @@ function drawAchievementsScreen() {
             achievement.description,
             leftMargin + scalePx(10),
             achievementY + scalePx(35),
-            achievementWidth - scalePx(110),
+            achievementWidth - scalePx(160),
             metrics.achievementHeight - scalePx(40)
         );
 
@@ -390,6 +538,14 @@ function drawAchievementsScreen() {
             fill(100, 100, 100);
             text("LOCKED", leftMargin + achievementWidth - scalePx(10), achievementY + scalePx(10));
         }
+
+        const points = getAchievementPoints(achievement);
+        const tierShort = achievement.tier === ACHIEVEMENT_TIER_EARLY
+            ? "E"
+            : (achievement.tier === ACHIEVEMENT_TIER_LATE ? "L" : "M");
+        textSize(scalePx(13));
+        fill(40, 40, 40);
+        text(`${tierShort} +${points}`, leftMargin + achievementWidth - scalePx(10), achievementY + scalePx(32));
 
         achievementY += metrics.achievementHeight + metrics.achievementSpacing;
     }

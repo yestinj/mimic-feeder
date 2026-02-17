@@ -27,6 +27,7 @@ function handleTentaclesAbility() {
             playerState.tentaclesCooldown = TENTACLE_COOLDOWN_FRAMES;
             playerState.usingTentacles = true;
             openChestTimer = 60; // Duration for tentacles open sprite
+            gameState.achievementStats.tentaclesUsed += 1;
         }
     }
 }
@@ -40,6 +41,7 @@ function handleShadowBolt() {
             currentFrame: 0, frameTimer: 0
         };
         shadowBolts.push(bolt);
+        gameState.achievementStats.shadowBoltsCast += 1;
         playSound('cast_spell');
         shadowBoltAjarTimer = SHADOW_BOLT_AJAR_DURATION;
 
@@ -100,6 +102,10 @@ function updateShadowBolts() {
 
                 // Special handling for boss
                 if (obj.type === OBJ_BOSS) {
+                    if (obj.isDying) {
+                        continue;
+                    }
+
                     playSound('shadowbolt_hit');
                     shadowBoltExplosions.push({
                         x: bolt.x, y: bolt.y,
@@ -116,7 +122,7 @@ function updateShadowBolts() {
                     obj.hitFrameTimer = 0;
 
                     // Check if boss is defeated
-                    if (obj.lives <= 0) {
+                    if (obj.lives <= 0 && !obj.isDying) {
                         // Award points
                         let points = BOSS_POINTS;
                         gameState.score += points;
@@ -125,6 +131,8 @@ function updateShadowBolts() {
 
                         // Clear any remaining boss fireballs
                         bossFireballs = [];
+                        gameState.achievementStats.bossesDefeated += 1;
+                        queueBossDefeatedNotification();
 
                         // Set boss to die state
                         obj.isDying = true;
@@ -193,6 +201,7 @@ function handlePlayerDash() {
                 // Add visual feedback
                 triggerScreenShake(3);
                 playSound('cast_spell'); // Reuse existing sound for now
+                gameState.achievementStats.dashesUsed += 1;
             }
 
             // Update last press time
@@ -213,6 +222,7 @@ function handlePlayerDash() {
                 // Add visual feedback
                 triggerScreenShake(3);
                 playSound('cast_spell'); // Reuse existing sound for now
+                gameState.achievementStats.dashesUsed += 1;
             }
 
             // Update last press time

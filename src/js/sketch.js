@@ -53,12 +53,18 @@ function initializeStates() {
         humansForNextMaxLife: HUMANS_PER_MAX_LIFE_INCREASE, // Humans needed for next max life increase
         collectedCounts: {                             // Counts of each object type collected
             human: 0, goblin: 0, elf: 0, wraith: 0, cat: 0,
-            dwarf: 0, dragon: 0, small_bomb: 0, crown: 0, diamond: 0, magnet: 0
+            dwarf: 0, dragon: 0, small_bomb: 0, fireball: 0, crown: 0, diamond: 0, magnet: 0, boss: 0
         },
         catsRescued: 0,                               // Number of cats rescued
         catsRescuedPoints: 0,                         // Points from rescuing cats
         collectedCount: 0,                            // Total objects collected
         destroyedCount: 0,                            // Total objects destroyed
+        achievementStats: {                           // Run-based counters for mastery achievements
+            shadowBoltsCast: 0,
+            tentaclesUsed: 0,
+            dashesUsed: 0,
+            bossesDefeated: 0
+        },
         achievements: {},                             // Player's achievements
     };
 
@@ -361,8 +367,8 @@ function draw() {
         gameState.gameStarted = true;
     }
 
-    // Update play time
-    gameState.playTime = (millis() / 1000) - gameState.startTime;
+    // Update play time only during active gameplay frames (not paused/overlay/intro/game-over)
+    gameState.playTime += frameDelta / TARGET_FPS;
 
     updatePlayer();
     spawnObjects();
@@ -378,38 +384,6 @@ function draw() {
 
     // Check for achievements and update notifications
     checkAchievements();
-    updateAchievementNotification();
-
-    if (gameLevelNotification.active) {
-        gameLevelNotification.timer = max(0, gameLevelNotification.timer - frameDelta);
-        if (gameLevelNotification.timer <= 0) {
-            gameLevelNotification.active = false;
-        }
-    }
-    if (staffNotification.active) {
-        staffNotification.timer = max(0, staffNotification.timer - frameDelta);
-        if (staffNotification.timer <= 0) {
-            staffNotification.active = false;
-        }
-    }
-    if (tentacleNotification.active) {
-        tentacleNotification.timer = max(0, tentacleNotification.timer - frameDelta);
-        if (tentacleNotification.timer <= 0) {
-            tentacleNotification.active = false;
-        }
-    }
-    if (magnetNotification.active) {
-        magnetNotification.timer = max(0, magnetNotification.timer - frameDelta);
-        if (magnetNotification.timer <= 0) {
-            magnetNotification.active = false;
-        }
-    }
-    if (extraLifeNotification.active) {
-        extraLifeNotification.timer = max(0, extraLifeNotification.timer - frameDelta);
-        if (extraLifeNotification.timer <= 0) {
-            extraLifeNotification.active = false;
-        }
-    }
 
     if (playerState.tentaclesCooldown > 0) {
         playerState.tentaclesCooldown = max(0, playerState.tentaclesCooldown - frameDelta);
@@ -440,77 +414,7 @@ function draw() {
     rect(0, height - VISUAL_GROUND_HEIGHT, width, VISUAL_GROUND_HEIGHT);
     drawPlayer();
     drawOnboardingOverlays();
-
-    if (gameLevelNotification.active) {
-        fill(255, 255, 0);
-        textSize(48);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(gameLevelNotification.text, width / 2, height / 2);
-        textStyle(NORMAL);
-    }
-    if (staffNotification.active) {
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 40, 340, 80, 10);
-        fill(255, 215, 0);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(staffNotification.line1, width / 2, height / 2 - 10);
-        textSize(18);
-        textStyle(ITALIC);
-        fill(230);
-        text(staffNotification.line2, width / 2, height / 2 + 20);
-        textStyle(NORMAL);
-    }
-    if (tentacleNotification.active) {
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 40, 340, 80, 10);
-        fill(138, 43, 226);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(tentacleNotification.line1, width / 2, height / 2 - 10);
-        textSize(18);
-        textStyle(ITALIC);
-        fill(230);
-        text(tentacleNotification.line2, width / 2, height / 2 + 20);
-        textStyle(NORMAL);
-    }
-
-    if (magnetNotification.active) {
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 40, 340, 80, 10);
-        fill(0, 100, 255);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(magnetNotification.line1, width / 2, height / 2 - 10);
-        textSize(18);
-        textStyle(ITALIC);
-        fill(230);
-        text(magnetNotification.line2, width / 2, height / 2 + 20);
-        textStyle(NORMAL);
-    }
-
-    if (extraLifeNotification.active) {
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 40, 340, 80, 10);
-        fill(255, 0, 0); // Red color for extra life
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(extraLifeNotification.line1, width / 2, height / 2 - 10);
-        textSize(18);
-        textStyle(ITALIC);
-        fill(230);
-        text(extraLifeNotification.line2, width / 2, height / 2 + 20);
-        textStyle(NORMAL);
-    }
+    updateAndDrawCenterNotifications();
 
     drawUI();
 }
@@ -523,7 +427,7 @@ function draw() {
 function triggerGameOver() {
     gameState.gameOver = true;
     gameState.enteringName = true;
-    gameState.playTime = (millis() / 1000) - gameState.startTime;
+    clearCenterNotifications();
     playSound('game_over');
     stopAllSounds(true, false); // Stop all sounds including background music
 }
@@ -967,16 +871,8 @@ function restartGame() {
     shadowBoltAjarTimer = 0;
     jumpEatOpenTimer = 0;
 
-    // Reset notifications
-    gameLevelNotification.active = false;
-    gameLevelNotification.timer = 0;
-    gameLevelNotification.text = "";
-    staffNotification.active = false;
-    staffNotification.timer = 0;
-    tentacleNotification.active = false;
-    tentacleNotification.timer = 0;
-    magnetNotification.active = false;
-    magnetNotification.timer = 0;
+    // Reset queued center notifications
+    clearCenterNotifications();
 
     // Reset audio and game state
     audioStarted = false;

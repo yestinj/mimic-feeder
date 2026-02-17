@@ -177,6 +177,52 @@ function checkBuildAndAssetContracts(buildSource, indexSource, assetSource) {
     );
 }
 
+function checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource) {
+    assertContract(
+        /function updateAndDrawCenterNotifications\(\)/.test(uiSource),
+        'Center notification queue renderer exists'
+    );
+    assertContract(
+        /updateAndDrawCenterNotifications\(\);/.test(sketchSource),
+        'Gameplay draw loop uses queued center notifications'
+    );
+    assertContract(
+        /queueBossDefeatedNotification\(\)/.test(abilitiesSource),
+        'Boss defeat enqueues queue-managed notification'
+    );
+    assertContract(
+        /queueTentacleNotification\(/.test(utilsSource),
+        'Tentacle unlock enqueues queue-managed notification'
+    );
+    assertContract(
+        !/text\("Boss Defeated!", width \/ 2, height \/ 2\)/.test(objectsSource),
+        'Boss defeated legacy center draw path is removed'
+    );
+    assertContract(
+        /function showAchievementNotification\(name, points\)\s*\{\s*queueAchievementNotification\(name, points\);/.test(achievementsSource),
+        'Achievement notifications enqueue into shared queue'
+    );
+    assertContract(
+        /function measureCenterNotificationTextBlock\(/.test(uiSource),
+        'Center notification panel uses text measurement helper'
+    );
+    assertContract(
+        !/rect\(centerX - 170, centerY - 80, 340, 80, 10\)/.test(uiSource),
+        'Fixed-size center notification panel is removed'
+    );
+}
+
+function checkPlayTimeContracts(sketchSource) {
+    assertContract(
+        /gameState\.playTime\s*\+=\s*frameDelta\s*\/\s*TARGET_FPS;/.test(sketchSource),
+        'Play time accumulates from active frame delta'
+    );
+    assertContract(
+        !/gameState\.playTime\s*=\s*\(millis\(\)\s*\/\s*1000\)\s*-\s*gameState\.startTime;/.test(sketchSource),
+        'Play time is not recomputed from wall-clock startTime'
+    );
+}
+
 function main() {
     const playerSource = readRepoFile('src/js/player.js');
     const abilitiesSource = readRepoFile('src/js/abilities.js');
@@ -185,6 +231,9 @@ function main() {
     const helpSource = readRepoFile('src/js/helpScreen.js');
     const objectInfoSource = readRepoFile('src/js/objectInfoScreen.js');
     const aboutSource = readRepoFile('src/js/aboutScreen.js');
+    const uiSource = readRepoFile('src/js/ui.js');
+    const utilsSource = readRepoFile('src/js/utils.js');
+    const objectsSource = readRepoFile('src/js/objects.js');
     const buildSource = readRepoFile('build.js');
     const indexSource = readRepoFile('src/index.html');
     const assetSource = readRepoFile('src/js/assets.js');
@@ -193,6 +242,8 @@ function main() {
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
     checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSource, aboutSource, achievementsSource);
     checkBuildAndAssetContracts(buildSource, indexSource, assetSource);
+    checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);
+    checkPlayTimeContracts(sketchSource);
 
     console.log('Smoke checks passed.');
 }

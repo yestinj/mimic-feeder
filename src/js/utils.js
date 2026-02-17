@@ -240,9 +240,8 @@ function handleHumanCollection() {
         playerState.lives = min(playerState.lives + 1, playerState.maxLives);
         gameState.humansForNextMaxLife += HUMANS_PER_MAX_LIFE_INCREASE;
 
-        // Activate notification for extra life
-        extraLifeNotification.active = true;
-        extraLifeNotification.timer = extraLifeNotification.duration;
+        // Queue notification for extra life
+        queueExtraLifeNotification();
         playSound('player_level_up'); // Use level up sound for extra life
     }
 }
@@ -285,15 +284,13 @@ function handleHealthPotionCollection() {
 function handleWizardStaffCollection() {
     playerState.hasWizardStaff = true;
     gameState.collectedCount++;
-    staffNotification.active = true;
-    staffNotification.timer = STAFF_NOTIFICATION_DURATION;
+    queueStaffNotification();
 }
 
 function handleMagnetCollection() {
     playerState.hasMagnet = true;
     gameState.collectedCount++;
-    magnetNotification.active = true;
-    magnetNotification.timer = STAFF_NOTIFICATION_DURATION;
+    queueMagnetNotification();
 }
 
 function handleObjectBump(obj, index) {
@@ -330,16 +327,17 @@ function checkForPlayerLevelUp() {
         player.jumpPower *= PLAYER_JUMP_INCREASE_PER_LEVEL;
 
         if (playerState.level >= PLAYER_LEVEL_FOR_TENTACLES) {
+            let tentacleLine1;
+            let tentacleLine2;
             if (oldLevel < PLAYER_LEVEL_FOR_TENTACLES) {
-                tentacleNotification.line1 = "Tentacles Unlocked!";
-                tentacleNotification.line2 = "Press 'Z' Key to use";
+                tentacleLine1 = "Tentacles Unlocked!";
+                tentacleLine2 = "Press 'Z' Key to use";
             } else {
                 playerState.tentacleTargetLimit += 1;
-                tentacleNotification.line1 = "Tentacles +1";
-                tentacleNotification.line2 = `Target Limit: ${playerState.tentacleTargetLimit}`;
+                tentacleLine1 = "Tentacles +1";
+                tentacleLine2 = `Target Limit: ${playerState.tentacleTargetLimit}`;
             }
-            tentacleNotification.active = true;
-            tentacleNotification.timer = TENTACLE_NOTIFICATION_DURATION;
+            queueTentacleNotification(tentacleLine1, tentacleLine2);
         }
         playSound('player_level_up');
     }
@@ -447,9 +445,7 @@ function createBoss() {
     objects.push(boss);
 
     // Show boss notification
-    gameLevelNotification.active = true;
-    gameLevelNotification.text = "BOSS FIGHT!";
-    gameLevelNotification.timer = GAME_LEVEL_NOTIFICATION_DURATION;
+    queueBossFightNotification();
     playSound('level_complete');
 }
 
@@ -491,9 +487,7 @@ function checkForGameLevelUp() {
             clearAllObjects();
             createBoss();
         } else {
-            gameLevelNotification.active = true;
-            gameLevelNotification.text = `Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`;
-            gameLevelNotification.timer = GAME_LEVEL_NOTIFICATION_DURATION;
+            queueGameLevelNotification(`Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`);
             playSound('level_complete');
         }
     }

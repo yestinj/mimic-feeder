@@ -322,9 +322,7 @@ function updateObjects() {
                     gameState.dungeonZone = 1;
 
                     // Show notification
-                    gameLevelNotification.active = true;
-                    gameLevelNotification.text = `Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`;
-                    gameLevelNotification.timer = GAME_LEVEL_NOTIFICATION_DURATION;
+                    queueGameLevelNotification(`Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`);
 
                     // Play sound
                     playSound('level_complete');
@@ -452,14 +450,6 @@ function updateObjects() {
                 image(bossDieFrames[obj.dieCurrentFrame], -drawWidth / 2, -obj.h / 2, drawWidth, obj.h);
 
                 pop();
-
-                // Display "Boss Defeated!" notification
-                fill(255, 0, 0);
-                textSize(48);
-                textAlign(CENTER, CENTER);
-                textStyle(BOLD);
-                text("Boss Defeated!", width / 2, height / 2);
-                textStyle(NORMAL);
             } else if (obj.isHit && bossHitFrames[obj.hitCurrentFrame] && bossHitFrames[obj.hitCurrentFrame].width) {
                 // Draw hit animation
                 image(bossHitFrames[obj.hitCurrentFrame], -drawWidth / 2, -obj.h / 2, drawWidth, obj.h);

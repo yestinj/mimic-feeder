@@ -1,25 +1,270 @@
 // Declare UI element variables HERE, only once globally
 let retryButton = {x: 0, y: 0, w: 100, h: 40};
 let submitButton = {x: 0, y: 0, w: 100, h: 40};
-let gameLevelNotification = {
-    active: false, timer: 0, duration: GAME_LEVEL_NOTIFICATION_DURATION, text: ""
-};
-let staffNotification = {
-    active: false, timer: 0, duration: STAFF_NOTIFICATION_DURATION,
-    line1: "Wizard Staff acquired", line2: "Press Space to cast Shadow Bolt"
-};
-let tentacleNotification = {
-    active: false, timer: 0, duration: TENTACLE_NOTIFICATION_DURATION,
-    line1: "Tentacles Unlocked!", line2: "Press 'Z' Key to use"
-};
-let magnetNotification = {
-    active: false, timer: 0, duration: STAFF_NOTIFICATION_DURATION,
-    line1: "Magnet acquired", line2: "Press 'X' Key to use"
-};
-let extraLifeNotification = {
-    active: false, timer: 0, duration: 180,
-    line1: "Extra Life Gained!", line2: "Max Lives Increased"
-};
+let centerNotificationQueue = [];
+let activeCenterNotification = null;
+const MAX_CENTER_NOTIFICATION_QUEUE_SIZE = 30;
+
+function enqueueCenterNotification(notification) {
+    if (!notification || typeof notification.title !== 'string' || notification.title.trim().length === 0) {
+        return;
+    }
+
+    const duration = Number.isFinite(notification.duration) && notification.duration > 0
+        ? notification.duration
+        : 180;
+    const entry = {
+        style: notification.style || 'panel',
+        title: notification.title,
+        subtitle: notification.subtitle || '',
+        footer: notification.footer || '',
+        duration: duration,
+        timer: duration,
+        titleColor: notification.titleColor || [255, 215, 0],
+        subtitleColor: notification.subtitleColor || [230, 230, 230],
+        footerColor: notification.footerColor || [0, 255, 0],
+        backgroundColor: notification.backgroundColor || [0, 0, 0, 150],
+        titleSize: Number.isFinite(notification.titleSize) ? notification.titleSize : 28,
+        subtitleSize: Number.isFinite(notification.subtitleSize) ? notification.subtitleSize : 18,
+        footerSize: Number.isFinite(notification.footerSize) ? notification.footerSize : 18,
+        subtitleItalic: !!notification.subtitleItalic
+    };
+
+    if (centerNotificationQueue.length >= MAX_CENTER_NOTIFICATION_QUEUE_SIZE) {
+        centerNotificationQueue.shift();
+    }
+    centerNotificationQueue.push(entry);
+
+    if (!activeCenterNotification) {
+        activeCenterNotification = centerNotificationQueue.shift();
+    }
+}
+
+function clearCenterNotifications() {
+    centerNotificationQueue = [];
+    activeCenterNotification = null;
+}
+
+function measureCenterNotificationTextBlock(textValue, blockSize, blockStyle, maxWidth) {
+    const normalizedText = String(textValue || '').trim();
+    if (!normalizedText) {
+        return null;
+    }
+
+    textSize(blockSize);
+    textStyle(blockStyle);
+    const lines = wrapTextToLines(normalizedText, maxWidth);
+    const lineHeight = Math.max(16, Math.round(blockSize * 1.2));
+
+    let maxLineWidth = 0;
+    for (const line of lines) {
+        maxLineWidth = Math.max(maxLineWidth, textWidth(line));
+    }
+
+    return {
+        lines,
+        size: blockSize,
+        style: blockStyle,
+        lineHeight,
+        width: maxLineWidth,
+        height: lines.length * lineHeight
+    };
+}
+
+function drawCenterPanelNotification(notification) {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const horizontalPadding = 20;
+    const verticalPadding = 14;
+    const blockGap = 8;
+    const maxPanelWidth = Math.min(width * 0.86, 720);
+    const minPanelWidth = Math.min(maxPanelWidth, 240);
+    const maxTextWidth = Math.max(120, maxPanelWidth - (horizontalPadding * 2));
+
+    const blocks = [];
+    const titleBlock = measureCenterNotificationTextBlock(notification.title, notification.titleSize, BOLD, maxTextWidth);
+    if (titleBlock) {
+        titleBlock.color = notification.titleColor;
+        blocks.push(titleBlock);
+    }
+
+    const subtitleStyle = notification.subtitleItalic ? ITALIC : NORMAL;
+    const subtitleBlock = measureCenterNotificationTextBlock(notification.subtitle, notification.subtitleSize, subtitleStyle, maxTextWidth);
+    if (subtitleBlock) {
+        subtitleBlock.color = notification.subtitleColor;
+        blocks.push(subtitleBlock);
+    }
+
+    const footerBlock = measureCenterNotificationTextBlock(notification.footer, notification.footerSize, NORMAL, maxTextWidth);
+    if (footerBlock) {
+        footerBlock.color = notification.footerColor;
+        blocks.push(footerBlock);
+    }
+
+    if (blocks.length === 0) {
+        return;
+    }
+
+    const widestBlockWidth = blocks.reduce((maxWidth, block) => Math.max(maxWidth, block.width), 0);
+    const panelWidth = constrain(widestBlockWidth + (horizontalPadding * 2), minPanelWidth, maxPanelWidth);
+    const panelHeight = Math.max(
+        80,
+        (verticalPadding * 2) +
+        blocks.reduce((sum, block) => sum + block.height, 0) +
+        (blockGap * (blocks.length - 1))
+    );
+    const panelX = centerX - (panelWidth / 2);
+    const panelY = centerY - (panelHeight / 2);
+
+    const backgroundColor = notification.backgroundColor;
+    fill(backgroundColor[0], backgroundColor[1], backgroundColor[2], backgroundColor[3]);
+    noStroke();
+    rect(panelX, panelY, panelWidth, panelHeight, 10);
+
+    textAlign(CENTER, TOP);
+    let textY = panelY + verticalPadding;
+    for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i];
+        fill(block.color[0], block.color[1], block.color[2]);
+        textSize(block.size);
+        textStyle(block.style);
+
+        for (let lineIndex = 0; lineIndex < block.lines.length; lineIndex++) {
+            text(block.lines[lineIndex], centerX, textY + (lineIndex * block.lineHeight));
+        }
+
+        textY += block.height;
+        if (i < blocks.length - 1) {
+            textY += blockGap;
+        }
+    }
+
+    textStyle(NORMAL);
+    textAlign(LEFT, BASELINE);
+}
+
+function drawCenterBannerNotification(notification) {
+    const titleColor = notification.titleColor;
+    fill(titleColor[0], titleColor[1], titleColor[2]);
+    textSize(notification.titleSize);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    text(notification.title, width / 2, height / 2);
+    textStyle(NORMAL);
+    textAlign(LEFT, BASELINE);
+}
+
+function updateAndDrawCenterNotifications() {
+    if (!activeCenterNotification && centerNotificationQueue.length > 0) {
+        activeCenterNotification = centerNotificationQueue.shift();
+    }
+    if (!activeCenterNotification) {
+        return;
+    }
+
+    if (activeCenterNotification.style === 'banner') {
+        drawCenterBannerNotification(activeCenterNotification);
+    } else {
+        drawCenterPanelNotification(activeCenterNotification);
+    }
+
+    activeCenterNotification.timer -= getFrameDelta();
+    if (activeCenterNotification.timer <= 0) {
+        activeCenterNotification = null;
+        if (centerNotificationQueue.length > 0) {
+            activeCenterNotification = centerNotificationQueue.shift();
+        }
+    }
+}
+
+function queueGameLevelNotification(text) {
+    enqueueCenterNotification({
+        style: 'banner',
+        title: text,
+        duration: GAME_LEVEL_NOTIFICATION_DURATION,
+        titleColor: [255, 255, 0],
+        titleSize: 48
+    });
+}
+
+function queueBossFightNotification() {
+    queueGameLevelNotification("BOSS FIGHT!");
+}
+
+function queueBossDefeatedNotification() {
+    enqueueCenterNotification({
+        style: 'banner',
+        title: "Boss Defeated!",
+        duration: GAME_LEVEL_NOTIFICATION_DURATION,
+        titleColor: [255, 0, 0],
+        titleSize: 48
+    });
+}
+
+function queueStaffNotification(line1 = "Wizard Staff acquired", line2 = "Press Space to cast Shadow Bolt") {
+    enqueueCenterNotification({
+        style: 'panel',
+        title: line1,
+        subtitle: line2,
+        duration: STAFF_NOTIFICATION_DURATION,
+        titleColor: [255, 215, 0],
+        subtitleColor: [230, 230, 230],
+        subtitleItalic: true
+    });
+}
+
+function queueTentacleNotification(line1, line2) {
+    enqueueCenterNotification({
+        style: 'panel',
+        title: line1,
+        subtitle: line2,
+        duration: TENTACLE_NOTIFICATION_DURATION,
+        titleColor: [138, 43, 226],
+        subtitleColor: [230, 230, 230],
+        subtitleItalic: true
+    });
+}
+
+function queueMagnetNotification(line1 = "Magnet acquired", line2 = "Press 'X' Key to use") {
+    enqueueCenterNotification({
+        style: 'panel',
+        title: line1,
+        subtitle: line2,
+        duration: STAFF_NOTIFICATION_DURATION,
+        titleColor: [0, 100, 255],
+        subtitleColor: [230, 230, 230],
+        subtitleItalic: true
+    });
+}
+
+function queueExtraLifeNotification(line1 = "Extra Life Gained!", line2 = "Max Lives Increased") {
+    enqueueCenterNotification({
+        style: 'panel',
+        title: line1,
+        subtitle: line2,
+        duration: 180,
+        titleColor: [255, 0, 0],
+        subtitleColor: [230, 230, 230],
+        subtitleItalic: true
+    });
+}
+
+function queueAchievementNotification(name, points) {
+    enqueueCenterNotification({
+        style: 'panel',
+        title: "Achievement Unlocked!",
+        subtitle: name,
+        footer: `+${points} points`,
+        duration: 180,
+        titleColor: [255, 215, 0],
+        subtitleColor: [255, 255, 255],
+        footerColor: [0, 255, 0],
+        subtitleItalic: false,
+        titleSize: 28,
+        subtitleSize: 22,
+        footerSize: 18
+    });
+}
 
 // Declare highScores array HERE
 let highScores = [];

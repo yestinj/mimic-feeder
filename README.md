@@ -18,6 +18,21 @@ Arcade mimic-feeding chaos. Eat creatures, grab shinies, dodge bombs, and unlock
 - **Help Overlay**: Esc
 - **View Achievements**: K
 
+## Achievements
+- Achievements are split into three tiers:
+- **Early**: +25 score
+- **Mid**: +50 score
+- **Late / Mastery**: +100 score
+- Progression includes quick unlocks, medium milestones, and long-run goals (high floors, long survival, repeated ability usage, and boss clears).
+- Center-screen notifications are queued and displayed one at a time to avoid overlap.
+- Queued panel notifications auto-size and wrap text to keep the background aligned to content.
+- Play-time achievements count active gameplay time only (not intro/pause/help/about/object-info/achievements overlays).
+Mastery tracking includes:
+- Shadow bolts cast
+- Tentacles used
+- Dashes used
+- Bosses defeated
+
 ## Installation and Running
 1. Clone the repository
 2. Install dependencies: `npm install`
