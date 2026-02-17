@@ -3,7 +3,51 @@ let retryButton = {x: 0, y: 0, w: 100, h: 40};
 let submitButton = {x: 0, y: 0, w: 100, h: 40};
 let centerNotificationQueue = [];
 let activeCenterNotification = null;
+let centerNotificationTransitionTimer = 0;
 const MAX_CENTER_NOTIFICATION_QUEUE_SIZE = 30;
+const CENTER_NOTIFICATION_TRANSITION_FRAMES = 8;
+const UI_THEME = {
+    fontPrimary: 'Georgia',
+    shadow: [12, 7, 5, 180],
+    panelBackground: [20, 12, 9, 150],
+    panelBorder: [176, 132, 79, 215],
+    panelGlow: [255, 220, 150, 36],
+    textPrimary: [246, 234, 208],
+    textMuted: [204, 188, 159],
+    textAccent: [255, 219, 126]
+};
+
+function formatHudNumber(value) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+        return '0';
+    }
+    return Math.round(numericValue).toLocaleString();
+}
+
+function drawHudPanel(x, y, w, h, radius = 12, backgroundColor = UI_THEME.panelBackground, borderColor = UI_THEME.panelBorder) {
+    noStroke();
+    fill(UI_THEME.panelGlow[0], UI_THEME.panelGlow[1], UI_THEME.panelGlow[2], UI_THEME.panelGlow[3]);
+    rect(x - 1, y - 1, w + 2, h + 2, radius + 2);
+    stroke(borderColor[0], borderColor[1], borderColor[2], borderColor[3]);
+    strokeWeight(1.25);
+    fill(backgroundColor[0], backgroundColor[1], backgroundColor[2], backgroundColor[3]);
+    rect(x, y, w, h, radius);
+}
+
+function drawShadowedText(content, x, y, size, color, alignX = LEFT, alignY = TOP, style = NORMAL) {
+    const colorAlpha = Array.isArray(color) && color.length >= 4 ? color[3] : 255;
+    const shadowAlpha = Math.min(UI_THEME.shadow[3], colorAlpha);
+    textFont(UI_THEME.fontPrimary);
+    textSize(size);
+    textAlign(alignX, alignY);
+    textStyle(style);
+    noStroke();
+    fill(UI_THEME.shadow[0], UI_THEME.shadow[1], UI_THEME.shadow[2], shadowAlpha);
+    text(content, x + 1.5, y + 1.5);
+    fill(color[0], color[1], color[2], colorAlpha);
+    text(content, x, y);
+}
 
 function enqueueCenterNotification(notification) {
     if (!notification || typeof notification.title !== 'string' || notification.title.trim().length === 0) {
@@ -25,6 +69,7 @@ function enqueueCenterNotification(notification) {
         footerColor: notification.footerColor || [0, 255, 0],
         backgroundColor: notification.backgroundColor || [0, 0, 0, 150],
         titleSize: Number.isFinite(notification.titleSize) ? notification.titleSize : 28,
+        titleStyle: notification.titleStyle || BOLD,
         subtitleSize: Number.isFinite(notification.subtitleSize) ? notification.subtitleSize : 18,
         footerSize: Number.isFinite(notification.footerSize) ? notification.footerSize : 18,
         subtitleItalic: !!notification.subtitleItalic
@@ -35,7 +80,7 @@ function enqueueCenterNotification(notification) {
     }
     centerNotificationQueue.push(entry);
 
-    if (!activeCenterNotification) {
+    if (!activeCenterNotification && centerNotificationTransitionTimer <= 0) {
         activeCenterNotification = centerNotificationQueue.shift();
     }
 }
@@ -43,6 +88,18 @@ function enqueueCenterNotification(notification) {
 function clearCenterNotifications() {
     centerNotificationQueue = [];
     activeCenterNotification = null;
+    centerNotificationTransitionTimer = 0;
+}
+
+function hasPendingCenterNotificationTitle(title) {
+    const normalizedTitle = String(title || '').trim();
+    if (!normalizedTitle) {
+        return false;
+    }
+    if (activeCenterNotification && activeCenterNotification.title === normalizedTitle) {
+        return true;
+    }
+    return centerNotificationQueue.some((entry) => entry && entry.title === normalizedTitle);
 }
 
 function measureCenterNotificationTextBlock(textValue, blockSize, blockStyle, maxWidth) {
@@ -51,6 +108,7 @@ function measureCenterNotificationTextBlock(textValue, blockSize, blockStyle, ma
         return null;
     }
 
+    textFont(UI_THEME.fontPrimary);
     textSize(blockSize);
     textStyle(blockStyle);
     const lines = wrapTextToLines(normalizedText, maxWidth);
@@ -72,6 +130,7 @@ function measureCenterNotificationTextBlock(textValue, blockSize, blockStyle, ma
 }
 
 function drawCenterPanelNotification(notification) {
+    push();
     const centerX = width / 2;
     const centerY = height / 2;
     const horizontalPadding = 20;
@@ -102,6 +161,7 @@ function drawCenterPanelNotification(notification) {
     }
 
     if (blocks.length === 0) {
+        pop();
         return;
     }
 
@@ -116,21 +176,30 @@ function drawCenterPanelNotification(notification) {
     const panelX = centerX - (panelWidth / 2);
     const panelY = centerY - (panelHeight / 2);
 
-    const backgroundColor = notification.backgroundColor;
-    fill(backgroundColor[0], backgroundColor[1], backgroundColor[2], backgroundColor[3]);
-    noStroke();
-    rect(panelX, panelY, panelWidth, panelHeight, 10);
+    const rawBackgroundColor = notification.backgroundColor || UI_THEME.panelBackground;
+    const panelBackgroundColor = [
+        rawBackgroundColor[0],
+        rawBackgroundColor[1],
+        rawBackgroundColor[2],
+        rawBackgroundColor.length >= 4 ? rawBackgroundColor[3] : UI_THEME.panelBackground[3]
+    ];
+    drawHudPanel(panelX, panelY, panelWidth, panelHeight, 12, panelBackgroundColor, UI_THEME.panelBorder);
 
-    textAlign(CENTER, TOP);
     let textY = panelY + verticalPadding;
     for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i];
-        fill(block.color[0], block.color[1], block.color[2]);
-        textSize(block.size);
-        textStyle(block.style);
 
         for (let lineIndex = 0; lineIndex < block.lines.length; lineIndex++) {
-            text(block.lines[lineIndex], centerX, textY + (lineIndex * block.lineHeight));
+            drawShadowedText(
+                block.lines[lineIndex],
+                centerX,
+                textY + (lineIndex * block.lineHeight),
+                block.size,
+                block.color,
+                CENTER,
+                TOP,
+                block.style
+            );
         }
 
         textY += block.height;
@@ -139,22 +208,59 @@ function drawCenterPanelNotification(notification) {
         }
     }
 
-    textStyle(NORMAL);
-    textAlign(LEFT, BASELINE);
+    pop();
 }
 
 function drawCenterBannerNotification(notification) {
+    push();
+    let titleSize = notification.titleSize;
     const titleColor = notification.titleColor;
-    fill(titleColor[0], titleColor[1], titleColor[2]);
-    textSize(notification.titleSize);
-    textAlign(CENTER, CENTER);
-    textStyle(BOLD);
-    text(notification.title, width / 2, height / 2);
-    textStyle(NORMAL);
-    textAlign(LEFT, BASELINE);
+    const titleStyle = notification.titleStyle || BOLD;
+    const maxTextWidth = width * 0.86;
+    const safeTitle = String(notification.title || '');
+
+    textFont(UI_THEME.fontPrimary);
+    textStyle(titleStyle);
+    textSize(titleSize);
+    while (titleSize > 26 && textWidth(safeTitle) > maxTextWidth) {
+        titleSize -= 2;
+        textSize(titleSize);
+    }
+
+    const panelWidth = constrain(textWidth(safeTitle) + 48, 260, width * 0.9);
+    const panelHeight = Math.max(78, titleSize * 1.9);
+    const panelX = (width - panelWidth) / 2;
+    const panelY = (height - panelHeight) / 2;
+
+    drawHudPanel(
+        panelX,
+        panelY,
+        panelWidth,
+        panelHeight,
+        12,
+        [14, 8, 6, 170],
+        [titleColor[0], titleColor[1], titleColor[2], 230]
+    );
+
+    drawShadowedText(
+        safeTitle,
+        width / 2,
+        height / 2,
+        titleSize,
+        titleColor,
+        CENTER,
+        CENTER,
+        titleStyle
+    );
+    pop();
 }
 
 function updateAndDrawCenterNotifications() {
+    if (!activeCenterNotification && centerNotificationTransitionTimer > 0) {
+        centerNotificationTransitionTimer = max(0, centerNotificationTransitionTimer - getFrameDelta());
+        return;
+    }
+
     if (!activeCenterNotification && centerNotificationQueue.length > 0) {
         activeCenterNotification = centerNotificationQueue.shift();
     }
@@ -171,24 +277,33 @@ function updateAndDrawCenterNotifications() {
     activeCenterNotification.timer -= getFrameDelta();
     if (activeCenterNotification.timer <= 0) {
         activeCenterNotification = null;
-        if (centerNotificationQueue.length > 0) {
-            activeCenterNotification = centerNotificationQueue.shift();
-        }
+        centerNotificationTransitionTimer = CENTER_NOTIFICATION_TRANSITION_FRAMES;
     }
 }
 
 function queueGameLevelNotification(text) {
+    if (hasPendingCenterNotificationTitle(text)) {
+        return;
+    }
     enqueueCenterNotification({
         style: 'banner',
         title: text,
         duration: GAME_LEVEL_NOTIFICATION_DURATION,
-        titleColor: [255, 255, 0],
-        titleSize: 48
+        titleColor: [255, 221, 130],
+        titleSize: 36,
+        titleStyle: NORMAL
     });
 }
 
 function queueBossFightNotification() {
-    queueGameLevelNotification("BOSS FIGHT!");
+    enqueueCenterNotification({
+        style: 'banner',
+        title: "BOSS FIGHT!",
+        duration: GAME_LEVEL_NOTIFICATION_DURATION,
+        titleColor: [255, 221, 130],
+        titleSize: 44,
+        titleStyle: BOLD
+    });
 }
 
 function queueBossDefeatedNotification() {
@@ -196,8 +311,8 @@ function queueBossDefeatedNotification() {
         style: 'banner',
         title: "Boss Defeated!",
         duration: GAME_LEVEL_NOTIFICATION_DURATION,
-        titleColor: [255, 0, 0],
-        titleSize: 48
+        titleColor: [255, 120, 120],
+        titleSize: 44
     });
 }
 
@@ -320,25 +435,18 @@ function drawOnboardingOverlays() {
 
         if (alpha > 0) {
             push();
-            // Highlight the ground line
             let groundY = height - PLAYER_GROUND_Y_OFFSET;
-            stroke(255, alpha);
-            strokeWeight(1);
+            stroke(255, 220, 150, alpha);
+            strokeWeight(1.25);
             line(0, groundY, width, groundY);
 
-            // Highlight the player's eating zone
             noStroke();
-            fill(255, 255, 0, alpha * 0.3);
+            fill(255, 190, 90, alpha * 0.35);
             let eatingZoneHeight = player.h * PLAYER_EATING_ZONE_HEIGHT_FACTOR;
             rect(player.x, player.y, player.w, eatingZoneHeight, 4);
 
-            // Labels
-            fill(255, alpha);
-            textSize(10);
-            textAlign(CENTER);
-            text("EATING ZONE", player.x + player.w / 2, player.y - 5);
-            textAlign(LEFT);
-            text("GROUND", 5, groundY - 3);
+            drawShadowedText("FEEDING MAW", player.x + player.w / 2, player.y - 6, 10, [255, 230, 170, alpha], CENTER, BOTTOM, BOLD);
+            drawShadowedText("STONE FLOOR", 6, groundY - 4, 10, [255, 230, 170, alpha], LEFT, BOTTOM, BOLD);
             pop();
         }
     }
@@ -350,90 +458,201 @@ function drawOnboardingOverlays() {
 
         if (alpha > 0) {
             push();
-            fill(255, alpha);
-            textSize(12);
-            textAlign(RIGHT, BOTTOM);
-            let ctrlX = width - 10;
-            let ctrlY = height - 10;
-
-            let controlsText = "Controls:\n" +
-                "← → : Move\n" +
-                "↑ : Jump\n";
+            let controlLines = [
+                "Controls",
+                "<- -> : Move",
+                "^ : Jump"
+            ];
 
             if (playerState.hasWizardStaff) {
-                controlsText += "Space : Shadow Bolt\n";
+                controlLines.push("Space : Shadow Bolt");
             }
             if (playerState.level >= PLAYER_LEVEL_FOR_TENTACLES) {
-                controlsText += "Z : Tentacles\n";
+                controlLines.push("Z : Tentacles");
             }
             if (playerState.hasMagnet) {
-                controlsText += "X : Magnet\n";
+                controlLines.push("X : Magnet");
             }
 
-            text(controlsText, ctrlX, ctrlY);
+            textFont(UI_THEME.fontPrimary);
+            textSize(12);
+            textStyle(NORMAL);
+            let longestLineWidth = 0;
+            for (const line of controlLines) {
+                longestLineWidth = Math.max(longestLineWidth, textWidth(line));
+            }
+
+            const panelPadding = 10;
+            const lineHeight = 15;
+            const panelWidth = longestLineWidth + (panelPadding * 2);
+            const panelHeight = (controlLines.length * lineHeight) + (panelPadding * 2);
+            const panelX = 10;
+            const panelY = Math.max(10, height - panelHeight - 10 - VISUAL_GROUND_HEIGHT - 8);
+
+            drawHudPanel(
+                panelX,
+                panelY,
+                panelWidth,
+                panelHeight,
+                8,
+                [15, 10, 8, Math.round(alpha * 0.95)],
+                [UI_THEME.panelBorder[0], UI_THEME.panelBorder[1], UI_THEME.panelBorder[2], Math.round(alpha + 50)]
+            );
+
+            for (let i = 0; i < controlLines.length; i++) {
+                const line = controlLines[i];
+                const lineColor = i === 0
+                    ? [UI_THEME.textAccent[0], UI_THEME.textAccent[1], UI_THEME.textAccent[2], alpha]
+                    : [UI_THEME.textPrimary[0], UI_THEME.textPrimary[1], UI_THEME.textPrimary[2], alpha];
+                const lineStyle = i === 0 ? BOLD : NORMAL;
+                drawShadowedText(line, panelX + panelPadding, panelY + panelPadding + (i * lineHeight), 12, lineColor, LEFT, TOP, lineStyle);
+            }
             pop();
         }
     }
 }
 
 function drawUI() {
-    fill(255);
-    textSize(24);
-    textAlign(LEFT);
-    text(`Floor: ${gameState.dungeonFloor}`, 10, 30);
-    text(`Zone: ${gameState.dungeonZone}`, 10, 55);
-    text(`Score: ${gameState.score}`, 10, 80);
-    textSize(14);
+    push();
     const dropSpeedPercent = Math.round((gameState.dropSpeedScale / INITIAL_DROP_SPEED_SCALE) * 100);
     const spawnRatePercent = Math.round((BASE_OBJECT_SPAWN_RATE_FRAMES / gameState.objectSpawnRate) * 100);
-    text(`Drop Speed: ${dropSpeedPercent}%`, 10, 105);
-    text(`Spawn Rate: ${spawnRatePercent}%`, 10, 125);
 
-    text('Esc: Help', 10, 155);
+    const measureHudLine = (textValue, size, style = NORMAL) => {
+        textFont(UI_THEME.fontPrimary);
+        textSize(size);
+        textStyle(style);
+        return textWidth(textValue);
+    };
 
-    // Top right
-    let heartSize = 20;
-    let topMargin = 10;
-    let rightMargin = 10;
-    let heartSpacing = 5;
-    let heartStep = heartSize + heartSpacing;
-    let startHeartX = width - rightMargin - heartSize;
-    let heartY = topMargin;
-    for (let i = 0; i < playerState.lives; i++) {
-        let currentHeartX = startHeartX - i * heartStep;
-        drawHeart(currentHeartX, heartY, heartSize);
+    const leftLines = [
+        { text: "Dungeon Status", size: 18, style: BOLD, color: UI_THEME.textAccent, step: 24 },
+        { text: `Floor ${gameState.dungeonFloor} | Zone ${gameState.dungeonZone}`, size: 16, style: BOLD, color: UI_THEME.textPrimary, step: 23 },
+        { text: `Score ${formatHudNumber(gameState.score)}`, size: 22, style: BOLD, color: UI_THEME.textPrimary, step: 31 },
+        { text: `Drop Speed ${dropSpeedPercent}%`, size: 14, style: NORMAL, color: UI_THEME.textMuted, step: 20 },
+        { text: `Spawn Rate ${spawnRatePercent}%`, size: 14, style: NORMAL, color: UI_THEME.textMuted, step: 21 },
+        { text: "Esc : Help", size: 12, style: BOLD, color: UI_THEME.textAccent, step: 14 }
+    ];
+    const leftPanelX = 8;
+    const leftPanelY = 8;
+    const leftPadding = 11;
+    const leftTopPadding = 10;
+    const leftBottomPadding = 10;
+    let leftMaxTextWidth = 0;
+    for (const line of leftLines) {
+        leftMaxTextWidth = Math.max(leftMaxTextWidth, measureHudLine(line.text, line.size, line.style));
     }
-    fill(255);
-    textSize(24);
-    textAlign(RIGHT);
-    let statsStartY = heartY + heartSize + 25;
-    text(`XP: ${playerState.experience} / ${playerState.experienceCap}`, width - 10, statsStartY);
-    let playerLevelY = statsStartY + 25;
-    text(`Player Level: ${playerState.level}`, width - 10, playerLevelY);
-    textSize(14);
-    let speedY = playerLevelY + 25;
-    text(`Speed: ${playerState.speedPercentage}%`, width - 10, speedY);
-    let sizeY = speedY + 20;
-    text(`Size: ${playerState.sizePercentage}%`, width - 10, sizeY);
-    let iconY = sizeY + 18;
-    let iconHeightTarget = 25;
-    let iconRightEdge = width - 10;
-    let iconSpacing = 8;
+    let leftPanelW = constrain(leftMaxTextWidth + (leftPadding * 2) + 12, 150, width * 0.42);
+    const leftContentHeight = leftLines.reduce((sum, line) => sum + line.step, 0);
+    const leftPanelH = leftTopPadding + leftContentHeight + leftBottomPadding;
+
+    const hasStaff = !!playerState.hasWizardStaff;
+    const hasTentacles = playerState.level >= PLAYER_LEVEL_FOR_TENTACLES;
+    const hasMagnet = !!playerState.hasMagnet;
+    const iconCount = (hasStaff ? 1 : 0) + (hasTentacles ? 1 : 0) + (hasMagnet ? 1 : 0);
+    const showTentacleCooldown = hasTentacles && playerState.tentaclesCooldown > 0;
+    const showMagnetCooldown = hasMagnet && playerState.magnetismCooldown > 0;
+    const cooldownRows = (showTentacleCooldown ? 1 : 0) + (showMagnetCooldown ? 1 : 0);
+    const iconHeightTarget = 23;
+    const iconSpacing = 8;
+    const heartSize = 18;
+    const heartSpacing = 5;
+    const heartStep = heartSize + heartSpacing;
+    const rightPadding = 11;
+
+    const rightTitleText = "Mimic Growth";
+    const rightXpText = `XP ${formatHudNumber(playerState.experience)} / ${formatHudNumber(playerState.experienceCap)}`;
+    const rightLevelText = `Level ${playerState.level}`;
+    const rightSpeedText = `Speed ${playerState.speedPercentage}%`;
+    const rightSizeText = `Size ${playerState.sizePercentage}%`;
+    const rightTextWidth = Math.max(
+        measureHudLine(rightTitleText, 18, BOLD),
+        measureHudLine(rightXpText, 17, BOLD),
+        measureHudLine(rightLevelText, 16, BOLD),
+        measureHudLine(rightSpeedText, 14, NORMAL),
+        measureHudLine(rightSizeText, 14, NORMAL)
+    );
+    const desiredHeartCols = Math.max(3, Math.min(playerState.lives, 12));
+    const desiredHeartSpan = heartSize + ((desiredHeartCols - 1) * heartStep);
+    const iconSpan = iconCount > 0 ? (iconCount * iconHeightTarget) + ((iconCount - 1) * iconSpacing) : 0;
+    const cooldownSpan = cooldownRows > 0 ? 82 : 0;
+    let rightPanelW = constrain(
+        Math.max(rightTextWidth, desiredHeartSpan, iconSpan, cooldownSpan) + (rightPadding * 2) + 12,
+        160,
+        width * 0.46
+    );
+
+    const minPanelWidth = 140;
+    const combinedWidth = leftPanelW + rightPanelW + 24;
+    if (combinedWidth > width) {
+        let overflow = combinedWidth - width;
+        const leftReducible = Math.max(0, leftPanelW - minPanelWidth);
+        const rightReducible = Math.max(0, rightPanelW - minPanelWidth);
+        const totalReducible = leftReducible + rightReducible;
+        if (totalReducible > 0) {
+            const leftReduction = Math.min(leftReducible, overflow * (leftReducible / totalReducible));
+            leftPanelW -= leftReduction;
+            overflow -= leftReduction;
+            const rightReduction = Math.min(rightReducible, overflow);
+            rightPanelW -= rightReduction;
+        }
+    }
+
+    const rightPanelX = width - rightPanelW - 8;
+    const rightPanelY = 8;
+    const heartsPerRow = max(1, Math.floor((rightPanelW - (rightPadding * 2) + heartSpacing) / heartStep));
+    const heartRowsUsed = playerState.lives > 0 ? Math.ceil(playerState.lives / heartsPerRow) : 1;
+    const iconBlockHeight = iconCount > 0 ? iconHeightTarget : 0;
+    const statsBlockHeight = 20 + 18 + 16 + 14;
+    const statsToIconsGap = iconCount > 0 ? 12 : 0;
+    const cooldownBlockHeight = cooldownRows > 0 ? (4 + (cooldownRows * 9) + ((cooldownRows - 1) * 5)) : 0;
+    const rightPanelH = 8 + 22 + (heartRowsUsed * heartStep) + 3 + statsBlockHeight + statsToIconsGap + iconBlockHeight + cooldownBlockHeight + 8;
+
+    drawHudPanel(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
+    let leftY = leftPanelY + leftTopPadding;
+    for (const line of leftLines) {
+        drawShadowedText(line.text, leftPanelX + leftPadding, leftY, line.size, line.color, LEFT, TOP, line.style);
+        leftY += line.step;
+    }
+
+    drawHudPanel(rightPanelX, rightPanelY, rightPanelW, rightPanelH);
+    const rightTextX = rightPanelX + rightPanelW - rightPadding;
+    drawShadowedText(rightTitleText, rightTextX, rightPanelY + 8, 18, UI_THEME.textAccent, RIGHT, TOP, BOLD);
+
+    const heartY = rightPanelY + 8 + 22;
+    for (let i = 0; i < playerState.lives; i++) {
+        const row = Math.floor(i / heartsPerRow);
+        const col = i % heartsPerRow;
+        const currentHeartX = rightPanelX + rightPanelW - rightPadding - heartSize - (col * heartStep);
+        const currentHeartY = heartY + (row * heartStep);
+        drawHeart(currentHeartX, currentHeartY, heartSize);
+    }
+
+    const statsStartY = heartY + (heartRowsUsed * heartStep) + 3;
+    drawShadowedText(rightXpText, rightTextX, statsStartY, 17, UI_THEME.textPrimary, RIGHT, TOP, BOLD);
+    const playerLevelY = statsStartY + 20;
+    drawShadowedText(rightLevelText, rightTextX, playerLevelY, 16, UI_THEME.textPrimary, RIGHT, TOP, BOLD);
+    const speedY = playerLevelY + 18;
+    drawShadowedText(rightSpeedText, rightTextX, speedY, 14, UI_THEME.textMuted, RIGHT, TOP, NORMAL);
+    const sizeY = speedY + 16;
+    drawShadowedText(rightSizeText, rightTextX, sizeY, 14, UI_THEME.textMuted, RIGHT, TOP, NORMAL);
+
+    const iconY = sizeY + (iconCount > 0 ? 12 : 0);
+    const iconRightEdge = rightPanelX + rightPanelW - rightPadding;
     let currentIconX = iconRightEdge;
     const staffImg = objectImages[OBJ_WIZARD_STAFF];
-    let staffIconWidth = 0;
-    let staffIconHeight = 0;
-    if (playerState.hasWizardStaff) {
+    if (hasStaff) {
+        let staffIconWidth = 0;
+        let staffIconHeight = 0;
         if (staffImg && staffImg.width) {
-            let scale = iconHeightTarget / staffImg.height;
+            const scale = iconHeightTarget / staffImg.height;
             staffIconWidth = staffImg.width * scale;
             staffIconHeight = iconHeightTarget;
-            let staffIconX = currentIconX - staffIconWidth;
+            const staffIconX = currentIconX - staffIconWidth;
             image(staffImg, staffIconX, iconY, staffIconWidth, staffIconHeight);
         } else {
             staffIconWidth = 15;
             staffIconHeight = iconHeightTarget;
-            let staffIconX = currentIconX - staffIconWidth;
+            const staffIconX = currentIconX - staffIconWidth;
             fill(139, 69, 19);
             noStroke();
             rect(staffIconX + 10, iconY + 5, 5, staffIconHeight * 0.7);
@@ -442,17 +661,17 @@ function drawUI() {
         }
         currentIconX -= (staffIconWidth + iconSpacing);
     }
-    if (playerState.level >= PLAYER_LEVEL_FOR_TENTACLES) {
+    if (hasTentacles) {
         let chainIconWidth;
         if (chainImage && chainImage.width) {
-            let scale = iconHeightTarget / chainImage.height;
+            const scale = iconHeightTarget / chainImage.height;
             chainIconWidth = chainImage.width * scale;
-            let chainIconHeight = iconHeightTarget;
-            let chainIconX = currentIconX - chainIconWidth;
+            const chainIconHeight = iconHeightTarget;
+            const chainIconX = currentIconX - chainIconWidth;
             image(chainImage, chainIconX, iconY, chainIconWidth, chainIconHeight);
         } else {
             chainIconWidth = 15;
-            let chainIconX = currentIconX - chainIconWidth;
+            const chainIconX = currentIconX - chainIconWidth;
             fill(150);
             noStroke();
             rect(chainIconX, iconY, chainIconWidth, iconHeightTarget, 3);
@@ -462,52 +681,53 @@ function drawUI() {
         }
         currentIconX -= (chainIconWidth + iconSpacing);
     }
-
-    if (playerState.hasMagnet) {
+    if (hasMagnet) {
         let magnetIconWidth;
         if (magnetFrames[0] && magnetFrames[0].width) {
-            let scale = iconHeightTarget / magnetFrames[0].height;
+            const scale = iconHeightTarget / magnetFrames[0].height;
             magnetIconWidth = magnetFrames[0].width * scale;
-            let magnetIconHeight = iconHeightTarget;
-            let magnetIconX = currentIconX - magnetIconWidth;
+            const magnetIconHeight = iconHeightTarget;
+            const magnetIconX = currentIconX - magnetIconWidth;
             image(magnetFrames[0], magnetIconX, iconY, magnetIconWidth, magnetIconHeight);
         } else {
             magnetIconWidth = 15;
-            let magnetIconX = currentIconX - magnetIconWidth;
+            const magnetIconX = currentIconX - magnetIconWidth;
             fill(0, 100, 255);
             noStroke();
             rect(magnetIconX, iconY, magnetIconWidth, iconHeightTarget, 3);
             fill(200);
             ellipse(magnetIconX + magnetIconWidth / 2, iconY + iconHeightTarget / 2, magnetIconWidth * 0.6, magnetIconWidth * 0.6);
         }
-        //currentIconX -= (magnetIconWidth + iconSpacing);
-    }
-    if (playerState.tentaclesCooldown > 0) {
-        let barWidth = 50;
-        let barHeight = 10;
-        let barX = iconRightEdge - barWidth;
-        let barY = iconY + iconHeightTarget + 5;
-        let progress = playerState.tentaclesCooldown / TENTACLE_COOLDOWN_FRAMES;
-        fill(100);
-        noStroke();
-        rect(barX, barY, barWidth, barHeight, 2);
-        fill(0, 255, 0);
-        rect(barX, barY, barWidth * progress, barHeight, 2);
     }
 
-    if (playerState.magnetismCooldown > 0) {
-        let barWidth = 50;
-        let barHeight = 10;
-        let barX = iconRightEdge - barWidth;
-        let barY = iconY + iconHeightTarget + 20; // Position below tentacles cooldown
-        let progress = playerState.magnetismCooldown / MAGNETISM_COOLDOWN_FRAMES;
-        fill(100);
+    let cooldownY = iconY + iconBlockHeight + (cooldownRows > 0 ? 4 : 0);
+    if (showTentacleCooldown) {
+        const barWidth = 66;
+        const barHeight = 9;
+        const barX = iconRightEdge - barWidth;
+        const progress = playerState.tentaclesCooldown / TENTACLE_COOLDOWN_FRAMES;
         noStroke();
-        rect(barX, barY, barWidth, barHeight, 2);
-        fill(0, 100, 255);
-        rect(barX, barY, barWidth * progress, barHeight, 2);
+        fill(65, 56, 45, 220);
+        rect(barX, cooldownY, barWidth, barHeight, 3);
+        fill(110, 240, 150);
+        rect(barX, cooldownY, barWidth * progress, barHeight, 3);
+        drawShadowedText("Z", barX - 4, cooldownY + (barHeight / 2), 11, UI_THEME.textAccent, RIGHT, CENTER, BOLD);
+        cooldownY += barHeight + 5;
+    }
+    if (showMagnetCooldown) {
+        const barWidth = 66;
+        const barHeight = 9;
+        const barX = iconRightEdge - barWidth;
+        const progress = playerState.magnetismCooldown / MAGNETISM_COOLDOWN_FRAMES;
+        noStroke();
+        fill(65, 56, 45, 220);
+        rect(barX, cooldownY, barWidth, barHeight, 3);
+        fill(90, 165, 255);
+        rect(barX, cooldownY, barWidth * progress, barHeight, 3);
+        drawShadowedText("X", barX - 4, cooldownY + (barHeight / 2), 11, UI_THEME.textAccent, RIGHT, CENTER, BOLD);
     }
 
+    pop();
 }
 
 function drawHeart(x, y, size) {

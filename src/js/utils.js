@@ -157,10 +157,17 @@ function updatePopups() {
         popup.y += POPUP_SPEED * frameDelta;
         popup.lifetime -= frameDelta;
         popup.alpha = map(popup.lifetime, POPUP_LIFETIME_FRAMES, 0, 255, 0);
-        fill(255, 255, 0, popup.alpha);
-        textSize(16);
-        textAlign(CENTER);
+        push();
+        textFont('Georgia');
+        textSize(18);
+        textStyle(BOLD);
+        textAlign(CENTER, CENTER);
+        noStroke();
+        fill(20, 10, 6, popup.alpha * 0.9);
+        text(popup.text, popup.x + 1.5, popup.y + 1.5);
+        fill(255, 230, 130, popup.alpha);
         text(popup.text, popup.x, popup.y);
+        pop();
         if (popup.lifetime <= 0) {
             popups.splice(i, 1);
         }
@@ -312,7 +319,7 @@ function handleObjectBump(obj, index) {
 }
 
 function checkForPlayerLevelUp() {
-    if (playerState.experience >= playerState.experienceCap) {
+    while (playerState.experience >= playerState.experienceCap && playerState.experienceCap > 0) {
         let oldLevel = playerState.level;
         playerState.level += 1;
         // Calculate excess XP to carry over
