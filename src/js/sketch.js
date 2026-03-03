@@ -46,6 +46,7 @@ function initializeStates() {
         isPaused: false,                               // Whether the game is paused
         isMuted: false,                                // Whether the game is muted
         shouldTriggerGameOver: false,                  // Flag to trigger game over on next frame
+        pendingGameOverCause: null,                    // Optional cause string for next game over event
         objectSpawnRate: BASE_OBJECT_SPAWN_RATE_FRAMES,// Rate at which objects spawn
         objectSpawnTimer: 0,                           // Frame-equivalent accumulator for spawn cadence
         dropSpeedScale: INITIAL_DROP_SPEED_SCALE,      // Speed at which objects fall
@@ -203,6 +204,83 @@ function syncGameAudioState() {
     }
 }
 
+function getAnalyticsCoreFields() {
+    return {
+        score: Number.isFinite(gameState.score) ? gameState.score : null,
+        dungeon_floor: Number.isFinite(gameState.dungeonFloor) ? gameState.dungeonFloor : null,
+        dungeon_zone: Number.isFinite(gameState.dungeonZone) ? gameState.dungeonZone : null,
+        player_level: Number.isFinite(playerState.level) ? playerState.level : null,
+        play_time_seconds: Number.isFinite(gameState.playTime) ? Math.max(0, Math.floor(gameState.playTime)) : null,
+    };
+}
+
+function trackAnalyticsSafe(eventName, fields) {
+    if (typeof trackEvent !== 'function') {
+        return;
+    }
+    try {
+        trackEvent(eventName, fields);
+    } catch (error) {
+        // Fail-open analytics: gameplay must continue.
+    }
+}
+
+function startRunSafe() {
+    if (typeof startRun !== 'function') {
+        return null;
+    }
+    try {
+        return startRun();
+    } catch (error) {
+        return null;
+    }
+}
+
+function trackIntroViewEvent() {
+    trackAnalyticsSafe('intro_view', {
+        ...getAnalyticsCoreFields(),
+        payload: {
+            version: GAME_VERSION,
+        },
+    });
+}
+
+function trackGameStartEvent(input) {
+    startRunSafe();
+    trackAnalyticsSafe('game_start', {
+        ...getAnalyticsCoreFields(),
+        payload: {
+            version: GAME_VERSION,
+            input,
+        },
+    });
+}
+
+function trackGameOverEvent(cause) {
+    const payload = {
+        version: GAME_VERSION,
+        objects_eaten: Number.isFinite(gameState.collectedCount) ? gameState.collectedCount : null,
+    };
+    if (cause) {
+        payload.cause = cause;
+    }
+    trackAnalyticsSafe('game_over', {
+        ...getAnalyticsCoreFields(),
+        payload,
+    });
+}
+
+function trackRetryClickEvent(input) {
+    trackAnalyticsSafe('retry_click', {
+        ...getAnalyticsCoreFields(),
+        payload: {
+            version: GAME_VERSION,
+            from: 'game_over',
+            input,
+        },
+    });
+}
+
 /**
  * p5.js setup function - Called once at the beginning
  * Sets up the canvas, initializes game state, and prepares the game
@@ -246,10 +324,12 @@ function setup() {
         // Only show intro screen if this is the first time the game is loaded
         if (gameState.lastUsedName === "Player") {
             gameState.showIntroScreen = true;
+            trackIntroViewEvent();
         } else {
             gameState.showIntroScreen = false;
             gameState.startTime = millis() / 1000;
             gameState.gameStarted = true;
+            trackGameStartEvent('auto');
             startAudioIfNeeded();
         }
         isInitialPageLoad = false; // Mark that initial load has passed
@@ -258,6 +338,7 @@ function setup() {
         gameState.showIntroScreen = false;
         gameState.startTime = millis() / 1000;
         gameState.gameStarted = true;
+        trackGameStartEvent('auto');
         startAudioIfNeeded();
     }
 }
@@ -407,7 +488,9 @@ function draw() {
 
     if (gameState.shouldTriggerGameOver) {
         gameState.shouldTriggerGameOver = false;
-        triggerGameOver();
+        const cause = gameState.pendingGameOverCause || null;
+        gameState.pendingGameOverCause = null;
+        triggerGameOver(cause);
     }
 
     fill(80, 80, 80);
@@ -424,7 +507,8 @@ function draw() {
  * Sets up the game over screen and plays appropriate sounds
  * @function
  */
-function triggerGameOver() {
+function triggerGameOver(cause) {
+    trackGameOverEvent(cause);
     gameState.gameOver = true;
     gameState.enteringName = true;
     clearCenterNotifications();
@@ -610,6 +694,7 @@ function updateBossFireballs() {
             if (playerState.lives <= 0) {
                 playerState.lives = 0;
                 gameState.shouldTriggerGameOver = true;
+                gameState.pendingGameOverCause = 'boss_fireball_hit';
             }
 
             // Create explosion
@@ -665,6 +750,7 @@ function keyPressed() {
         return;
     }
     if (gameState.gameOver && !gameState.enteringName && keyCode === ENTER) {
+        trackRetryClickEvent('keyboard');
         startAudioIfNeeded();
         restartGame();
         return;
@@ -886,5 +972,6 @@ function restartGame() {
     achievementsCurrentPage = 0;
 
     gameState.startTime = millis() / 1000;
+    trackGameStartEvent('retry');
     startAudioIfNeeded();
 }

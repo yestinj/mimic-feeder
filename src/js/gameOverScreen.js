@@ -432,6 +432,7 @@ function handleGameOverScreenMousePressed() {
         // Check if click is within retry button bounds
         if (mouseX > retryButton.x && mouseX < retryButton.x + retryButton.w &&
             mouseY > retryButton.y && mouseY < retryButton.y + retryButton.h) {
+            trackRetryClickEvent('mouse');
             startAudioIfNeeded(); // Attempt to start audio on retry click
             restartGame();
         }

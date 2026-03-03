@@ -223,10 +223,62 @@ function checkPlayTimeContracts(sketchSource) {
     );
 }
 
+function checkAnalyticsContracts(analyticsSource, buildSource, sketchSource, introSource, gameOverSource, utilsSource, objectsSource) {
+    assertContract(
+        /'analytics\.js'/.test(buildSource),
+        'Build order includes analytics.js before gameplay scripts'
+    );
+    assertContract(
+        /trackIntroViewEvent\(\);/.test(sketchSource),
+        'setup tracks intro_view when intro screen is shown'
+    );
+    assertContract(
+        /trackGameStartEvent\('auto'\)/.test(sketchSource),
+        'setup tracks game_start for auto-start paths'
+    );
+    assertContract(
+        /trackGameStartEvent\('retry'\)/.test(sketchSource),
+        'restartGame tracks game_start with retry input'
+    );
+    assertContract(
+        /trackGameOverEvent\([^)]*\);/.test(sketchSource),
+        'triggerGameOver tracks game_over event'
+    );
+    assertContract(
+        /trackRetryClickEvent\('keyboard'\)/.test(sketchSource),
+        'Keyboard retry tracks retry_click event'
+    );
+    assertContract(
+        /trackAnalyticsSafe\('retry_click',[\s\S]*version:\s*GAME_VERSION/.test(sketchSource),
+        'retry_click payload includes version'
+    );
+    assertContract(
+        /pendingGameOverCause\s*=/.test(sketchSource) &&
+        /pendingGameOverCause\s*=/.test(utilsSource) &&
+        /pendingGameOverCause\s*=/.test(objectsSource),
+        'Game over cause is set in lethal paths'
+    );
+    assertContract(
+        /trackGameStartEvent\('keyboard'\)/.test(introSource) &&
+        /trackGameStartEvent\('mouse'\)/.test(introSource),
+        'Intro handlers track game_start for keyboard and mouse input'
+    );
+    assertContract(
+        /trackRetryClickEvent\('mouse'\)/.test(gameOverSource),
+        'Game-over retry click tracks retry_click event'
+    );
+    assertContract(
+        /function trackEvent\(eventName, fields\)/.test(analyticsSource),
+        'Analytics helper exposes trackEvent(eventName, fields)'
+    );
+}
+
 function main() {
     const playerSource = readRepoFile('src/js/player.js');
     const abilitiesSource = readRepoFile('src/js/abilities.js');
     const sketchSource = readRepoFile('src/js/sketch.js');
+    const introSource = readRepoFile('src/js/introScreen.js');
+    const gameOverSource = readRepoFile('src/js/gameOverScreen.js');
     const achievementsSource = readRepoFile('src/js/achievements.js');
     const helpSource = readRepoFile('src/js/helpScreen.js');
     const objectInfoSource = readRepoFile('src/js/objectInfoScreen.js');
@@ -234,6 +286,7 @@ function main() {
     const uiSource = readRepoFile('src/js/ui.js');
     const utilsSource = readRepoFile('src/js/utils.js');
     const objectsSource = readRepoFile('src/js/objects.js');
+    const analyticsSource = readRepoFile('src/js/analytics.js');
     const buildSource = readRepoFile('build.js');
     const indexSource = readRepoFile('src/index.html');
     const assetSource = readRepoFile('src/js/assets.js');
@@ -244,6 +297,7 @@ function main() {
     checkBuildAndAssetContracts(buildSource, indexSource, assetSource);
     checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);
     checkPlayTimeContracts(sketchSource);
+    checkAnalyticsContracts(analyticsSource, buildSource, sketchSource, introSource, gameOverSource, utilsSource, objectsSource);
 
     console.log('Smoke checks passed.');
 }

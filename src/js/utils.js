@@ -267,6 +267,7 @@ function handleBombCollection(obj) {
         if (playerState.lives <= 0) {
             playerState.lives = 0;
             gameState.shouldTriggerGameOver = true;
+            gameState.pendingGameOverCause = obj.type === OBJ_FIREBALL ? 'fireball_hit' : 'bomb_hit';
         }
         // Add screen shake when player loses a life
         triggerScreenShake(8);

@@ -87,6 +87,14 @@ function toNumberOrNull(value) {
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 
+function toWholeSecondsOrNull(value) {
+  const numberValue = toNumberOrNull(value);
+  if (numberValue === null) {
+    return null;
+  }
+  return Math.max(0, Math.floor(numberValue));
+}
+
 function truncate(value, maxLength) {
   if (value === null || value === undefined) {
     return "";
@@ -165,7 +173,7 @@ export async function onRequestPost(context) {
       toNumberOrNull(body?.dungeon_floor),
       toNumberOrNull(body?.dungeon_zone),
       toNumberOrNull(body?.player_level),
-      toNumberOrNull(body?.play_time_seconds),
+      toWholeSecondsOrNull(body?.play_time_seconds),
       payloadJson,
       truncate(context.request.headers.get("user-agent"), MAX_USER_AGENT_LENGTH) || null,
       truncate(cf.country, MAX_COUNTRY_LENGTH) || null,

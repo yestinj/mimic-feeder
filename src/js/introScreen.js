@@ -226,6 +226,7 @@ function drawIntroScreen() {
  */
 function handleIntroScreenKeyPressed() {
     if (gameState.showIntroScreen) {
+        trackGameStartEvent('keyboard');
         startAudioIfNeeded();
         gameState.showIntroScreen = false;
         gameState.gameStarted = false; // Ensure startTime is reset in draw()
@@ -242,6 +243,7 @@ function handleIntroScreenKeyPressed() {
  */
 function handleIntroScreenMousePressed() {
     if (gameState.showIntroScreen) {
+        trackGameStartEvent('mouse');
         startAudioIfNeeded();
         gameState.showIntroScreen = false;
         gameState.gameStarted = false; // Ensure startTime is reset in draw()

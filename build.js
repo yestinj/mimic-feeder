@@ -85,6 +85,7 @@ async function bundleJS(inputDir, outputDir) {
         'constants.js',
         'assets.js',
         'utils.js',
+        'analytics.js',
         'player.js',
         'objects.js',
         'abilities.js',
