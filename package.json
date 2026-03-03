@@ -19,7 +19,8 @@
     "html-minifier": "^4.0.0",
     "http-server": "^14.1.1",
     "jsdoc": "^4.0.2",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "wrangler": "^4.65.0"
   },
   "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",
   "main": "build.js",

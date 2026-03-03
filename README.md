@@ -41,6 +41,12 @@ Mastery tracking includes:
 
 Alternatively, after building, you can open `dist/index.html` directly in your browser.
 
+### Metrics Caveat (Local vs Cloudflare)
+- `npm start` uses `http-server` to serve static files only. It does not run Pages Functions, so `/api/track` is unavailable in that mode.
+- To run analytics ingestion locally (Functions + D1), use `npx wrangler pages dev dist`.
+- Production/preview deployments on Cloudflare Pages run the Function and write analytics events to Cloudflare D1.
+- Analytics should be fail-open: if tracking is blocked or unavailable, gameplay must continue normally.
+
 ### Common Issues
 - **No Audio**: If audio is muted on first load, click anywhere on the page or press any key to activate the audio context.
 

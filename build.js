@@ -172,7 +172,8 @@ async function main() {
             minifyCSS('src', OUTPUT_DIR),
             bundleJS(JS_DIR, OUTPUT_DIR),
             copyAssets(ASSET_DIR, `${OUTPUT_DIR}/assets`),
-            fs.copyFile('src/_headers', `${OUTPUT_DIR}/_headers`).catch(() => {})
+            fs.copyFile('src/_headers', `${OUTPUT_DIR}/_headers`).catch(() => {}),
+            fs.copyFile('src/_routes.json', `${OUTPUT_DIR}/_routes.json`).catch(() => {})
         ]);
 
         console.log('Build completed successfully!');

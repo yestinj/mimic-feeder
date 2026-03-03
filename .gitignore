@@ -2,3 +2,15 @@
 /dist/
 /node_modules/
 /docs/
+
+# Cloudflare Wrangler local state
+.wrangler/
+
+# Local secrets/config
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+!.env.*.example
