@@ -50,7 +50,8 @@ Alternatively, after building, you can open `dist/index.html` directly in your b
 ### Metrics and Privacy
 - We collect a small set of gameplay analytics events (`intro_view`, `game_start`, `game_over`, `retry_click`) to understand gameplay flow and balance.
 - Analytics uses anonymous random identifiers (`session_id`, `run_id`) and does not include player-entered names.
-- Client analytics respects browser privacy signals (`Global Privacy Control` and `Do Not Track`) and skips sending metrics when enabled.
+- Client analytics has a temporary testing override enabled and currently does not skip sends for browser privacy signals (`Global Privacy Control` and `Do Not Track`).
+- Re-enable privacy-signal respect after testing by setting `RESPECT_BROWSER_PRIVACY_SIGNALS = true` in `src/js/analytics.js`.
 - Client payloads are allowlisted per event before sending to reduce accidental extra data collection.
 
 ### Common Issues
