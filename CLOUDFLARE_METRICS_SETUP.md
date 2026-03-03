@@ -254,6 +254,9 @@ export async function onRequestPost(context) {
 }
 ```
 
+Note:
+- This snippet is a starter outline. The repo implementation in `functions/api/track.js` is stricter (CORS/`OPTIONS`, truncation helpers, and whole-second normalization for `play_time_seconds`).
+
 ## 2.7 Set an origin allowlist (recommended)
 
 - Set `ALLOWED_ORIGINS` in `wrangler.toml`:
@@ -352,7 +355,7 @@ Notes:
 Implement this in small commits.
 
 Security requirement:
-- Require domain allowlisting for analytics ingestion (`ALLOWED_ORIGINS` + matching WAF rule).
+- Require domain allowlisting for analytics ingestion (`ALLOWED_ORIGINS` + matching Security Custom Rule).
 
 Progress status for this repo:
 - [x] `3.1 Add a client analytics helper` (Complete)
