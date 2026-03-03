@@ -1,6 +1,7 @@
 const ANALYTICS_ENDPOINT = '/api/track';
 const SESSION_STORAGE_KEY = 'mf_session_id';
 const SESSION_ID_MAX_LENGTH = 128;
+const RESPECT_BROWSER_PRIVACY_SIGNALS = false;
 const TRACKING_ALLOWED_FIELDS_BY_EVENT = {
     intro_view: new Set(['version']),
     game_start: new Set(['version', 'input']),
@@ -80,6 +81,10 @@ function sendWithFetch(payloadText) {
 }
 
 function isPrivacyOptOutEnabled() {
+    if (!RESPECT_BROWSER_PRIVACY_SIGNALS) {
+        return false;
+    }
+
     if (typeof navigator !== 'undefined') {
         if (navigator.globalPrivacyControl === true) {
             return true;
