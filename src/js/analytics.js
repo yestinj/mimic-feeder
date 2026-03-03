@@ -1,6 +1,12 @@
 const ANALYTICS_ENDPOINT = '/api/track';
 const SESSION_STORAGE_KEY = 'mf_session_id';
 const SESSION_ID_MAX_LENGTH = 128;
+const TRACKING_ALLOWED_FIELDS_BY_EVENT = {
+    intro_view: new Set(['version']),
+    game_start: new Set(['version', 'input']),
+    game_over: new Set(['version', 'objects_eaten', 'cause']),
+    retry_click: new Set(['version', 'from', 'input']),
+};
 
 let analyticsFallbackSessionId = null;
 let analyticsCurrentRunId = null;
@@ -55,6 +61,10 @@ function getRunId() {
 }
 
 function startRun() {
+    if (isPrivacyOptOutEnabled()) {
+        analyticsCurrentRunId = null;
+        return null;
+    }
     analyticsCurrentRunId = generateAnalyticsId();
     return analyticsCurrentRunId;
 }
@@ -69,11 +79,52 @@ function sendWithFetch(payloadText) {
     });
 }
 
+function isPrivacyOptOutEnabled() {
+    if (typeof navigator !== 'undefined') {
+        if (navigator.globalPrivacyControl === true) {
+            return true;
+        }
+        const dnt = String(
+            navigator.doNotTrack ??
+            (typeof window !== 'undefined' ? window.doNotTrack : '')
+        ).toLowerCase();
+        if (dnt === '1' || dnt === 'yes') {
+            return true;
+        }
+    }
+    return false;
+}
+
+function sanitizePayloadForEvent(eventName, payload) {
+    if (!payload || typeof payload !== 'object') {
+        return undefined;
+    }
+
+    const allowlist = TRACKING_ALLOWED_FIELDS_BY_EVENT[eventName];
+    if (!allowlist) {
+        return undefined;
+    }
+
+    const sanitized = {};
+    for (const key of allowlist) {
+        if (Object.prototype.hasOwnProperty.call(payload, key)) {
+            sanitized[key] = payload[key];
+        }
+    }
+
+    return Object.keys(sanitized).length > 0 ? sanitized : undefined;
+}
+
 function trackEvent(eventName, fields) {
     try {
+        if (isPrivacyOptOutEnabled()) {
+            return;
+        }
+
+        const normalizedEventName = String(eventName || '');
         const payloadFields = fields && typeof fields === 'object' ? fields : {};
         const payload = {
-            event_name: String(eventName || ''),
+            event_name: normalizedEventName,
             session_id: getSessionId(),
             run_id: analyticsCurrentRunId,
             score: payloadFields.score,
@@ -81,7 +132,7 @@ function trackEvent(eventName, fields) {
             dungeon_zone: payloadFields.dungeon_zone,
             player_level: payloadFields.player_level,
             play_time_seconds: payloadFields.play_time_seconds,
-            payload: payloadFields.payload,
+            payload: sanitizePayloadForEvent(normalizedEventName, payloadFields.payload),
         };
         const payloadText = JSON.stringify(payload);
 

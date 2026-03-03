@@ -47,6 +47,12 @@ Alternatively, after building, you can open `dist/index.html` directly in your b
 - Production/preview deployments on Cloudflare Pages run the Function and write analytics events to Cloudflare D1.
 - Analytics should be fail-open: if tracking is blocked or unavailable, gameplay must continue normally.
 
+### Metrics and Privacy
+- We collect a small set of gameplay analytics events (`intro_view`, `game_start`, `game_over`, `retry_click`) to understand gameplay flow and balance.
+- Analytics uses anonymous random identifiers (`session_id`, `run_id`) and does not include player-entered names.
+- Client analytics respects browser privacy signals (`Global Privacy Control` and `Do Not Track`) and skips sending metrics when enabled.
+- Client payloads are allowlisted per event before sending to reduce accidental extra data collection.
+
 ### Common Issues
 - **No Audio**: If audio is muted on first load, click anywhere on the page or press any key to activate the audio context.
 

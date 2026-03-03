@@ -354,39 +354,51 @@ Implement this in small commits.
 Security requirement:
 - Require domain allowlisting for analytics ingestion (`ALLOWED_ORIGINS` + matching WAF rule).
 
+Progress status for this repo:
+- [x] `3.1 Add a client analytics helper` (Complete)
+- [x] `3.2 Wire analytics helper into build order` (Complete)
+- [x] `3.3 Add event hooks in current game flow` (Complete)
+- [x] `3.4 Event payload contract` (Complete)
+- [x] `3.5 Validate locally` (Complete)
+
 ## 3.1 Add a client analytics helper
 
 Create `src/js/analytics.js` with:
-- `getSessionId()` stored in `localStorage` (key like `mf_session_id`)
+- `getSessionId()` stored in `localStorage` (key like `mf_session_id`), with in-memory fallback if storage is unavailable
 - `startRun()` to set a new `run_id`
 - `trackEvent(eventName, fields)`
   - use `navigator.sendBeacon('/api/track', blob)` when available
   - fallback to `fetch('/api/track', { method: 'POST', keepalive: true, ... })`
+  - respect browser privacy opt-out signals (`Global Privacy Control` / `Do Not Track`) by skipping sends
+  - allowlist payload keys by event on the client before sending
   - fail-open behavior: never throw, and never block gameplay if `/api/track` is unreachable
 
 ## 3.2 Wire analytics helper into build order
 
 Update `build.js` `jsFileOrder` to include `analytics.js` before files that call it.
-Also update `build.js` to copy `src/_routes.json` to `dist/_routes.json`.
 
 ## 3.3 Add event hooks in current game flow
 
 Suggested hooks in your existing files:
 - `src/js/sketch.js`
   - In `setup()`: when intro is shown, send `intro_view` once.
+  - In `setup()`: if intro is skipped for returning players, call `startRun()` + send `game_start` once with `input: 'auto'`.
+  - In `restartGame()`: call `startRun()` + send `game_start` once with `input: 'retry'`.
+  - In `keyPressed()` game-over Enter handler: send `retry_click` before restart.
   - In `triggerGameOver()`: send `game_over` with run stats.
 - `src/js/introScreen.js`
   - In `handleIntroScreenKeyPressed()` and `handleIntroScreenMousePressed()`: call `startRun()` + send `game_start` once.
 - `src/js/gameOverScreen.js`
-  - In retry click handler: send `retry_click`.
+  - In retry click handler: send `retry_click` before restart.
 
 ## 3.4 Event payload contract
 
 Keep payloads stable and small:
 - `intro_view`: `{ version }`
-- `game_start`: `{ version, input: 'keyboard'|'mouse' }`
+- `game_start`: `{ version, input: 'keyboard'|'mouse'|'retry'|'auto' }`
 - `game_over`: `{ cause?, score, dungeon_floor, dungeon_zone, player_level, play_time_seconds, objects_eaten }`
-- `retry_click`: `{ from: 'game_over' }`
+  - current cause values: `'bomb_hit'|'fireball_hit'|'boss_fireball_hit'|'humanoid_missed'`
+- `retry_click`: `{ version, from: 'game_over', input: 'mouse'|'keyboard' }`
 
 ## 3.5 Validate locally
 
@@ -403,7 +415,23 @@ npx wrangler d1 execute mimic-feeder-metrics --local --command "SELECT event_nam
 
 ## 4) Useful starter queries
 
-## 4.1 Daily unique players (intro views)
+Dedicated query pack:
+- `queries/d1_metrics_queries.sql` (includes run commands for local and production from your local machine)
+
+Progress status for this repo:
+- [x] `4. Query pack and starter analytics queries` (Complete)
+
+## 4.1 Daily unique players (game starts, recommended DAU)
+
+```sql
+SELECT date(created_at) AS day, COUNT(DISTINCT session_id) AS players
+FROM game_events
+WHERE event_name = 'game_start'
+GROUP BY day
+ORDER BY day DESC;
+```
+
+## 4.1b Daily unique intro views (new-player exposure)
 
 ```sql
 SELECT date(created_at) AS day, COUNT(DISTINCT session_id) AS players
@@ -455,8 +483,11 @@ Implications:
 - Do not store player-entered names or other personal data in analytics events.
 - Use anonymous random IDs (`session_id`, `run_id`).
 - Accept only an allowlist of event names.
+- Allowlist event payload keys before sending from the client (defense in depth against accidental extra fields).
+- Respect browser privacy preferences (`navigator.globalPrivacyControl`, `Do Not Track`) and skip analytics when enabled.
 - Truncate long strings and payloads.
 - Treat `user_agent` as potentially identifying; remove it or store only coarse metadata if you want stricter privacy posture.
+- `colo` is the Cloudflare edge data center code (for example `SJC`, `LAX`) and is coarse routing metadata.
 
 ## 7) Official docs used
 
