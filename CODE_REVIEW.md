@@ -129,10 +129,10 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 - **Was:** Spawn anti-clustering history carried across runs.
 - **Now:** Array reset on restart; smoke asserts the clear.
 
-#### L5 — Accessibility limits (expected for canvas game)
+#### L5 — Accessibility limits (expected for canvas game) — **Partial (2026-07-09)**
 - **Positive:** `lang`, noscript, canvas `role`/`aria-label`, keyboard controls, desktop note in README.
-- **Gaps:** No live region for score/lives; canvas-drawn hit targets; no `prefers-reduced-motion` for shake.
-- **Suggestion:** Optional reduced-motion; ensure canvas focus on start; long-term optional DOM HUD for critical state.
+- **Done:** `prefers-reduced-motion: reduce` disables screen shake (`prefersReducedMotion` / `triggerScreenShake`).
+- **Won’t do for now:** canvas auto-focus on start; real HTML buttons for retry/name; live regions / DOM HUD — not worth pre-merge effort for this canvas portfolio game.
 
 #### L6 — Version / package drift — **Fixed (2026-07-09)**
 - **Where:** `constants.js` `GAME_VERSION`, `package.json` `version`

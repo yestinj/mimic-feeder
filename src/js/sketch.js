@@ -155,10 +155,19 @@ const JUMP_EAT_OPEN_DURATION = 45;
 let isInitialPageLoad = true;
 
 /**
- * Screen shake amount for visual feedback
+ * Screen shake amount for visual feedback (skipped when prefers-reduced-motion)
  * @type {number}
  */
 let screenShakeAmount = 0;
+
+/**
+ * True when the user/OS requests reduced motion (vestibular accessibility).
+ * @returns {boolean}
+ */
+function prefersReducedMotion() {
+    return typeof matchMedia === 'function' &&
+        matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 /**
  * Tracks whether game audio was silenced in the previous sync pass
  * @type {?boolean}
@@ -406,11 +415,13 @@ function draw() {
         return;
     }
 
-    // Screen shake (skipped for frozen pause frames via the early return above).
-    if (screenShakeAmount > 0) {
+    // Screen shake (skipped for pause freeze above, and when prefers-reduced-motion).
+    if (screenShakeAmount > 0 && !prefersReducedMotion()) {
         translate(random(-screenShakeAmount, screenShakeAmount), random(-screenShakeAmount, screenShakeAmount));
         screenShakeAmount *= Math.pow(0.9, frameDelta); // Decay at a stable real-time rate
         if (screenShakeAmount < 0.5) screenShakeAmount = 0;
+    } else if (screenShakeAmount > 0 && prefersReducedMotion()) {
+        screenShakeAmount = 0;
     }
 
     // Update background music based on level
@@ -935,6 +946,9 @@ function updateBackgroundMusic() {
  * @function
  */
 function triggerScreenShake(intensity) {
+    if (prefersReducedMotion()) {
+        return;
+    }
     screenShakeAmount = intensity;
 }
 

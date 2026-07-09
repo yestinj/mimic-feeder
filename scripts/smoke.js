@@ -181,6 +181,22 @@ function extractHtmlGameScripts(indexSource) {
     return [...block.matchAll(/src="js\/([^"]+\.js)"/g)].map((entry) => entry[1]);
 }
 
+function checkReducedMotionContracts(sketchSource) {
+    assertContract(
+        /function prefersReducedMotion\(\)/.test(sketchSource) &&
+        /prefers-reduced-motion:\s*reduce/.test(sketchSource),
+        'prefersReducedMotion helper checks OS reduced-motion preference'
+    );
+    assertContract(
+        /function triggerScreenShake\(intensity\)\s*\{[\s\S]*prefersReducedMotion\(\)/.test(sketchSource),
+        'triggerScreenShake no-ops when reduced motion is preferred'
+    );
+    assertContract(
+        /screenShakeAmount > 0 && !prefersReducedMotion\(\)/.test(sketchSource),
+        'draw applies screen shake only when reduced motion is not preferred'
+    );
+}
+
 function checkP5SriContracts(indexSource) {
     assertContract(
         /cdnjs\.cloudflare\.com\/ajax\/libs\/p5\.js\/1\.11\.13\/p5\.min\.js/.test(indexSource) &&
@@ -536,6 +552,7 @@ function main() {
     checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);
     checkPlayTimeContracts(sketchSource);
     checkPauseContracts(sketchSource);
+    checkReducedMotionContracts(sketchSource);
     checkBombCountContracts(abilitiesSource, utilsSource);
     checkAnalyticsRemovedContracts(buildSource, sketchSource, introSource, gameOverSource);
     checkMagnetHelpContracts(helpSource, uiSource);
