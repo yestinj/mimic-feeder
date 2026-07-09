@@ -81,7 +81,7 @@ Pause, help, about, object-info, achievements, and game-over should block gamepl
 
 ### p5 version
 
-Stay on **p5.js 1.11.x** CDN pins in `src/index.html` (currently **1.11.13**). Do not upgrade to p5 2.x without an explicit request and full playtest.
+Stay on **p5.js 1.11.x** CDN pins in `src/index.html` (currently **1.11.13** on cdnjs with SRI). Do not upgrade to p5 2.x without an explicit request and full playtest. When changing p5 version or CDN host, recompute `integrity` hashes for both `p5.min.js` and `p5.sound.min.js` (cdnjs builds may not byte-match jsDelivr).
 
 ## Commands
 

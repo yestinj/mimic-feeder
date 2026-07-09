@@ -60,6 +60,17 @@ Alternatively, after building, you can open `dist/index.html` directly in your b
 - Assets are in the `src/assets` directory
 - Build script is in `build.js`
 
+### p5.js CDN and SRI
+- The game loads **p5.js 1.11.13** and **p5.sound** from cdnjs in `src/index.html` (not from npm).
+- Script tags use **Subresource Integrity** (`integrity` + `crossorigin="anonymous"`).
+- **When upgrading p5 or switching CDN host:** download the exact files from the new URLs, recompute sha384 hashes, and update both `src` and `integrity` attributes. cdnjs and jsDelivr builds of the same version can differ by a few bytes — hash the files from the CDN you actually use.
+- Example (macOS/Linux):
+  ```bash
+  curl -sL 'https://cdnjs.cloudflare.com/ajax/libs/p5.js/VERSION/p5.min.js' | openssl dgst -sha384 -binary | openssl base64 -A
+  curl -sL 'https://cdnjs.cloudflare.com/ajax/libs/p5.js/VERSION/addons/p5.sound.min.js' | openssl dgst -sha384 -binary | openssl base64 -A
+  ```
+- Stay on p5 **1.x** unless you plan a dedicated 2.x migration (see `AGENTS.md`).
+
 ### Development Workflow
 1. Run `npm run dev` to start the development server with auto-rebuild on file changes
 2. Open `dist/index.html` in your browser
@@ -80,7 +91,7 @@ The project uses JSDoc for code documentation:
 This will create documentation in the `docs` directory and open it in your browser.
 
 ## Technologies Used
-- p5.js for rendering and game logic
+- p5.js **1.11.13** (cdnjs + SRI) for rendering and game logic — see [p5.js CDN and SRI](#p5js-cdn-and-sri) when upgrading
 - HTML/CSS for basic structure
 - JavaScript for game mechanics
 - esbuild for bundling

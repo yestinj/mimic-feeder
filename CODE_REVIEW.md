@@ -67,10 +67,9 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 - **Was:** `max-age=31536000` on unversioned asset paths (stale sprites/SFX after in-place deploys).
 - **Now:** `public, max-age=86400, must-revalidate` (1 day). `app.min.js` still uses long cache + `?v=` bust.
 
-#### M2 — CDN p5 scripts have no Subresource Integrity
-- **Where:** `src/index.html` p5 / p5.sound script tags (currently **1.11.13** in working tree)
-- **Impact:** Pinned URL is good; without SRI, CDN compromise or wrong object is not browser-detectable. CSP allows cdnjs.
-- **Suggestion:** Add `integrity` + `crossorigin` for exact 1.11.13 builds, or vendor p5 under `src/` and serve from `'self'`.
+#### M2 — CDN p5 scripts have no Subresource Integrity — **Fixed (2026-07-09)**
+- **Where:** `src/index.html` p5 + p5.sound script tags
+- **Now:** Pinned **1.11.13** on cdnjs with `integrity` (sha384 of those exact cdnjs builds) + `crossorigin="anonymous"`. Recompute hashes when bumping p5; cdnjs and jsDelivr builds can differ by a few bytes — hash must match the CDN URL used.
 
 #### M3 — CSP still allows Cloudflare Web Analytics — **Won’t fix (intentional)**
 - **Where:** `src/_headers` CSP — `static.cloudflareinsights.com` / `cloudflareinsights.com`
@@ -190,7 +189,7 @@ No urgent asset integrity issues. Optional later: defer late-game packs (M9), re
 | XSS | Low risk — names filtered; drawn with p5 `text` |
 | Secrets | No app secrets in client; `.dev.vars` gitignored |
 | CSP | Solid baseline; CF Web Analytics origins intentional (M3) |
-| CDN | Pinned version; no SRI (M2) |
+| CDN | Pinned 1.11.13 + SRI (M2) |
 | Cache | `app.min.js` long + `?v=`; assets 1 day + must-revalidate (M1) |
 
 ---

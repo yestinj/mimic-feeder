@@ -181,6 +181,24 @@ function extractHtmlGameScripts(indexSource) {
     return [...block.matchAll(/src="js\/([^"]+\.js)"/g)].map((entry) => entry[1]);
 }
 
+function checkP5SriContracts(indexSource) {
+    assertContract(
+        /cdnjs\.cloudflare\.com\/ajax\/libs\/p5\.js\/1\.11\.13\/p5\.min\.js/.test(indexSource) &&
+        /cdnjs\.cloudflare\.com\/ajax\/libs\/p5\.js\/1\.11\.13\/addons\/p5\.sound\.min\.js/.test(indexSource),
+        'index.html pins p5.js 1.11.13 and p5.sound on cdnjs'
+    );
+    assertContract(
+        /p5\.min\.js"[^>]*integrity="sha384-[A-Za-z0-9+/=]+"/.test(indexSource) &&
+        /p5\.sound\.min\.js"[^>]*integrity="sha384-[A-Za-z0-9+/=]+"/.test(indexSource),
+        'p5 CDN scripts include sha384 integrity attributes'
+    );
+    assertContract(
+        /p5\.min\.js"[^>]*crossorigin="anonymous"/.test(indexSource) &&
+        /p5\.sound\.min\.js"[^>]*crossorigin="anonymous"/.test(indexSource),
+        'p5 CDN scripts set crossorigin=anonymous for SRI'
+    );
+}
+
 function checkBuildAndAssetContracts(buildSource, indexSource, assetSource) {
     assertContract(
         indexSource.includes('<!-- BUILD:GAME_SCRIPTS_START -->') &&
@@ -514,6 +532,7 @@ function main() {
     checkHighScoreStorageContracts(uiSource);
     checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSource, aboutSource, achievementsSource);
     checkBuildAndAssetContracts(buildSource, indexSource, assetSource);
+    checkP5SriContracts(indexSource);
     checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);
     checkPlayTimeContracts(sketchSource);
     checkPauseContracts(sketchSource);
