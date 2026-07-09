@@ -12,6 +12,29 @@ const GAME_SCRIPT_MARKER_START = '<!-- BUILD:GAME_SCRIPTS_START -->';
 const GAME_SCRIPT_MARKER_END = '<!-- BUILD:GAME_SCRIPTS_END -->';
 const GAME_SCRIPT_TAG_REGEX = /<script src="js\/[^"]+\.js" defer><\/script>\s*/g;
 
+/**
+ * Ordered game sources concatenated into app.min.js.
+ * Must stay in sync with script tags between BUILD:GAME_SCRIPTS markers in src/index.html.
+ * Every *.js file under src/js must appear here exactly once (no silent orphans or skips).
+ */
+const JS_FILE_ORDER = [
+    'constants.js',
+    'assets.js',
+    'utils.js',
+    'player.js',
+    'objects.js',
+    'abilities.js',
+    'ui.js',
+    'introScreen.js',
+    'nameInputScreen.js',
+    'gameOverScreen.js',
+    'helpScreen.js',
+    'objectInfoScreen.js',
+    'aboutScreen.js',
+    'achievements.js',
+    'sketch.js'
+];
+
 function replaceGameScriptsWithBundle(content, bundleScriptTag) {
     const markerStartIndex = content.indexOf(GAME_SCRIPT_MARKER_START);
     const markerEndIndex = content.indexOf(GAME_SCRIPT_MARKER_END);
@@ -78,26 +101,57 @@ async function minifyCSS(inputDir, outputDir) {
     }
 }
 
+/**
+ * Ensures JS_FILE_ORDER is complete and matches every *.js file under inputDir.
+ * Fails the build on missing modules, unreadable files, duplicates, or orphans.
+ * @param {string} inputDir
+ */
+async function assertJsBundleSourcesComplete(inputDir) {
+    const uniqueOrdered = new Set(JS_FILE_ORDER);
+    if (uniqueOrdered.size !== JS_FILE_ORDER.length) {
+        const seen = new Set();
+        const duplicates = JS_FILE_ORDER.filter((file) => {
+            if (seen.has(file)) {
+                return true;
+            }
+            seen.add(file);
+            return false;
+        });
+        throw new Error(`JS_FILE_ORDER contains duplicates: ${[...new Set(duplicates)].join(', ')}`);
+    }
+
+    const dirEntries = await fs.readdir(inputDir);
+    const onDiskJs = dirEntries.filter((name) => name.endsWith('.js')).sort();
+
+    const missingFromDisk = JS_FILE_ORDER.filter((file) => !onDiskJs.includes(file));
+    if (missingFromDisk.length > 0) {
+        throw new Error(
+            `Required game JS missing from ${inputDir}/ (listed in JS_FILE_ORDER): ${missingFromDisk.join(', ')}`
+        );
+    }
+
+    const orphans = onDiskJs.filter((file) => !uniqueOrdered.has(file));
+    if (orphans.length > 0) {
+        throw new Error(
+            `Game JS on disk not listed in JS_FILE_ORDER (would not ship in app.min.js): ${orphans.join(', ')}. ` +
+            'Add each file to JS_FILE_ORDER and src/index.html BUILD:GAME_SCRIPTS markers.'
+        );
+    }
+
+    // Fail closed on unreadable required files (permissions, race, etc.).
+    for (const file of JS_FILE_ORDER) {
+        const inputPath = path.join(inputDir, file);
+        try {
+            await fs.access(inputPath);
+        } catch (error) {
+            throw new Error(`Cannot read required game JS: ${inputPath} (${error.message})`);
+        }
+    }
+}
+
 // Bundle and minify JS files
 async function bundleJS(inputDir, outputDir) {
-    // Define the order of JS files to maintain dependencies
-    const jsFileOrder = [
-        'constants.js',
-        'assets.js',
-        'utils.js',
-        'player.js',
-        'objects.js',
-        'abilities.js',
-        'ui.js',
-        'introScreen.js',
-        'nameInputScreen.js',
-        'gameOverScreen.js',
-        'helpScreen.js',
-        'objectInfoScreen.js',
-        'aboutScreen.js',
-        'achievements.js',
-        'sketch.js'
-    ];
+    await assertJsBundleSourcesComplete(inputDir);
 
     // Create a temporary directory for concatenation
     const tempDir = path.join(outputDir, 'temp');
@@ -105,14 +159,10 @@ async function bundleJS(inputDir, outputDir) {
     const tempFile = path.join(tempDir, 'temp-bundle.js');
     let concatenatedContent = '';
 
-    for (const file of jsFileOrder) {
+    for (const file of JS_FILE_ORDER) {
         const inputPath = path.join(inputDir, file);
-        try {
-            const content = await fs.readFile(inputPath, 'utf8');
-            concatenatedContent += content + '\n';
-        } catch (error) {
-            console.warn(`Warning: Could not read file ${inputPath}: ${error.message}`);
-        }
+        const content = await fs.readFile(inputPath, 'utf8');
+        concatenatedContent += content + '\n';
     }
 
     await fs.writeFile(tempFile, concatenatedContent);
@@ -130,8 +180,14 @@ async function bundleJS(inputDir, outputDir) {
         // Remove the temporary directory and its contents
         await fs.rm(tempDir, { recursive: true });
 
-        console.log('JavaScript files bundled and minified successfully!');
+        console.log(`JavaScript files bundled and minified successfully (${JS_FILE_ORDER.length} modules)!`);
     } catch (error) {
+        // Best-effort cleanup so a failed minify does not leave dist/temp behind.
+        try {
+            await fs.rm(tempDir, { recursive: true, force: true });
+        } catch {
+            // ignore cleanup errors
+        }
         console.error('Error bundling JavaScript:', error);
         throw error;
     }

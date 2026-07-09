@@ -165,10 +165,23 @@ let screenShakeAmount = 0;
  */
 let wasGameAudioSilenced = null;
 /**
- * Last fully rendered gameplay frame, used to freeze the world while paused
+ * Last fully rendered gameplay frame, used to freeze the world while paused.
+ * Captured only on the pause rising edge (not every active frame).
  * @type {?p5.Image}
  */
 let lastGameplayFrame = null;
+
+/**
+ * Captures the current canvas into lastGameplayFrame for the pause freeze.
+ * Call on the pause rising edge while the buffer still holds the last gameplay draw
+ * (before the pause overlay is painted).
+ * @function
+ */
+function captureGameplayFreezeSnapshot() {
+    if (typeof get === 'function') {
+        lastGameplayFrame = get();
+    }
+}
 
 /**
  * Returns whether gameplay audio should currently be silenced
@@ -283,7 +296,11 @@ function windowResized() {
         canvasHeight = canvasWidth / ASPECT_RATIO;
     }
     resizeCanvas(canvasWidth, canvasHeight);
-    lastGameplayFrame = null;
+    // Keep the pause freeze snapshot across resize (drawn stretched to the new canvas).
+    // Clearing it while paused used to fall through into full simulation under the pause UI.
+    if (!gameState.isPaused) {
+        lastGameplayFrame = null;
+    }
 
     // Reposition UI buttons
     if (typeof retryButton !== 'undefined') {
@@ -297,6 +314,40 @@ function windowResized() {
 }
 
 /**
+ * Draws the dungeon background for the current floor (no simulation).
+ * @function
+ */
+function drawDungeonBackground() {
+    if (gameState.dungeonFloor < 3) {
+        if (bgImage1) {
+            image(bgImage1, 0, 0, width, height);
+        } else {
+            background(20, 0, 0);
+        }
+    } else {
+        if (bgImage2) {
+            image(bgImage2, 0, 0, width, height);
+        } else {
+            background(0, 0, 20);
+        }
+    }
+}
+
+/**
+ * True when pause should freeze the playfield (not intro/game-over/full-screen overlays).
+ * @returns {boolean}
+ */
+function isPauseGameplayShell() {
+    return gameState.isPaused &&
+        !gameState.showIntroScreen &&
+        !gameState.gameOver &&
+        !gameState.showHelpScreen &&
+        !gameState.showObjectInfoScreen &&
+        !gameState.showAboutScreen &&
+        !gameState.showAchievementsScreen;
+}
+
+/**
  * p5.js draw function - Called continuously to render and update the game
  * This is the main game loop that handles rendering and game logic
  * @function
@@ -307,14 +358,17 @@ function draw() {
     // Keep audio state aligned with pause/help/mute state.
     syncGameAudioState();
 
-    // Frozen playfield: reuse the last captured gameplay frame under the pause overlay.
-    // If the player pauses before any frame has been captured, fall through once so we can
-    // render + snapshot (keys are already blocked while paused).
-    if (gameState.isPaused && lastGameplayFrame &&
-        !gameState.showIntroScreen && !gameState.gameOver &&
-        !gameState.showHelpScreen && !gameState.showObjectInfoScreen &&
-        !gameState.showAboutScreen && !gameState.showAchievementsScreen) {
-        image(lastGameplayFrame, 0, 0, width, height);
+    // Frozen playfield while paused: never run simulation under the pause UI.
+    // Prefer the last captured gameplay frame; if missing (rare: pause before first
+    // capture), draw a static background only — do not fall through into updates.
+    if (isPauseGameplayShell()) {
+        if (lastGameplayFrame) {
+            image(lastGameplayFrame, 0, 0, width, height);
+        } else {
+            drawDungeonBackground();
+            fill(80, 80, 80);
+            rect(0, height - VISUAL_GROUND_HEIGHT, width, VISUAL_GROUND_HEIGHT);
+        }
         drawPauseScreen();
         return;
     }
@@ -331,20 +385,7 @@ function draw() {
         updateBackgroundMusic();
     }
 
-    // Draw the appropriate background based on dungeon floor
-    if (gameState.dungeonFloor < 3) {
-        if (bgImage1) {
-            image(bgImage1, 0, 0, width, height);
-        } else {
-            background(20, 0, 0);
-        }
-    } else {
-        if (bgImage2) {
-            image(bgImage2, 0, 0, width, height);
-        } else {
-            background(0, 0, 20);
-        }
-    }
+    drawDungeonBackground();
 
     if (gameState.showIntroScreen) {
         drawIntroScreen();
@@ -380,11 +421,8 @@ function draw() {
         gameState.gameStarted = true;
     }
 
-    // Update play time only during active gameplay frames (not paused/overlay/intro/game-over)
-    // Bootstrapping a pause snapshot still advances one frame of sim (rare); exclude that from playTime.
-    if (!gameState.isPaused) {
-        gameState.playTime += frameDelta / TARGET_FPS;
-    }
+    // Active gameplay only below this point (pause shell returns earlier).
+    gameState.playTime += frameDelta / TARGET_FPS;
 
     updatePlayer();
     spawnObjects();
@@ -433,13 +471,7 @@ function draw() {
     updateAndDrawCenterNotifications();
 
     drawUI();
-
-    // Capture post-draw gameplay for pause freeze (before any pause overlay).
-    lastGameplayFrame = get();
-
-    if (gameState.isPaused) {
-        drawPauseScreen();
-    }
+    // Pause freeze snapshot is captured on the P rising edge only (see captureGameplayFreezeSnapshot).
 }
 
 /**
@@ -712,7 +744,13 @@ function keyPressed() {
     if (key === 'p' || key === 'P') {
         if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
             !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen) {
-            gameState.isPaused = !gameState.isPaused;
+            if (!gameState.isPaused) {
+                // Rising edge: canvas still shows the last active gameplay frame (no pause chrome).
+                captureGameplayFreezeSnapshot();
+                gameState.isPaused = true;
+            } else {
+                gameState.isPaused = false;
+            }
             syncGameAudioState();
             return;
         }

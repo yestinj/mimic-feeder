@@ -241,7 +241,6 @@ async function main() {
         await pressKey(page, 'ArrowRight', 8);
         await page.waitForTimeout(250);
         const beforePause = await readGameProbe(page);
-        const playTimeBeforePause = beforePause.playTime;
         const xBeforePause = beforePause.playerX;
 
         await pressKey(page, 'p');
@@ -249,6 +248,9 @@ async function main() {
         const paused = await readGameProbe(page);
         assert(paused.isPaused === true, 'Pressing P pauses the game');
         assert(paused.hasLastFrame === true, 'Pause captured lastGameplayFrame snapshot');
+        // Measure playTime only after pause is confirmed (frames can still tick between the
+        // pre-pause probe and the P key taking effect).
+        const playTimeAtPause = paused.playTime;
 
         await page.screenshot({ path: path.join(OUT_DIR, '02-paused.png') });
 
@@ -269,14 +271,38 @@ async function main() {
         );
         assert(
             Number.isFinite(stillPaused.playTime) &&
-            Math.abs(stillPaused.playTime - playTimeBeforePause) < 0.001,
-            `Play time does not advance while paused (before=${playTimeBeforePause}, after=${stillPaused.playTime})`
+            Math.abs(stillPaused.playTime - playTimeAtPause) < 0.001,
+            `Play time does not advance while paused (atPause=${playTimeAtPause}, after=${stillPaused.playTime})`
         );
 
         await pressKey(page, 'm');
         await page.waitForTimeout(80);
         const mutedProbe = await readGameProbe(page);
         assert(mutedProbe.isMuted === true, 'Mute (M) works while paused');
+
+        // H1: resize while paused must not resume simulation (player X / playTime stay frozen).
+        const preResize = await readGameProbe(page);
+        await page.setViewportSize({ width: 1100, height: 720 });
+        await page.waitForTimeout(400);
+        await pressKey(page, 'ArrowLeft', 8);
+        await pressKey(page, 'ArrowRight', 8);
+        await page.waitForTimeout(200);
+        const postResize = await readGameProbe(page);
+        assert(postResize.isPaused === true, 'Still paused after viewport resize');
+        assert(
+            postResize.hasLastFrame === true,
+            'Pause freeze snapshot retained across resize'
+        );
+        assert(
+            Number.isFinite(postResize.playerX) &&
+            Math.abs(postResize.playerX - preResize.playerX) < 0.5,
+            `Player X unchanged after resize while paused (before=${preResize.playerX}, after=${postResize.playerX})`
+        );
+        assert(
+            Number.isFinite(postResize.playTime) &&
+            Math.abs(postResize.playTime - preResize.playTime) < 0.001,
+            `Play time unchanged after resize while paused (before=${preResize.playTime}, after=${postResize.playTime})`
+        );
 
         await pressKey(page, 'p');
         await page.waitForTimeout(200);

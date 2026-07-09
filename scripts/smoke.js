@@ -159,6 +159,24 @@ function checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSour
     );
 }
 
+function extractJsFileOrder(buildSource) {
+    const match = buildSource.match(/const JS_FILE_ORDER = \[([\s\S]*?)\];/);
+    if (!match) {
+        return null;
+    }
+    return [...match[1].matchAll(/['"]([^'"]+\.js)['"]/g)].map((entry) => entry[1]);
+}
+
+function extractHtmlGameScripts(indexSource) {
+    const start = indexSource.indexOf('<!-- BUILD:GAME_SCRIPTS_START -->');
+    const end = indexSource.indexOf('<!-- BUILD:GAME_SCRIPTS_END -->');
+    if (start === -1 || end === -1 || end <= start) {
+        return null;
+    }
+    const block = indexSource.slice(start, end);
+    return [...block.matchAll(/src="js\/([^"]+\.js)"/g)].map((entry) => entry[1]);
+}
+
 function checkBuildAndAssetContracts(buildSource, indexSource, assetSource) {
     assertContract(
         indexSource.includes('<!-- BUILD:GAME_SCRIPTS_START -->') &&
@@ -169,6 +187,44 @@ function checkBuildAndAssetContracts(buildSource, indexSource, assetSource) {
         /item\.name === '_unused'/.test(buildSource),
         'build skips quarantined _unused assets'
     );
+    assertContract(
+        /async function assertJsBundleSourcesComplete\(/.test(buildSource) &&
+        /throw new Error\(/.test(buildSource) &&
+        !/console\.warn\(`Warning: Could not read file/.test(buildSource),
+        'build fails closed on missing game JS (no warn-and-skip bundle path)'
+    );
+
+    const jsFileOrder = extractJsFileOrder(buildSource);
+    assertContract(
+        Array.isArray(jsFileOrder) && jsFileOrder.length > 0,
+        'build.js defines JS_FILE_ORDER'
+    );
+
+    const jsDir = path.join(__dirname, '..', 'src', 'js');
+    const onDiskJs = fs.readdirSync(jsDir).filter((name) => name.endsWith('.js')).sort();
+    const orderSorted = [...jsFileOrder].sort();
+
+    assertContract(
+        new Set(jsFileOrder).size === jsFileOrder.length,
+        'JS_FILE_ORDER has no duplicate entries'
+    );
+    assertContract(
+        onDiskJs.length === orderSorted.length &&
+        onDiskJs.every((file, index) => file === orderSorted[index]),
+        'JS_FILE_ORDER matches every src/js/*.js file (no missing modules or orphans)'
+    );
+
+    const htmlScripts = extractHtmlGameScripts(indexSource);
+    assertContract(
+        Array.isArray(htmlScripts) && htmlScripts.length === jsFileOrder.length,
+        'index.html game script tags match JS_FILE_ORDER length'
+    );
+    assertContract(
+        Array.isArray(htmlScripts) &&
+        htmlScripts.every((file, index) => file === jsFileOrder[index]),
+        'index.html game script order matches JS_FILE_ORDER'
+    );
+
     assertContract(
         !assetSource.includes('assets/mimic/') &&
         !assetSource.includes('assets/bosses/flying_demon/attack_') &&
@@ -233,18 +289,43 @@ function checkPauseContracts(sketchSource) {
         'Gameplay keys blocked while paused or overlay screens are open'
     );
     assertContract(
-        /lastGameplayFrame\s*=\s*get\(\);/.test(sketchSource),
-        'Active gameplay frames are captured for pause freeze'
+        /function captureGameplayFreezeSnapshot\(\)/.test(sketchSource) &&
+        /lastGameplayFrame\s*=\s*get\(\)/.test(sketchSource),
+        'Pause freeze snapshot helper captures canvas via get()'
     );
     assertContract(
-        /gameState\.isPaused && lastGameplayFrame/.test(sketchSource) &&
+        /captureGameplayFreezeSnapshot\(\)/.test(sketchSource) &&
+        /gameState\.isPaused\s*=\s*true/.test(sketchSource),
+        'Pause rising edge captures freeze snapshot before setting isPaused'
+    );
+    assertContract(
+        /function isPauseGameplayShell\(\)/.test(sketchSource) &&
+        /if \(isPauseGameplayShell\(\)\)/.test(sketchSource) &&
         /image\(lastGameplayFrame/.test(sketchSource) &&
         /drawPauseScreen\(\)/.test(sketchSource),
-        'Pause path draws frozen last frame then pause overlay'
+        'Pause shell draws freeze snapshot (or static fallback) then pause overlay and returns'
     );
     assertContract(
-        /if \(!gameState\.isPaused\)\s*\{\s*gameState\.playTime\s*\+=/.test(sketchSource),
-        'Play time does not accumulate while paused'
+        /if \(!gameState\.isPaused\)\s*\{\s*lastGameplayFrame\s*=\s*null;/.test(sketchSource),
+        'Resize clears lastGameplayFrame only when not paused'
+    );
+    // Play time is only updated after the pause-shell early return, so it cannot advance while paused.
+    const drawBody = extractFunctionBody(sketchSource, 'draw');
+    assertContract(
+        drawBody &&
+        !/lastGameplayFrame\s*=\s*get\(\)/.test(drawBody),
+        'draw() does not capture freeze snapshot every active frame'
+    );
+    assertContract(
+        drawBody &&
+        /if \(isPauseGameplayShell\(\)\)/.test(drawBody) &&
+        drawBody.indexOf('isPauseGameplayShell()') < drawBody.indexOf('gameState.playTime +='),
+        'Play time does not accumulate while paused (update is after pause-shell return)'
+    );
+    assertContract(
+        drawBody &&
+        drawBody.indexOf('isPauseGameplayShell()') < drawBody.indexOf('updatePlayer()'),
+        'Player simulation does not run under pause shell'
     );
 }
 
