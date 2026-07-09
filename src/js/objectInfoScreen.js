@@ -279,7 +279,7 @@ function drawObjectInfoScreen() {
     text(staffText, col1X + imageSize + textGap, currentY + rowTextYOffset, colWidth - imageSize - textGap, metrics.rowHeight);
 
     // Magnet
-    let magnetText = "Magnet - Magnetism";
+    let magnetText = "Magnet - strong pull (snapshot; bombs too)";
     if (magnetFrames[0] && magnetFrames[0].width) {
         image(magnetFrames[0], col2X, currentY + (metrics.rowHeight - imageSize) / 2, imageSize, imageSize);
     } else {

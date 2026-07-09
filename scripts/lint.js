@@ -3,16 +3,39 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
+function collectJsFiles(dirPath, files = []) {
+    if (!fs.existsSync(dirPath)) {
+        return files;
+    }
+
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+            collectJsFiles(fullPath, files);
+        } else if (entry.isFile() && entry.name.endsWith('.js')) {
+            files.push(fullPath);
+        }
+    }
+
+    return files;
+}
+
 function getJavaScriptFiles() {
-    const srcDir = path.join(__dirname, '..', 'src', 'js');
+    const repoRoot = path.join(__dirname, '..');
+    const srcDir = path.join(repoRoot, 'src', 'js');
+    const scriptsDir = path.join(repoRoot, 'scripts');
+
     const sourceFiles = fs.readdirSync(srcDir)
         .filter((file) => file.endsWith('.js'))
         .sort()
         .map((file) => path.join(srcDir, file));
 
+    const scriptFiles = collectJsFiles(scriptsDir).sort();
+
     return [
-        path.join(__dirname, '..', 'build.js'),
+        path.join(repoRoot, 'build.js'),
         ...sourceFiles,
+        ...scriptFiles,
     ];
 }
 

@@ -739,7 +739,6 @@ function updateObjects() {
                 if (playerState.lives <= 0) {
                     playerState.lives = 0;
                     gameState.shouldTriggerGameOver = true;
-                    gameState.pendingGameOverCause = 'humanoid_missed';
                 }
                 groundSplats.push({
                     x: obj.x,

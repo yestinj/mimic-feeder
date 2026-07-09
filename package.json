@@ -6,6 +6,7 @@
     "build": "node build.js",
     "lint": "node scripts/lint.js",
     "smoke": "node scripts/smoke.js",
+    "playtest": "node scripts/playtest.js",
     "test": "npm run lint && npm run build && npm run smoke",
     "start": "npx http-server dist -o",
     "dev": "nodemon --watch src --ext js,html,css --exec \"npm run build && echo 'Build complete, refresh your browser'\"",
@@ -20,7 +21,7 @@
     "http-server": "^14.1.1",
     "jsdoc": "^4.0.2",
     "nodemon": "^3.0.1",
-    "wrangler": "^4.65.0"
+    "playwright": "^1.51.0"
   },
   "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",
   "main": "build.js",

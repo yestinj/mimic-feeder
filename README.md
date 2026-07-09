@@ -41,18 +41,10 @@ Mastery tracking includes:
 
 Alternatively, after building, you can open `dist/index.html` directly in your browser.
 
-### Metrics Caveat (Local vs Cloudflare)
-- `npm start` uses `http-server` to serve static files only. It does not run Pages Functions, so `/api/track` is unavailable in that mode.
-- To run analytics ingestion locally (Functions + D1), use `npx wrangler pages dev dist`.
-- Production/preview deployments on Cloudflare Pages run the Function and write analytics events to Cloudflare D1.
-- Analytics should be fail-open: if tracking is blocked or unavailable, gameplay must continue normally.
-
-### Metrics and Privacy
-- We collect a small set of gameplay analytics events (`intro_view`, `game_start`, `game_over`, `retry_click`) to understand gameplay flow and balance.
-- Analytics uses anonymous random identifiers (`session_id`, `run_id`) and does not include player-entered names.
-- Client analytics has a temporary testing override enabled and currently does not skip sends for browser privacy signals (`Global Privacy Control` and `Do Not Track`).
-- Re-enable privacy-signal respect after testing by setting `RESPECT_BROWSER_PRIVACY_SIGNALS = true` in `src/js/analytics.js`.
-- Client payloads are allowlisted per event before sending to reduce accidental extra data collection.
+### Deploy notes
+- Production is a static Cloudflare Pages site (build output: `dist/`).
+- Deploys are automatic via the Cloudflare Pages GitHub integration.
+- No Pages Functions, D1, or client analytics are used.
 
 ### Common Issues
 - **No Audio**: If audio is muted on first load, click anywhere on the page or press any key to activate the audio context.

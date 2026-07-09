@@ -223,53 +223,94 @@ function checkPlayTimeContracts(sketchSource) {
     );
 }
 
-function checkAnalyticsContracts(analyticsSource, buildSource, sketchSource, introSource, gameOverSource, utilsSource, objectsSource) {
+function checkPauseContracts(sketchSource) {
     assertContract(
-        /'analytics\.js'/.test(buildSource),
-        'Build order includes analytics.js before gameplay scripts'
+        /gameState\.showIntroScreen \|\| gameState\.gameOver \|\| gameState\.isPaused \|\|/.test(sketchSource),
+        'keyPressed inactive guard includes isPaused'
     );
     assertContract(
-        /trackIntroViewEvent\(\);/.test(sketchSource),
-        'setup tracks intro_view when intro screen is shown'
+        /gameState\.isPaused \|\|[\s\S]*gameState\.showHelpScreen \|\| gameState\.showObjectInfoScreen \|\|[\s\S]*gameState\.showAboutScreen \|\| gameState\.showAchievementsScreen/.test(sketchSource),
+        'Gameplay keys blocked while paused or overlay screens are open'
     );
     assertContract(
-        /trackGameStartEvent\('auto'\)/.test(sketchSource),
-        'setup tracks game_start for auto-start paths'
+        /lastGameplayFrame\s*=\s*get\(\);/.test(sketchSource),
+        'Active gameplay frames are captured for pause freeze'
     );
     assertContract(
-        /trackGameStartEvent\('retry'\)/.test(sketchSource),
-        'restartGame tracks game_start with retry input'
+        /gameState\.isPaused && lastGameplayFrame/.test(sketchSource) &&
+        /image\(lastGameplayFrame/.test(sketchSource) &&
+        /drawPauseScreen\(\)/.test(sketchSource),
+        'Pause path draws frozen last frame then pause overlay'
     );
     assertContract(
-        /trackGameOverEvent\([^)]*\);/.test(sketchSource),
-        'triggerGameOver tracks game_over event'
+        /if \(!gameState\.isPaused\)\s*\{\s*gameState\.playTime\s*\+=/.test(sketchSource),
+        'Play time does not accumulate while paused'
+    );
+}
+
+function checkBombCountContracts(abilitiesSource, utilsSource) {
+    assertContract(
+        /function handleBombCollection\(obj\)\s*\{[\s\S]*collectedCounts\.small_bomb\+\+/.test(utilsSource),
+        'handleBombCollection owns small_bomb counting'
+    );
+
+    const boltBombBlock = abilitiesSource.match(
+        /else \{\s*\/\/ if its a small bomb[\s\S]*?checkForPlayerLevelUp\(\);\s*\}/
+    );
+    assertContract(!!boltBombBlock, 'Shadow-bolt small-bomb hit path exists');
+    assertContract(
+        /handleBombCollection\(obj\)/.test(boltBombBlock[0]),
+        'Shadow-bolt bomb path calls handleBombCollection'
     );
     assertContract(
-        /trackRetryClickEvent\('keyboard'\)/.test(sketchSource),
-        'Keyboard retry tracks retry_click event'
+        !/collectedCounts\.small_bomb\+\+/.test(boltBombBlock[0]),
+        'Shadow-bolt bomb path does not pre-increment small_bomb (no double-count)'
+    );
+}
+
+function checkAnalyticsRemovedContracts(buildSource, sketchSource, introSource, gameOverSource) {
+    assertContract(
+        !/'analytics\.js'/.test(buildSource),
+        'Build order no longer includes analytics.js'
     );
     assertContract(
-        /trackAnalyticsSafe\('retry_click',[\s\S]*version:\s*GAME_VERSION/.test(sketchSource),
-        'retry_click payload includes version'
+        !fs.existsSync(path.join(__dirname, '..', 'src', 'js', 'analytics.js')),
+        'Client analytics module is removed'
     );
     assertContract(
-        /pendingGameOverCause\s*=/.test(sketchSource) &&
-        /pendingGameOverCause\s*=/.test(utilsSource) &&
-        /pendingGameOverCause\s*=/.test(objectsSource),
-        'Game over cause is set in lethal paths'
+        !fs.existsSync(path.join(__dirname, '..', 'functions', 'api', 'track.js')),
+        'Pages Function track endpoint is removed'
     );
     assertContract(
-        /trackGameStartEvent\('keyboard'\)/.test(introSource) &&
-        /trackGameStartEvent\('mouse'\)/.test(introSource),
-        'Intro handlers track game_start for keyboard and mouse input'
+        !/trackIntroViewEvent|trackGameStartEvent|trackGameOverEvent|trackRetryClickEvent|trackAnalyticsSafe|trackEvent\s*\(/.test(sketchSource),
+        'sketch.js has no analytics track call sites'
     );
     assertContract(
-        /trackRetryClickEvent\('mouse'\)/.test(gameOverSource),
-        'Game-over retry click tracks retry_click event'
+        !/trackGameStartEvent|trackRetryClickEvent/.test(introSource + gameOverSource),
+        'Intro and game-over screens have no analytics track call sites'
     );
     assertContract(
-        /function trackEvent\(eventName, fields\)/.test(analyticsSource),
-        'Analytics helper exposes trackEvent(eventName, fields)'
+        !fs.existsSync(path.join(__dirname, '..', 'src', '_routes.json')),
+        'API _routes.json is removed with Functions'
+    );
+}
+
+function checkMagnetHelpContracts(helpSource, uiSource) {
+    assertContract(
+        /snapshots on-screen loot\/hazards/.test(helpSource) ||
+        /Marked objects keep pulling/.test(helpSource),
+        'Help screen describes magnetism snapshot contract'
+    );
+    assertContract(
+        /including bombs|incl\. bombs|bombs too/i.test(helpSource + uiSource),
+        'Magnet help/unlock copy warns that bombs can be pulled'
+    );
+}
+
+function checkAchievementSaveContracts(achievementsSource) {
+    assertContract(
+        /function saveAchievements\(\)\s*\{[\s\S]*try\s*\{[\s\S]*localStorage\.setItem\([\s\S]*catch \(error\)/.test(achievementsSource),
+        'saveAchievements guards localStorage writes with try/catch'
     );
 }
 
@@ -286,18 +327,21 @@ function main() {
     const uiSource = readRepoFile('src/js/ui.js');
     const utilsSource = readRepoFile('src/js/utils.js');
     const objectsSource = readRepoFile('src/js/objects.js');
-    const analyticsSource = readRepoFile('src/js/analytics.js');
     const buildSource = readRepoFile('build.js');
     const indexSource = readRepoFile('src/index.html');
     const assetSource = readRepoFile('src/js/assets.js');
 
     checkControlContracts(playerSource, abilitiesSource, sketchSource);
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
+    checkAchievementSaveContracts(achievementsSource);
     checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSource, aboutSource, achievementsSource);
     checkBuildAndAssetContracts(buildSource, indexSource, assetSource);
     checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);
     checkPlayTimeContracts(sketchSource);
-    checkAnalyticsContracts(analyticsSource, buildSource, sketchSource, introSource, gameOverSource, utilsSource, objectsSource);
+    checkPauseContracts(sketchSource);
+    checkBombCountContracts(abilitiesSource, utilsSource);
+    checkAnalyticsRemovedContracts(buildSource, sketchSource, introSource, gameOverSource);
+    checkMagnetHelpContracts(helpSource, uiSource);
 
     console.log('Smoke checks passed.');
 }

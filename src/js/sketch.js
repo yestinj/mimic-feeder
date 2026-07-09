@@ -46,7 +46,6 @@ function initializeStates() {
         isPaused: false,                               // Whether the game is paused
         isMuted: false,                                // Whether the game is muted
         shouldTriggerGameOver: false,                  // Flag to trigger game over on next frame
-        pendingGameOverCause: null,                    // Optional cause string for next game over event
         objectSpawnRate: BASE_OBJECT_SPAWN_RATE_FRAMES,// Rate at which objects spawn
         objectSpawnTimer: 0,                           // Frame-equivalent accumulator for spawn cadence
         dropSpeedScale: INITIAL_DROP_SPEED_SCALE,      // Speed at which objects fall
@@ -165,6 +164,11 @@ let screenShakeAmount = 0;
  * @type {?boolean}
  */
 let wasGameAudioSilenced = null;
+/**
+ * Last fully rendered gameplay frame, used to freeze the world while paused
+ * @type {?p5.Image}
+ */
+let lastGameplayFrame = null;
 
 /**
  * Returns whether gameplay audio should currently be silenced
@@ -202,83 +206,6 @@ function syncGameAudioState() {
     } else if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen) {
         updateBackgroundMusic();
     }
-}
-
-function getAnalyticsCoreFields() {
-    return {
-        score: Number.isFinite(gameState.score) ? gameState.score : null,
-        dungeon_floor: Number.isFinite(gameState.dungeonFloor) ? gameState.dungeonFloor : null,
-        dungeon_zone: Number.isFinite(gameState.dungeonZone) ? gameState.dungeonZone : null,
-        player_level: Number.isFinite(playerState.level) ? playerState.level : null,
-        play_time_seconds: Number.isFinite(gameState.playTime) ? Math.max(0, Math.floor(gameState.playTime)) : null,
-    };
-}
-
-function trackAnalyticsSafe(eventName, fields) {
-    if (typeof trackEvent !== 'function') {
-        return;
-    }
-    try {
-        trackEvent(eventName, fields);
-    } catch (error) {
-        // Fail-open analytics: gameplay must continue.
-    }
-}
-
-function startRunSafe() {
-    if (typeof startRun !== 'function') {
-        return null;
-    }
-    try {
-        return startRun();
-    } catch (error) {
-        return null;
-    }
-}
-
-function trackIntroViewEvent() {
-    trackAnalyticsSafe('intro_view', {
-        ...getAnalyticsCoreFields(),
-        payload: {
-            version: GAME_VERSION,
-        },
-    });
-}
-
-function trackGameStartEvent(input) {
-    startRunSafe();
-    trackAnalyticsSafe('game_start', {
-        ...getAnalyticsCoreFields(),
-        payload: {
-            version: GAME_VERSION,
-            input,
-        },
-    });
-}
-
-function trackGameOverEvent(cause) {
-    const payload = {
-        version: GAME_VERSION,
-        objects_eaten: Number.isFinite(gameState.collectedCount) ? gameState.collectedCount : null,
-    };
-    if (cause) {
-        payload.cause = cause;
-    }
-    trackAnalyticsSafe('game_over', {
-        ...getAnalyticsCoreFields(),
-        payload,
-    });
-}
-
-function trackRetryClickEvent(input) {
-    trackAnalyticsSafe('retry_click', {
-        ...getAnalyticsCoreFields(),
-        payload: {
-            version: GAME_VERSION,
-            from: 'game_over',
-            input,
-        },
-    });
 }
 
 /**
@@ -324,12 +251,10 @@ function setup() {
         // Only show intro screen if this is the first time the game is loaded
         if (gameState.lastUsedName === "Player") {
             gameState.showIntroScreen = true;
-            trackIntroViewEvent();
         } else {
             gameState.showIntroScreen = false;
             gameState.startTime = millis() / 1000;
             gameState.gameStarted = true;
-            trackGameStartEvent('auto');
             startAudioIfNeeded();
         }
         isInitialPageLoad = false; // Mark that initial load has passed
@@ -338,7 +263,6 @@ function setup() {
         gameState.showIntroScreen = false;
         gameState.startTime = millis() / 1000;
         gameState.gameStarted = true;
-        trackGameStartEvent('auto');
         startAudioIfNeeded();
     }
 }
@@ -359,6 +283,7 @@ function windowResized() {
         canvasHeight = canvasWidth / ASPECT_RATIO;
     }
     resizeCanvas(canvasWidth, canvasHeight);
+    lastGameplayFrame = null;
 
     // Reposition UI buttons
     if (typeof retryButton !== 'undefined') {
@@ -382,7 +307,19 @@ function draw() {
     // Keep audio state aligned with pause/help/mute state.
     syncGameAudioState();
 
-    // Apply screen shake effect if active
+    // Frozen playfield: reuse the last captured gameplay frame under the pause overlay.
+    // If the player pauses before any frame has been captured, fall through once so we can
+    // render + snapshot (keys are already blocked while paused).
+    if (gameState.isPaused && lastGameplayFrame &&
+        !gameState.showIntroScreen && !gameState.gameOver &&
+        !gameState.showHelpScreen && !gameState.showObjectInfoScreen &&
+        !gameState.showAboutScreen && !gameState.showAchievementsScreen) {
+        image(lastGameplayFrame, 0, 0, width, height);
+        drawPauseScreen();
+        return;
+    }
+
+    // Screen shake (skipped for frozen pause frames via the early return above).
     if (screenShakeAmount > 0) {
         translate(random(-screenShakeAmount, screenShakeAmount), random(-screenShakeAmount, screenShakeAmount));
         screenShakeAmount *= Math.pow(0.9, frameDelta); // Decay at a stable real-time rate
@@ -438,18 +375,16 @@ function draw() {
         return;
     }
 
-    if (gameState.isPaused) {
-        drawPauseScreen();
-        return;
-    }
-
     if (!gameState.gameStarted) {
         gameState.startTime = millis() / 1000;
         gameState.gameStarted = true;
     }
 
     // Update play time only during active gameplay frames (not paused/overlay/intro/game-over)
-    gameState.playTime += frameDelta / TARGET_FPS;
+    // Bootstrapping a pause snapshot still advances one frame of sim (rare); exclude that from playTime.
+    if (!gameState.isPaused) {
+        gameState.playTime += frameDelta / TARGET_FPS;
+    }
 
     updatePlayer();
     spawnObjects();
@@ -488,9 +423,7 @@ function draw() {
 
     if (gameState.shouldTriggerGameOver) {
         gameState.shouldTriggerGameOver = false;
-        const cause = gameState.pendingGameOverCause || null;
-        gameState.pendingGameOverCause = null;
-        triggerGameOver(cause);
+        triggerGameOver();
     }
 
     fill(80, 80, 80);
@@ -500,6 +433,13 @@ function draw() {
     updateAndDrawCenterNotifications();
 
     drawUI();
+
+    // Capture post-draw gameplay for pause freeze (before any pause overlay).
+    lastGameplayFrame = get();
+
+    if (gameState.isPaused) {
+        drawPauseScreen();
+    }
 }
 
 /**
@@ -507,10 +447,11 @@ function draw() {
  * Sets up the game over screen and plays appropriate sounds
  * @function
  */
-function triggerGameOver(cause) {
-    trackGameOverEvent(cause);
+function triggerGameOver() {
     gameState.gameOver = true;
     gameState.enteringName = true;
+    gameState.isPaused = false;
+    lastGameplayFrame = null;
     clearCenterNotifications();
     playSound('game_over');
     stopAllSounds(true, false); // Stop all sounds including background music
@@ -694,7 +635,6 @@ function updateBossFireballs() {
             if (playerState.lives <= 0) {
                 playerState.lives = 0;
                 gameState.shouldTriggerGameOver = true;
-                gameState.pendingGameOverCause = 'boss_fireball_hit';
             }
 
             // Create explosion
@@ -750,7 +690,6 @@ function keyPressed() {
         return;
     }
     if (gameState.gameOver && !gameState.enteringName && keyCode === ENTER) {
-        trackRetryClickEvent('keyboard');
         startAudioIfNeeded();
         restartGame();
         return;
@@ -785,7 +724,7 @@ function keyPressed() {
         return;
     }
 
-    // Show help screen when Escape is pressed during gameplay
+    // Show help screen when Escape is pressed during gameplay (including while paused)
     if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
         !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
         keyCode === ESCAPE) {
@@ -793,7 +732,7 @@ function keyPressed() {
         return;
     }
 
-    // Show achievements screen when 'K' key is pressed during gameplay
+    // Show achievements screen when 'K' key is pressed during gameplay (including while paused)
     if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
         !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
         (key === 'k' || key === 'K')) {
@@ -802,7 +741,9 @@ function keyPressed() {
     }
 
     // Skip gameplay controls if not in active game state
-    if (gameState.showIntroScreen || gameState.gameOver || gameState.showHelpScreen) {
+    if (gameState.showIntroScreen || gameState.gameOver || gameState.isPaused ||
+        gameState.showHelpScreen || gameState.showObjectInfoScreen ||
+        gameState.showAboutScreen || gameState.showAchievementsScreen) {
         return;
     }
 
@@ -972,6 +913,7 @@ function restartGame() {
     achievementsCurrentPage = 0;
 
     gameState.startTime = millis() / 1000;
-    trackGameStartEvent('retry');
+    gameState.isPaused = false;
+    lastGameplayFrame = null;
     startAudioIfNeeded();
 }

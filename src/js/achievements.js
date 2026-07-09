@@ -333,7 +333,11 @@ function showAchievementNotification(name, points) {
  * @function
  */
 function saveAchievements() {
-    localStorage.setItem('mimicAchievements', JSON.stringify(gameState.achievements));
+    try {
+        localStorage.setItem('mimicAchievements', JSON.stringify(gameState.achievements));
+    } catch (error) {
+        console.warn('Failed to save achievements to localStorage.', error);
+    }
 }
 
 /**

@@ -340,7 +340,7 @@ function queueTentacleNotification(line1, line2) {
     });
 }
 
-function queueMagnetNotification(line1 = "Magnet acquired", line2 = "Press 'X' Key to use") {
+function queueMagnetNotification(line1 = "Magnet acquired", line2 = "Press X — pulls marked loot/hazards (incl. bombs)") {
     enqueueCenterNotification({
         style: 'panel',
         title: line1,

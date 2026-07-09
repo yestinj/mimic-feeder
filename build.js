@@ -85,7 +85,6 @@ async function bundleJS(inputDir, outputDir) {
         'constants.js',
         'assets.js',
         'utils.js',
-        'analytics.js',
         'player.js',
         'objects.js',
         'abilities.js',
@@ -161,6 +160,21 @@ async function copyAssets(inputDir, outputDir) {
     }
 }
 
+async function copyOptionalBuildFile(sourcePath, destPath) {
+    try {
+        await fs.access(sourcePath);
+    } catch {
+        console.warn(`Warning: optional build file missing, skipping: ${sourcePath}`);
+        return;
+    }
+
+    try {
+        await fs.copyFile(sourcePath, destPath);
+    } catch (error) {
+        console.warn(`Warning: failed to copy ${sourcePath} -> ${destPath}: ${error.message}`);
+    }
+}
+
 async function main() {
     try {
         // Create output directory
@@ -173,8 +187,7 @@ async function main() {
             minifyCSS('src', OUTPUT_DIR),
             bundleJS(JS_DIR, OUTPUT_DIR),
             copyAssets(ASSET_DIR, `${OUTPUT_DIR}/assets`),
-            fs.copyFile('src/_headers', `${OUTPUT_DIR}/_headers`).catch(() => {}),
-            fs.copyFile('src/_routes.json', `${OUTPUT_DIR}/_routes.json`).catch(() => {})
+            copyOptionalBuildFile('src/_headers', `${OUTPUT_DIR}/_headers`),
         ]);
 
         console.log('Build completed successfully!');

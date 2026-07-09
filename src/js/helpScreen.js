@@ -32,9 +32,9 @@ function drawHelpScreen() {
         `Shadow Bolt (Space): staff can appear at Floor ${DUNGEON_FLOOR_FOR_STAFF_DROP} Zone ${DUNGEON_ZONE_FOR_STAFF_DROP}.`,
         "Fires a ranged bolt that destroys objects.",
         `Magnetism (X): magnet can appear at Floor ${DUNGEON_FLOOR_FOR_MAGNET_DROP} Zone ${DUNGEON_ZONE_FOR_MAGNET_DROP}.`,
-        "Affects only on-screen non-humanoid objects at activation.",
-        "Affected objects stay pulled until eaten/removed.",
-        "Cooldown only gates re-use.",
+        "On press, snapshots on-screen loot/hazards (not creatures, fireballs, staff, potion, or boss).",
+        "Marked objects keep pulling hard until eaten or destroyed — including bombs.",
+        "Use carefully near bombs. Cooldown only gates re-use.",
         `Dash cooldown: ${DASH_COOLDOWN_FRAMES / TARGET_FPS} second(s).`
     ];
 

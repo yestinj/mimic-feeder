@@ -154,7 +154,7 @@ function updateShadowBolts() {
                     objects.splice(j, 1);
                 } else {
                     // if its a small bomb
-                    gameState.collectedCounts.small_bomb++;
+                    // Counting is owned by handleBombCollection (avoid double-count).
                     let points = SHADOW_BOLT_BOMB_POINTS;
                     // Award XP along with score
                     playerState.experience += points;
