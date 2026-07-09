@@ -417,6 +417,27 @@ function checkAchievementSaveContracts(achievementsSource) {
     );
 }
 
+function checkBossTrackingAndContactContracts(constantsSource, sketchSource, abilitiesSource, objectsSource, helpSource) {
+    assertContract(
+        /\[OBJ_BOSS\]:\s*\{[^}]*countKey:\s*null/.test(constantsSource),
+        'Boss objectProperties countKey is null (not dual-tracked via collectedCounts)'
+    );
+    assertContract(
+        /collectedCounts:\s*\{[\s\S]*?magnet:\s*0\s*\}/.test(sketchSource) &&
+        !/collectedCounts:[\s\S]*?boss:\s*0/.test(sketchSource),
+        'collectedCounts no longer includes unused boss field'
+    );
+    assertContract(
+        /achievementStats\.bossesDefeated\s*\+=\s*1/.test(abilitiesSource),
+        'Boss defeats increment achievementStats.bossesDefeated'
+    );
+    assertContract(
+        /Contact-safe boss/.test(objectsSource) &&
+        /body contact is safe|only its fireballs/i.test(helpSource),
+        'Boss contact-safe design is documented in code and help'
+    );
+}
+
 function checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource) {
     assertContract(
         /const BOSS_FLOOR_SPEED_MULTIPLIER_MAX = 4/.test(constantsSource) &&
@@ -487,6 +508,7 @@ function main() {
     checkControlContracts(playerSource, abilitiesSource, sketchSource);
     checkVersionContracts(constantsSource, packageSource);
     checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource);
+    checkBossTrackingAndContactContracts(constantsSource, sketchSource, abilitiesSource, objectsSource, helpSource);
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
     checkAchievementSaveContracts(achievementsSource);
     checkHighScoreStorageContracts(uiSource);

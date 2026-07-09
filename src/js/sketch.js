@@ -53,7 +53,7 @@ function initializeStates() {
         humansForNextMaxLife: HUMANS_PER_MAX_LIFE_INCREASE, // Humans needed for next max life increase
         collectedCounts: {                             // Counts of each object type collected
             human: 0, goblin: 0, elf: 0, wraith: 0, cat: 0,
-            dwarf: 0, dragon: 0, small_bomb: 0, fireball: 0, crown: 0, diamond: 0, magnet: 0, boss: 0
+            dwarf: 0, dragon: 0, small_bomb: 0, fireball: 0, crown: 0, diamond: 0, magnet: 0
         },
         catsRescued: 0,                               // Number of cats rescued
         catsRescuedPoints: 0,                         // Points from rescuing cats

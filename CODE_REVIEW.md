@@ -117,14 +117,13 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 - **Impact:** Progress without intentional player action; may be intentional ease, slightly misleading copy.
 - **Suggestion:** Split hit vs neutralized if design wants skill-based progress.
 
-#### L2 — Boss body never collides with player
-- **Where:** Boss branch in `updateObjects` continues before general collision; fireballs only
-- **Impact:** Contact is free. Dead hitbox comments remain.
-- **Suggestion:** Document contact-safe boss, or add contact damage and remove dead code.
+#### L2 — Boss body never collides with player — **Fixed (2026-07-09, intentional + docs)**
+- **Where:** `objects.js` boss branch `continue` before player collision; help copy
+- **Behavior (unchanged):** Contact-safe by design; only boss fireballs damage. Comment + Help screen document this.
 
-#### L3 — `collectedCounts.boss` never increments
-- **Where:** `objectProperties[OBJ_BOSS].countKey` vs kill path only updating `achievementStats.bossesDefeated`
-- **Suggestion:** Increment on defeat or remove unused count key.
+#### L3 — `collectedCounts.boss` never increments — **Fixed (2026-07-09, dropped)**
+- **Where:** `constants.js` / `initializeStates` collectedCounts
+- **Decision:** Unused — game-over item breakdown never showed bosses; achievements use `achievementStats.bossesDefeated`. Removed dead `countKey` and `collectedCounts.boss` field rather than dual-tracking.
 
 #### L4 — Restart does not clear `recentSpawnXPositions` — **Fixed (2026-07-09)**
 - **Where:** `restartGame` in `sketch.js` clears `recentSpawnXPositions` (module state from `objects.js`)

@@ -15,7 +15,8 @@ function drawHelpScreen() {
     const howToPlayLines = [
         "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.",
         "Letting perfectly good food (creatures) perish or getting hit by a dangerous object will cause damage.",
-        "Cats are special..."
+        "Cats are special...",
+        "Boss fights (even floors): body contact is safe — only its fireballs hurt. Defeat it with Shadow Bolt."
     ];
     const controls = [
         "Move: Left / Right Arrows or A / D",

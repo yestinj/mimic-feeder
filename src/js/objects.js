@@ -501,7 +501,9 @@ function updateObjects() {
                 pop();
             }
 
-            // Skip the rest of the loop for boss
+            // Contact-safe boss: skip player/ground collision for this object.
+            // Only boss fireballs damage the player; the body is intentionally non-damaging.
+            // Shadow bolts still hit the boss via updateShadowBolts (separate loop).
             continue;
         } else if (obj.type === OBJ_DRAGON) {
             // Handle dragon's special behavior

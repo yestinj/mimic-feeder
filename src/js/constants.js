@@ -350,7 +350,8 @@ const objectProperties = {
     [OBJ_HEALTH_POTION]: {xp: 0, sound: 'healthPotion', effect: 'gainLife', image: null, countKey: null},
     [OBJ_WIZARD_STAFF]: {xp: 0, sound: 'wizardStaff', effect: 'gainStaff', image: 'staffImage', countKey: null},
     [OBJ_MAGNET]: {xp: 0, sound: 'magnetism', effect: 'gainMagnet', image: null, countKey: 'magnet'},
-    [OBJ_BOSS]: {xp: BOSS_POINTS, sound: 'explode', effect: null, image: null, countKey: 'boss'},
+    // Boss is not collected via collectObject; defeats use achievementStats.bossesDefeated.
+    [OBJ_BOSS]: {xp: BOSS_POINTS, sound: 'explode', effect: null, image: null, countKey: null},
 };
 
 /**
