@@ -281,6 +281,22 @@ const BOSS_LIVES = 10;
 const BOSS_POINTS = 250;
 /** @const {number} BOSS_SPEED - Movement speed of the boss */
 const BOSS_SPEED = 3;
+/**
+ * Max floor-based speed/fire-rate multiplier for boss + fireballs.
+ * Formula is 2^floor((floor-2)/2) (floor 2: 1×, 4: 2×, 6: 4×, …) then clamped here.
+ * Other difficulty (drop speed, spawn rate, boss HP) keeps scaling with level/floor.
+ */
+const BOSS_FLOOR_SPEED_MULTIPLIER_MAX = 4;
+
+/**
+ * Floor-based boss/fireball speed multiplier (capped).
+ * @param {number} [dungeonFloor]
+ * @returns {number}
+ */
+function getBossFloorSpeedMultiplier(dungeonFloor = gameState.dungeonFloor) {
+    const raw = Math.pow(2, Math.floor((dungeonFloor - 2) / 2));
+    return Math.min(BOSS_FLOOR_SPEED_MULTIPLIER_MAX, raw);
+}
 /** @const {number} BOSS_FRAME_DURATION - Duration of each boss animation frame */
 const BOSS_FRAME_DURATION = 5;
 /** @const {number} BOSS_TOTAL_FRAMES - Total number of frames in boss animation */

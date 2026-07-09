@@ -82,10 +82,10 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 - **Was:** Score/name `setItem` (and reads) could throw and break game-over submit / setup.
 - **Now:** try/catch on read and write; in-memory high scores and `lastUsedName` still update for the session. Smoke covers save/load guards.
 
-#### M5 — Boss fireball speed scales exponentially
-- **Where:** `src/js/objects.js` — `floorSpeedMultiplier = 2^floor((floor-2)/2)` on fireball speed and cooldown
-- **Impact:** Later floors become effectively undodgeable; balance/fairness issue more than crash.
-- **Suggestion:** Cap multiplier (e.g. 3–4×) or switch to linear/log scaling; separate speed vs fire-rate knobs.
+#### M5 — Boss fireball speed scales exponentially — **Fixed (2026-07-09, 4× cap)**
+- **Where:** `getBossFloorSpeedMultiplier()` in `constants.js`; used for boss move speed, fireball speed, and fireball cooldown
+- **Was:** Uncapped `2^floor((floor-2)/2)` → 8×/16×… undodgeable late bosses
+- **Now:** Same curve but **clamped to 4×** (reached at floor 6+). Boss HP still gains +2 lives per even-floor spawn; drop speed / spawn rate keep scaling with game level.
 
 #### M6 — Help/about overlays drop the frozen playfield — **Fixed (2026-07-09)**
 - **Where:** `src/js/sketch.js` — `isMidRunInfoOverlay`, `drawPlayfieldUnderlay`, `ensureGameplayFreezeSnapshotForOverlay`

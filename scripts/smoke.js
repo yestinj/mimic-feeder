@@ -417,6 +417,24 @@ function checkAchievementSaveContracts(achievementsSource) {
     );
 }
 
+function checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource) {
+    assertContract(
+        /const BOSS_FLOOR_SPEED_MULTIPLIER_MAX = 4/.test(constantsSource) &&
+        /function getBossFloorSpeedMultiplier\(/.test(constantsSource) &&
+        /Math\.min\(BOSS_FLOOR_SPEED_MULTIPLIER_MAX/.test(constantsSource),
+        'Boss floor speed multiplier is capped at 4×'
+    );
+    assertContract(
+        /getBossFloorSpeedMultiplier\(\)/.test(objectsSource) &&
+        /getBossFloorSpeedMultiplier\(\)/.test(utilsSource),
+        'Boss fireball and boss spawn use shared capped speed multiplier'
+    );
+    assertContract(
+        !/Math\.pow\(2,\s*Math\.floor\(\(gameState\.dungeonFloor - 2\) \/ 2\)\)/.test(objectsSource + utilsSource),
+        'Uncapped boss floor speed pow() is not inlined in objects/utils'
+    );
+}
+
 function checkVersionContracts(constantsSource, packageSource) {
     assertContract(
         /const GAME_VERSION = "1\.0\.0-beta"/.test(constantsSource),
@@ -468,6 +486,7 @@ function main() {
 
     checkControlContracts(playerSource, abilitiesSource, sketchSource);
     checkVersionContracts(constantsSource, packageSource);
+    checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource);
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
     checkAchievementSaveContracts(achievementsSource);
     checkHighScoreStorageContracts(uiSource);

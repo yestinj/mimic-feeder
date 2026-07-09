@@ -402,12 +402,8 @@ function clearAllObjects() {
 
 // Function to create a boss
 function createBoss() {
-    // Calculate speed multiplier based on floor number
-    // Floor 2: 1x speed (base speed)
-    // Floor 4: 2x speed
-    // Floor 6: 4x speed
-    // Floor 8: 8x speed, etc.
-    let floorSpeedMultiplier = Math.pow(2, Math.floor((gameState.dungeonFloor - 2) / 2));
+    // Floor 2: 1×, 4: 2×, 6+: 4× (capped — see getBossFloorSpeedMultiplier)
+    let floorSpeedMultiplier = getBossFloorSpeedMultiplier();
 
     // Calculate additional lives based on floor number
     // Boss spawns at floor 2, 4, 6, etc. (even floors)

@@ -405,12 +405,8 @@ function updateObjects() {
                     obj.fireballCooldown = max(0, obj.fireballCooldown - frameDelta);
                 } else {
                     // Fire a fireball
-                    // Calculate speed multiplier based on floor number
-                    // Floor 2: 1x speed (base speed)
-                    // Floor 4: 2x speed
-                    // Floor 6: 4x speed
-                    // Floor 8: 8x speed, etc.
-                    let floorSpeedMultiplier = Math.pow(2, Math.floor((gameState.dungeonFloor - 2) / 2));
+                    // Floor 2: 1×, 4: 2×, 6+: 4× (capped — see getBossFloorSpeedMultiplier)
+                    let floorSpeedMultiplier = getBossFloorSpeedMultiplier();
 
                     let fireball = {
                         x: obj.x,
