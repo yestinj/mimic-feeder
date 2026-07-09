@@ -18,6 +18,10 @@ const ACHIEVEMENT_TIER_POINTS = {
     [ACHIEVEMENT_TIER_LATE]: 100
 };
 
+/**
+ * Player-caused hazard detonations (contact, shadow bolt, magnet/tentacle collect).
+ * Ground misses do not increment collectedCounts — see objects.js ground path.
+ */
 function getHazardDetonations(collectedCounts) {
     if (!collectedCounts || typeof collectedCounts !== 'object') {
         return 0;

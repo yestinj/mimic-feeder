@@ -133,10 +133,10 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 
 ### Low
 
-#### L1 — Hazard “detonate” achievement counts ground misses
-- **Where:** Ground bomb/fireball handling + `getHazardDetonations` / related achievements
-- **Impact:** Progress without intentional player action; may be intentional ease, slightly misleading copy.
-- **Suggestion:** Split hit vs neutralized if design wants skill-based progress.
+#### L1 — Hazard “detonate” achievement counts ground misses — **Fixed (2026-07-09, minimal C)**
+- **Where:** `objects.js` ground path; `handleBombCollection` / `getHazardDetonations`
+- **Was:** Ground impact incremented `collectedCounts.small_bomb` / `fireball`, so AFK ground clears progressed “Detonate N hazards.”
+- **Now:** Ground is VFX only. Counts only via `handleBombCollection` (player contact, bolt, pull). Thresholds 10/25/60 unchanged. Counters unused elsewhere (not in game-over item list).
 
 #### L2 — Boss body never collides with player — **Fixed (2026-07-09, intentional + docs)**
 - **Where:** `objects.js` boss branch `continue` before player collision; help copy

@@ -254,7 +254,7 @@ function handleHumanCollection() {
 }
 
 function handleBombCollection(obj) {
-    // Increment the appropriate counter based on the object type
+    // Player-caused detonation (hit, bolt, pull). Ground misses do not count.
     if (obj.type === OBJ_SMALL_BOMB) {
         gameState.collectedCounts.small_bomb++;
     } else if (obj.type === OBJ_FIREBALL) {

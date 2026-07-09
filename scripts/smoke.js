@@ -385,10 +385,24 @@ function checkPauseContracts(sketchSource) {
     );
 }
 
-function checkBombCountContracts(abilitiesSource, utilsSource) {
+function checkBombCountContracts(abilitiesSource, utilsSource, objectsSource, achievementsSource) {
     assertContract(
         /function handleBombCollection\(obj\)\s*\{[\s\S]*collectedCounts\.small_bomb\+\+/.test(utilsSource),
         'handleBombCollection owns small_bomb counting'
+    );
+    assertContract(
+        /OBJ_SMALL_BOMB\)\s*\{[\s\S]*?bombExplosions\.push[\s\S]*?objects\.splice/.test(objectsSource) &&
+        !/if \(obj\.type === OBJ_SMALL_BOMB\)\s*\{[\s\S]*?collectedCounts\.small_bomb\+\+/.test(objectsSource),
+        'Ground bomb path does not increment small_bomb (player detonations only)'
+    );
+    assertContract(
+        /OBJ_FIREBALL\)\s*\{[\s\S]*?type: 'fireball_burst'[\s\S]*?objects\.splice/.test(objectsSource) &&
+        !/if \(obj\.type === OBJ_FIREBALL\)\s*\{[\s\S]*?collectedCounts\.fireball\+\+/.test(objectsSource),
+        'Ground fireball path does not increment fireball (player detonations only)'
+    );
+    assertContract(
+        /function getHazardDetonations\(collectedCounts\)[\s\S]*small_bomb[\s\S]*fireball/.test(achievementsSource),
+        'Hazard detonation achievements use collectedCounts (filled only via handleBombCollection)'
     );
 
     const boltBombBlock = abilitiesSource.match(
@@ -553,7 +567,7 @@ function main() {
     checkPlayTimeContracts(sketchSource);
     checkPauseContracts(sketchSource);
     checkReducedMotionContracts(sketchSource);
-    checkBombCountContracts(abilitiesSource, utilsSource);
+    checkBombCountContracts(abilitiesSource, utilsSource, objectsSource, achievementsSource);
     checkAnalyticsRemovedContracts(buildSource, sketchSource, introSource, gameOverSource);
     checkMagnetHelpContracts(helpSource, uiSource);
 

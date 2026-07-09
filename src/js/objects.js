@@ -690,7 +690,8 @@ function updateObjects() {
             const humanoidSplatTypes = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_DRAGON]; // Removed OBJ_CAT as it has special handling
 
             if (obj.type === OBJ_SMALL_BOMB) {
-                gameState.collectedCounts.small_bomb++;
+                // Ground miss: VFX only. Detonation achievements count player-caused
+                // detonations via handleBombCollection (contact / bolt / pull), not ground.
                 bombExplosions.push({
                     x: obj.x,
                     y: groundLevel - obj.h / 2,
@@ -704,7 +705,7 @@ function updateObjects() {
                 objects.splice(i, 1);
                 removed = true;
             } else if (obj.type === OBJ_FIREBALL) {
-                gameState.collectedCounts.fireball++;
+                // Ground miss: VFX only (see small-bomb note above).
                 bombExplosions.push({
                     x: obj.x,
                     y: groundLevel - obj.h / 2,
