@@ -142,9 +142,10 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 - **Where:** `.gitignore`
 - **Now:** `.DS_Store` ignored.
 
-#### L8 — OG image slightly heavy
-- **Where:** `src/assets/og-image.png` ~563 KB at 1200×630
-- **Suggestion:** Recompress toward ~200–400 KB if share-card weight matters.
+#### L8 — OG image slightly heavy — **Fixed (2026-07-09)**
+- **Where:** `src/assets/og-image.png`
+- **Was:** ~563–577 KB RGB PNG at 1200×630
+- **Now:** ~132 KB palette PNG (pngquant quality 65–80), same dimensions; meta URLs unchanged.
 
 ---
 
