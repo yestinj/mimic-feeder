@@ -140,5 +140,5 @@ Playtest uses **system Brave** by default (`/Applications/Brave Browser.app/...`
 
 - `README.md` — player-facing controls and setup
 - `CONTRIBUTING.md` — fork workflow (not open contribution)
-- `PRE_MERGE_PLAN.md` — recent develop→main decisions (analytics removal, pause/bomb fixes)
-- `plan.md` / `tech-review.md` — design and historical review notes
+- `PRE_MERGE_PLAN.md` — active develop→main decisions (analytics removal, pause/bomb fixes, CF follow-up)
+- `archive/plan.md` / `archive/tech-review.md` — historical polish checklist and Feb 2026 tech review (not living todos)

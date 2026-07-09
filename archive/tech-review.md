@@ -1,8 +1,15 @@
 # Mimic Feeder Technical Review
 
+> **Archive status (2026-07-09):** Historical technical review and phased remediation plan (Feb 2026).  
+> Phases 1–5 code work is **done** in the tree; a few **manual** feel/regression passes were never formally closed.  
+> **Do not treat unchecked boxes or “open” findings below as current blockers** without re-checking the code.  
+> Superseded for pre-merge work by `PRE_MERGE_PLAN.md` (repo root); agent orientation is in `AGENTS.md`.  
+> **Post–this-doc work (2026-07, not listed in original findings):** analytics/Functions/D1 removal, pause freeze (`lastGameplayFrame`) + paused input guards, bomb count single-owner (shadow-bolt path), Playwright Brave playtest, real OG card, safe tooling / html-minifier-terser.
+
 Date: 2026-02-12  
 Scope: Full repository static review (logic, code quality, naming, docs drift, build/tooling, maintainability)  
-Status: Phase 1 (High Priority items 1-3) and Phase 2 implemented on 2026-02-12.
+Original status: Phase 1 (High Priority items 1-3) and Phase 2 implemented on 2026-02-12.  
+**Archive refresh:** 2026-07-09 (status accuracy only; not a new review).
 
 ## Decisions Confirmed by Project Owner
 
@@ -67,71 +74,39 @@ These decisions are treated as requirements for remediation:
 - Files: `src/js/introScreen.js:24`, `src/js/helpScreen.js:14`, `src/js/objectInfoScreen.js:14`, `src/js/aboutScreen.js:14`, `src/js/achievements.js:219`
 - Remediation: use viewport-aware min/max bounds and responsive typography, and introduce scrolling/pagination where text cannot fit safely without making type illegible.
 
-8. Build HTML script injection is brittle.
-- Evidence: build process inserts bundled script by matching a hardcoded external script string.
-- Impact: fragile to small HTML/CDN markup changes.
-- Files: `build.js:34`
-- Remediation: replace with marker-based insertion or parser-based transform.
+8. Build HTML script injection is brittle. — **Done (Phase 5)**
+- Was: insert via hardcoded script string match.
+- Now: marker-based replacement (`BUILD:GAME_SCRIPTS_START` / `END`) with regex fallback in `build.js`.
 
 ### Low Priority
 
-9. Open Graph metadata references a missing image.
-- Evidence: `og:image`/`twitter:image` point to `assets/og-image.png`, file not present.
-- Impact: broken social preview cards.
-- Files: `src/index.html:15`, `src/index.html:23`
-- Remediation: add image asset or update metadata.
-- Direction: use `1200x630` PNG/JPG, keep key subject centered, avoid tiny text, target <500KB. Existing background/chest/collectible assets can be reused for composition.
+9. Open Graph metadata references a missing image. — **Done (Phase 4 + 2026-07 OG refresh)**
+- Real `1200×630` asset at `src/assets/og-image.png`; absolute OG/Twitter URLs in `src/index.html`.
 
 10. Unused constants indicate config drift.
 - Evidence: constants are defined but not consumed.
 - Impact: confusion and maintenance noise.
-- Files: `src/js/constants.js:97`, `src/js/constants.js:126`
+- Files: `src/js/constants.js` (line numbers from original review may have shifted).
 - Remediation: remove unused constants or wire them into logic.
+- **Status (2026-07-09):** Not re-audited in this archive refresh; treat as optional cleanup if still true.
 
-11. Likely unused asset groups in repository.
-- Evidence: several asset directories/files are not referenced by runtime code.
-- Impact: repository bloat and maintenance overhead.
-- Files: `src/assets/mimic/*`, `src/assets/bosses/flying_demon/attack_*/*`, `src/assets/music/8-bit-heaven-26287.mp3`
-- Remediation: move confirmed-unused assets to an in-repo quarantine folder for manual review, not deletion.
-- Confirmed quarantine path: `src/assets/_unused/`.
+11. Likely unused asset groups in repository. — **Done (Phase 5)**
+- Confirmed unused assets live under `src/assets/_unused/`; build skips that tree.
 
-12. Product status messaging is inconsistent across docs and in-game text.
-- Evidence: README said feature-complete/not actively maintained, and in-game copy previously said alpha side project.
-- Impact: mixed expectations for users/contributors.
-- Files: `README.md:61`, `src/js/constants.js:12`, `src/js/aboutScreen.js:49`
-- Remediation: unify status/version language toward "playable beta, maintenance cadence variable."
+12. Product status messaging is inconsistent across docs and in-game text. — **Done (Phase 4)**
+- Unified toward playable beta / variable maintenance cadence (README + About).
 
-13. No automated lint/test gate in scripts.
-- Evidence: no lint/test scripts in package commands.
-- Impact: regressions are easier to introduce, especially in input and progression logic.
-- Files: `package.json:5`
-- Remediation: add minimal lint and smoke test pipeline.
+13. No automated lint/test gate in scripts. — **Done (Phase 5 + later)**
+- `npm run lint`, `npm run smoke`, `npm test`, and `npm run playtest` (Playwright / system Brave) exist.
 
 ## Bugs (Reported Post-Phase 1)
 
-1. `M` mute toggle updates UI state but does not silence active audio.
-- Reported: 2026-02-12
-- Repro: press `M` during gameplay; `MUTED (M)` appears but sound effects and background music continue.
-- Impact: core control is misleading and cannot reliably mute gameplay audio.
-- Evidence:
-  - mute toggle sets state and calls `masterVolume(0|1)`: `src/js/sketch.js:740`
-  - muted UI indicator is driven only by `gameState.isMuted`: `src/js/ui.js:136`
-  - sound playback path does not check `gameState.isMuted` before playing: `src/js/constants.js:425`
-- Suggested remediation:
-  - Treat mute as a single source of truth in audio paths (`playSound`, background music update/start logic).
-  - Add explicit per-sound/background-music mute handling (or robust master mute fallback) plus regression checks for both SFX and music.
+1. `M` mute toggle updates UI state but does not silence active audio. — **Done**
+- Mute is applied via silence helpers (`masterVolume`) and `playSound` respects mute / game-audio-silenced state.
+- Residual: occasional edge cases under heavy overlay silence transitions are playtest territory, not known open bugs.
 
-2. Notification/toast overlap makes simultaneous events illegible.
-- Reported: 2026-02-12
-- Repro: overlapping event timing (for example boss defeat + achievement unlock + floor/zone transition) can render multiple center-screen notifications on top of each other.
-- Impact: important progression feedback is unreadable.
-- Evidence:
-  - achievement notification draws in center overlay area: `src/js/achievements.js:157`
-  - level and unlock notifications also render around center screen: `src/js/sketch.js:395`, `src/js/sketch.js:403`
-  - boss defeated banner also renders at center: `src/js/objects.js:453`
-- Suggested remediation:
-  - Introduce a unified notification manager (queue/priority/lane system) so only one blocking toast occupies a lane at a time.
-  - Define z-order and timed sequencing rules for concurrent notifications (e.g., boss/level banners before achievement toast, or stacked non-overlapping positions).
+2. Notification/toast overlap makes simultaneous events illegible. — **Done**
+- Shared center notification queue + measured panel layout; smoke contracts assert queue usage for achievements, boss, unlocks, etc.
 
 ## Phased Remediation Plan
 
@@ -172,7 +147,7 @@ Implementation Update (2026-02-12):
 - [x] Prevent newly spawned objects from becoming magnetized during an active session.
 - [x] Document behavior in code comments and player-facing help.
 - [x] Verify build passes (`npm run build`).
-- [ ] Run focused manual magnetism regression pass (activation snapshot, spawn-after-activation, cooldown-expiry behavior).
+- [ ] Run focused manual magnetism regression pass (activation snapshot, spawn-after-activation, cooldown-expiry behavior). *(optional residual; help/smoke cover contract partially)*
 
 Actions:
 - Keep “snapshot on activation” semantics.
@@ -197,7 +172,7 @@ Implementation Update (2026-02-16):
 - [x] Switched dash double-tap detection to millisecond timing to remove refresh-rate dependence.
 - [x] Clarified/normalized timing unit naming for drop-speed constants (`BASE_DROP_SPEED_PX_PER_SECOND`) and timing comments.
 - [x] Verified build passes (`npm run build`).
-- [ ] Run manual gameplay sanity check at ~60Hz and high-refresh display to confirm feel parity.
+- [ ] Run manual gameplay sanity check at ~60Hz and high-refresh display to confirm feel parity. *(optional residual feel check)*
 
 Actions:
 - Attempt timing standardization only where low-risk; retain hybrid where needed to preserve feel.
@@ -241,16 +216,23 @@ Acceptance Criteria:
 ## Phase 5: Technical Debt & Guardrails
 Goal: Reduce maintenance cost and prevent regressions.
 
-Actions:
+Implementation Update (2026-07-09 archive refresh):
+- [x] Move confirmed-unused assets to `src/assets/_unused/` for manual review (build skips the tree).
+- [x] Harden build HTML script insertion via `BUILD:GAME_SCRIPTS_*` markers (regex fallback retained).
+- [x] Add baseline lint and smoke tests (`scripts/lint.js`, `scripts/smoke.js`, `npm test`).
+- [x] Add browser playtest harness (`scripts/playtest.js`, system Brave; pause / bomb / mute / no-analytics contracts).
+- [ ] Optional: re-audit and remove or wire any remaining unused constants (finding #10).
+
+Actions (original):
 - Move confirmed-unused assets to `src/assets/_unused/` for manual review.
 - Remove/wire unused constants.
 - Harden build HTML script insertion method.
 - Add baseline lint and smoke tests for key gameplay paths (controls, achievements persistence, restart flow, core screen navigation).
 
 Acceptance Criteria:
-- Active runtime assets are clearly separated from `_unused` assets.
-- Build remains stable after HTML/script tag changes.
-- CI/local checks catch obvious input/progression regressions.
+- Active runtime assets are clearly separated from `_unused` assets. — **Met**
+- Build remains stable after HTML/script tag changes. — **Met** (marker-based)
+- CI/local checks catch obvious input/progression regressions. — **Met** for local gates; no required remote CI assumed
 
 ## Suggested Execution Order
 

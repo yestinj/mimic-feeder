@@ -1,5 +1,9 @@
 # Pre-merge plan: `develop` → `main`
 
+> **Status (2026-07-09):** Active pre-merge checklist for `develop` → `main`.  
+> Code items in sections 1–6 are **Done**. Remaining: **§7 Cloudflare dashboard follow-up** (D1 unbind if still bound) and optional **§8 manual playtest**.  
+> Historical polish/review notes live under `archive/plan.md` and `archive/tech-review.md`. Agent orientation: `AGENTS.md`.
+
 Based on the branch review of `develop` vs `origin/main` (2026-07-09).  
 Implementation status updated while applying the agreed fixes.
 

@@ -1,3 +1,8 @@
+> **Archive status (2026-07-09):** Historical polish / release-readiness checklist.  
+> Almost all items were completed before mid-2026. **Do not use as an active todo list.**  
+> Superseded for current pre-merge work by `PRE_MERGE_PLAN.md` (repo root) and for agent orientation by `AGENTS.md`.  
+> Later work not covered here: analytics/D1 removal, pause freeze + input guards, bomb double-count fix, lint/smoke/playtest, real OG image, tooling deps.
+
 ### TL;DR
 Your core loop, state management, and ability systems look solid and in playable beta shape. The game should be fun for short sessions, especially after early power spikes (staff, tentacles, magnet). The biggest issue I found is a logic bug that skews spawn probabilities, which will noticeably affect balance and variety. Past that, most remaining work is polish and small QoL.
 
@@ -37,8 +42,8 @@ if (candidates.length) {
 - Impact: Restores intended variety pacing and prevents rare spawns from being silently starved.
 
 2) Verify “pixels per second” naming vs. frame-based movement — Completed ✓
-- `BASE_DROP_SPEED_PIXELS_PER_SEC` suggests time-based motion, but most constants and updates are frame-based (no `deltaTime`). This is only a naming mismatch, but it’s easy to mis-tune later.
-- Fix (quick): Rename to `BASE_DROP_SPEED_PX_PER_FRAME` or add a conversion if you later adopt `deltaTime`.
+- Originally a naming mismatch (constants looked time-based while updates were frame-based).
+- **Later (tech-review Phase 3, 2026-02):** Timing was normalized with `getFrameDelta` / `getDeltaSeconds` and `BASE_DROP_SPEED_PX_PER_SECOND` as true pixels-per-second.
 
 ---
 
@@ -73,7 +78,7 @@ if (candidates.length) {
 ---
 
 ### Priority 4 — Balance and feel (quick wins, no new features)
-9) Early-game pacing
+9) Early-game pacing — Optional residual (feel tuning only; not blocking)
 - Verify `INITIAL_DROP_SPEED_SCALE` and early spawn rate feel forgiving for the first ~20 seconds. If it’s too punishing before the first power spike:
   - Slightly increase early `BASE_OBJECT_SPAWN_RATE_FRAMES` or start with a smaller `dropSpeedScale` and ramp quicker after level 2.
 
@@ -107,21 +112,9 @@ bossFireballs.length = 0;
 
 ### Release-readiness and shareability check
 16) Social preview and SEO polish (very quick) — Completed ✓
-- `index.html` has OG tags but `og:image` is TODO-like and uses a root-relative path. Use an absolute URL to a 1200×630 image. Also add Twitter Card tags.
-- **NOTE**: I updated the tags to use `https://mimicfeeder.yest.dev/assets/og-image.png`.
-- **PENDING**: You still need to create and place `og-image.png` (1200×630) in `src/assets/`.
-```html
-<meta property="og:title" content="Mimic Feeder"/>
-<meta property="og:description" content="Arcade mimic-feeding chaos. Eat creatures, grab shinies, dodge bombs, unlock powers."/>
-<meta property="og:image" content="https://mimicfeeder.yest.dev/assets/og-image.png"/>
-<meta property="og:url" content="https://mimicfeeder.yest.dev/"/>
-<meta property="og:type" content="website"/>
-<meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:title" content="Mimic Feeder"/>
-<meta name="twitter:description" content="Arcade mimic-feeding chaos. Eat creatures, grab shinies, dodge bombs, unlock powers."/>
-<meta name="twitter:image" content="https://mimicfeeder.yest.dev/assets/og-image.png"/>
-```
-- Favicon: present. Confirm the og image actually exists and is optimized (~200–400 KB).
+- Absolute OG/Twitter tags point at `https://mimicfeeder.yest.dev/assets/og-image.png`.
+- **2026-07-09:** Real `1200×630` card exists at `src/assets/og-image.png` (composed from game assets; not a blank placeholder).
+- Favicon: present.
 
 17) README tighten + link to live demo — Completed ✓
 - Add a one-liner link at the top: “Play now: https://mimicfeeder.yest.dev/”
@@ -172,4 +165,8 @@ bossFireballs.length = 0;
 - Align copy/OG tags with arcade gameplay; set a proper absolute `og:image`. — Completed ✓
 - Small QoL: pause/mute keys, clear boss fireballs on death, check object size hitboxes. — Completed ✓
 
-Ping me if you want me to review a short gameplay video or a live link post-fix for a final pass on feel and first-time user experience.
+### Residual (optional only)
+- Early-game pacing feel pass (#9) if a first-20-seconds run still feels too harsh.
+- Manual QA checklist above remains useful before a public share; it is not a code backlog.
+
+For current develop→main decisions and dashboard follow-ups, see `PRE_MERGE_PLAN.md` at the repo root.
