@@ -96,11 +96,33 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 - **Behavior (unchanged):** Saved last-used name (not default `"Player"`) skips intro on first page load.
 - **Docs:** README “First visit vs returning players” + common issue; About notes Esc for help.
 
-#### M8 — Test coverage gaps vs highest risks
-- **Where:** `scripts/playtest.js`, `scripts/smoke.js`
-- **Covered well:** Pause input freeze (happy path), mute while paused, bolt bomb +1 ownership, no `/api/track`, many control/overlay smoke contracts.
-- **Gaps:** Resize-while-paused (H1), help under pause (M6), restart/high-score persistence, real bolt→bomb collision (playtest calls collection helper), magnetism, boss fireballs, missing-file build fail (H3).
-- **Suggestion:** Playwright case for resize under pause; smoke assert complete `jsFileOrder`; optional magnet/boss probes.
+#### M8 — Test coverage gaps vs highest risks — **Mostly addressed (2026-07-09 status refresh)**
+- **Where:** `scripts/playtest.js`, `scripts/smoke.js` (~90+ smoke contracts + Brave Playwright harness)
+
+**Now covered (was listed as gaps in the original review):**
+| Area | How |
+|------|-----|
+| Pause freezes input / playTime | Playtest + smoke (pause shell before sim) |
+| Resize while paused (H1) | Playtest: viewport resize; snapshot kept; X/playTime frozen |
+| Pause snapshot not every frame (H2) | Smoke: capture on P edge; no `get()` in `draw` body |
+| Missing / orphan JS modules (H3) | `assertJsBundleSourcesComplete` + smoke: `JS_FILE_ORDER` ↔ disk ↔ HTML markers |
+| Bomb single-owner / bolt path | Smoke + playtest helper `handleBombCollection` +1 |
+| No analytics track | Smoke + playtest: no `/api/track` |
+| Mid-run overlay underlay (M6) | Smoke: underlay helpers + open paths |
+| Storage try/catch (M4) | Smoke: high scores / name / achievements |
+| Boss speed cap (M5) | Smoke: shared capped multiplier |
+| p5 SRI (M2) | Smoke: integrity + crossorigin |
+| Reduced motion (L5 partial) | Smoke: shake gated |
+
+**Still optional / not automated (fine for post-merge):**
+- Playwright path that **opens Esc help while paused** and asserts underlay (visual/M6 integration)
+- **True** bolt→bomb collision via gameplay (playtest still calls collection helper)
+- Magnetism snapshot contract (help text smoke only)
+- Boss fireball / late-floor balance feel
+- Restart + high-score persistence E2E in browser
+- Manual play pass remains the main gate for “fun and feel”
+
+**Decision:** Do **not** expand the harness further pre-merge unless a regression appears. Smoke + playtest already protect the high-risk contracts from this review pass.
 
 #### M9 — Large first-load preload
 - **Where:** `src/js/assets.js` — many animation frame sets + dual BGM
@@ -195,27 +217,20 @@ No urgent asset integrity issues. Optional later: defer late-game packs (M9), re
 
 ---
 
-## Suggested priority order
+## Suggested priority order (historical — mostly complete)
 
-1. **H1** — Gate simulation on pause (fix resize hole).
-2. **H2** — Snapshot on pause edge only (perf + clearer contract).
-3. **H3** — Fail build on missing JS modules (+ smoke).
-4. **M4** — localStorage try/catch parity for scores/name.
-5. **M2** — optional SRI on p5 CDN (M1 done; M3 intentional keep).
-6. **M8** — Playtest resize-under-pause; expand contracts for H1/H3.
-7. **M5 / M6 / M7** — Balance and overlay UX polish when convenient.
-8. **Lows / nits** — hygiene and docs drift as drive-bys.
+Original engineering order (H1 → H3 → M4 → deploy hygiene → polish) was executed across the 2026-07-09 pass. Remaining optional items: **L1** (design), **M9** (preload if boot hurts), deeper playtest cases under M8 “optional.”
 
 ---
 
-## Residual follow-ups (not code bugs)
+## Residual follow-ups (not blocking automated review work)
 
-- Manual Cloudflare D1 / analytics dashboard cleanup (`PRE_MERGE_PLAN.md` §7).
-- Optional human play pass: audio mute, magnetism, late-floor boss fireballs after any balance change.
-- Merge `develop` → `main` when ready (not reviewed as a PR here).
+- Manual Cloudflare D1 unbind if still bound (`PRE_MERGE_PLAN.md` §7).
+- Human playtest: mute, magnetism, late-floor boss feel (4× cap), general fun.
+- Merge `develop` → `main` when ready.
 
 ---
 
 ## Bottom line
 
-The project is in **good playable-beta shape**: core loop, progression, and recent correctness fixes hang together, and automated gates catch several of the historical footguns. Treat **pause simulation gating**, **`get()` cost**, and **strict build completeness** as the main engineering follow-ups; everything else is polish, balance, deploy hygiene, or a11y/docs drift appropriate for a portfolio hobby game.
+The project is in **good playable-beta shape**. High-risk items from this review (pause correctness, per-frame `get()`, fail-closed bundle, storage, overlays, boss speed cliff, SRI, reduced motion, deploy asset cache) are addressed. What remains is optional design (L1), optional preload work (M9), manual CF cleanup, and a human play pass before merge.
