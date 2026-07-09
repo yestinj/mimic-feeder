@@ -18,6 +18,11 @@ Arcade mimic-feeding chaos. Eat creatures, grab shinies, dodge bombs, and unlock
 - **Help Overlay**: Esc
 - **View Achievements**: K
 
+### First visit vs returning players
+- **First visit** (no saved player name): the intro screen is shown before play.
+- **Returning players**: if a name was saved after a previous run (browser `localStorage`), the intro is skipped and the run starts immediately.
+- Controls and help are always available in-game (**Esc** for Help / Object Info / About, short onboarding tips early in a run, **K** for achievements).
+
 ## Achievements
 - Achievements are split into three tiers:
 - **Early**: +25 score
@@ -48,6 +53,7 @@ Alternatively, after building, you can open `dist/index.html` directly in your b
 
 ### Common Issues
 - **No Audio**: If audio is muted on first load, click anywhere on the page or press any key to activate the audio context.
+- **No intro screen**: Expected for returning players with a saved name (see above). Press **Esc** for controls anytime.
 
 ## Development
 - Source code is in the `src` directory

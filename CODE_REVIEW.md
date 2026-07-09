@@ -92,10 +92,10 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 - **Was:** Esc/K mid-run (or while paused) drew help/etc. on bare dungeon background only.
 - **Now:** Mid-run info overlays sit on the freeze snapshot (captured on open from active play, or kept from pause edge). Simulation still does not run while overlays are open.
 
-#### M7 — Returning players skip intro (undocumented)
-- **Where:** `src/js/sketch.js` setup — if last used name ≠ `"Player"`, intro skipped
-- **Impact:** Onboarding / control reminders may never show for returning players; README assumes intro flow.
-- **Suggestion:** Document in README; optional “show intro once per version” or short first-run tip strip.
+#### M7 — Returning players skip intro (undocumented) — **Fixed (2026-07-09, docs only)**
+- **Where:** Behavior in `sketch.js` setup; docs in `README.md`, About copy
+- **Behavior (unchanged):** Saved last-used name (not default `"Player"`) skips intro on first page load.
+- **Docs:** README “First visit vs returning players” + common issue; About notes Esc for help.
 
 #### M8 — Test coverage gaps vs highest risks
 - **Where:** `scripts/playtest.js`, `scripts/smoke.js`

@@ -14,7 +14,8 @@ function drawAboutScreen() {
 
     const overlayBounds = getResponsiveOverlayBounds(0.7, 0.7, 600, 360, 860, 620);
     const aboutText = "This game was created by Yestin and is currently in playable beta. " +
-        "It's a portfolio/learning project with variable maintenance cadence.";
+        "It's a portfolio/learning project with variable maintenance cadence. " +
+        "Returning players with a saved name skip the intro and start immediately — press Esc for help anytime.";
     const thanksList = [
         "Rob M (alpha tester)",
         "hypn (alpha tester)",
