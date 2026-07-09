@@ -799,7 +799,15 @@ function drawNameInputScreen() {
 
 // --- High Score and Name Persistence functions ---
 function loadHighScores() {
-    const storedScores = localStorage.getItem('mimicFeederHighScores');
+    let storedScores = null;
+    try {
+        storedScores = localStorage.getItem('mimicFeederHighScores');
+    } catch (error) {
+        console.warn('Failed to read high scores from localStorage.', error);
+        highScores = [];
+        return;
+    }
+
     if (storedScores) {
         try {
             highScores = JSON.parse(storedScores);
@@ -816,24 +824,36 @@ function loadHighScores() {
 }
 
 function loadLastUsedName() {
-    // Always try to load from localStorage
-    const storedName = localStorage.getItem('mimicFeederLastUsedName');
-    if (storedName) {
-        gameState.lastUsedName = storedName;
+    try {
+        const storedName = localStorage.getItem('mimicFeederLastUsedName');
+        if (storedName) {
+            gameState.lastUsedName = storedName;
+        }
+    } catch (error) {
+        console.warn('Failed to read last used name from localStorage.', error);
+        // Keep default gameState.lastUsedName ("Player" after initializeStates).
     }
-    // If no stored name, keep the default "Player"
     // gameState.currentNameInput will be set in sketch.js setup after this call.
 }
 
 function saveHighScores() {
     highScores.sort((a, b) => b.score - a.score);
     highScores = highScores.slice(0, HIGH_SCORE_COUNT);
-    localStorage.setItem('mimicFeederHighScores', JSON.stringify(highScores));
+    try {
+        localStorage.setItem('mimicFeederHighScores', JSON.stringify(highScores));
+    } catch (error) {
+        // Still keep the in-memory list for this session (game-over screen).
+        console.warn('Failed to save high scores to localStorage.', error);
+    }
 }
 
 function saveLastUsedName(name) {
-    gameState.lastUsedName = name; // Update state as well
-    localStorage.setItem('mimicFeederLastUsedName', name);
+    gameState.lastUsedName = name; // Update state even if storage is unavailable
+    try {
+        localStorage.setItem('mimicFeederLastUsedName', name);
+    } catch (error) {
+        console.warn('Failed to save last used name to localStorage.', error);
+    }
 }
 
 function submitName() {

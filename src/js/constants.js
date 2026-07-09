@@ -9,7 +9,7 @@
  * Game Configuration - Basic game settings and parameters
  */
 /** @const {string} GAME_VERSION - Game version number */
-const GAME_VERSION = "0.1.0-beta";
+const GAME_VERSION = "1.0.0-beta";
 /** @const {string} GAME_AUTHOR - Game author name */
 const GAME_AUTHOR = "Yestin";
 /** @const {number} INITIAL_LIVES - Starting number of player lives */

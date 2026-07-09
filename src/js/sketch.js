@@ -348,6 +348,45 @@ function isPauseGameplayShell() {
 }
 
 /**
+ * True when a mid-run info overlay is open (help / object info / about / achievements).
+ * These freeze simulation via early return in draw(); they should sit on a playfield underlay.
+ * @returns {boolean}
+ */
+function isMidRunInfoOverlay() {
+    return !gameState.showIntroScreen &&
+        !gameState.gameOver &&
+        (gameState.showHelpScreen ||
+            gameState.showObjectInfoScreen ||
+            gameState.showAboutScreen ||
+            gameState.showAchievementsScreen);
+}
+
+/**
+ * Draws the frozen playfield (or a static dungeon fallback) under pause / info overlays.
+ * @function
+ */
+function drawPlayfieldUnderlay() {
+    if (lastGameplayFrame) {
+        image(lastGameplayFrame, 0, 0, width, height);
+    } else {
+        drawDungeonBackground();
+        fill(80, 80, 80);
+        rect(0, height - VISUAL_GROUND_HEIGHT, width, VISUAL_GROUND_HEIGHT);
+    }
+}
+
+/**
+ * Ensures a freeze snapshot exists when opening help/achievements from active play.
+ * While already paused, keep the pause-edge snapshot (do not re-get() pause chrome).
+ * @function
+ */
+function ensureGameplayFreezeSnapshotForOverlay() {
+    if (!gameState.isPaused) {
+        captureGameplayFreezeSnapshot();
+    }
+}
+
+/**
  * p5.js draw function - Called continuously to render and update the game
  * This is the main game loop that handles rendering and game logic
  * @function
@@ -362,13 +401,7 @@ function draw() {
     // Prefer the last captured gameplay frame; if missing (rare: pause before first
     // capture), draw a static background only — do not fall through into updates.
     if (isPauseGameplayShell()) {
-        if (lastGameplayFrame) {
-            image(lastGameplayFrame, 0, 0, width, height);
-        } else {
-            drawDungeonBackground();
-            fill(80, 80, 80);
-            rect(0, height - VISUAL_GROUND_HEIGHT, width, VISUAL_GROUND_HEIGHT);
-        }
+        drawPlayfieldUnderlay();
         drawPauseScreen();
         return;
     }
@@ -385,13 +418,13 @@ function draw() {
         updateBackgroundMusic();
     }
 
-    drawDungeonBackground();
-
     if (gameState.showIntroScreen) {
+        drawDungeonBackground();
         drawIntroScreen();
         return;
     }
     if (gameState.gameOver) {
+        drawDungeonBackground();
         if (gameState.enteringName) {
             drawNameInputScreen();
         } else {
@@ -399,22 +432,24 @@ function draw() {
         }
         return;
     }
-    if (gameState.showHelpScreen) {
-        drawHelpScreen();
+
+    // Mid-run info overlays: keep last playfield under semi-transparent chrome (M6).
+    // Simulation is not run while these are open (return below).
+    if (isMidRunInfoOverlay()) {
+        drawPlayfieldUnderlay();
+        if (gameState.showHelpScreen) {
+            drawHelpScreen();
+        } else if (gameState.showObjectInfoScreen) {
+            drawObjectInfoScreen();
+        } else if (gameState.showAboutScreen) {
+            drawAboutScreen();
+        } else if (gameState.showAchievementsScreen) {
+            drawAchievementsScreen();
+        }
         return;
     }
-    if (gameState.showObjectInfoScreen) {
-        drawObjectInfoScreen();
-        return;
-    }
-    if (gameState.showAboutScreen) {
-        drawAboutScreen();
-        return;
-    }
-    if (gameState.showAchievementsScreen) {
-        drawAchievementsScreen();
-        return;
-    }
+
+    drawDungeonBackground();
 
     if (!gameState.gameStarted) {
         gameState.startTime = millis() / 1000;
@@ -766,7 +801,9 @@ function keyPressed() {
     if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
         !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
         keyCode === ESCAPE) {
+        ensureGameplayFreezeSnapshotForOverlay();
         gameState.showHelpScreen = true;
+        syncGameAudioState();
         return;
     }
 
@@ -774,7 +811,9 @@ function keyPressed() {
     if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
         !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
         (key === 'k' || key === 'K')) {
+        ensureGameplayFreezeSnapshotForOverlay();
         gameState.showAchievementsScreen = true;
+        syncGameAudioState();
         return;
     }
 
@@ -908,6 +947,8 @@ function restartGame() {
     // Stop all sounds and reset game state
     stopAllSounds(false, false); // Stop all sounds including background music
     initializeStates(); // This resets gameState.lastUsedName to "Player"
+    // Spawn anti-clustering history is module state in objects.js — clear across runs.
+    recentSpawnXPositions = [];
     loadAchievements(); // Restore persisted achievements after state initialization
 
     // Load name from localStorage and set up name input

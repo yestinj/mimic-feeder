@@ -19,9 +19,9 @@ Guidance for coding agents working in this repository.
 | Rendering / audio | p5.js **1.11.13** + p5.sound (CDN) |
 | Build | Custom `build.js` (esbuild JS, clean-css CSS, html-minifier-terser HTML) |
 | Deploy | Static **Cloudflare Pages** from `dist/` (GitHub integration) |
-| Backend | **None** — no Pages Functions, D1, or analytics |
+| Backend | **None** — no Pages Functions or D1; optional **Cloudflare Web Analytics** via dashboard/CSP only |
 
-Do **not** reintroduce analytics, Cloudflare Functions, or D1. Production is static-only (`wrangler.toml` documents this).
+Do **not** reintroduce in-app track beacons, Pages Functions, or D1. Production is static-only (`wrangler.toml` documents this). Cloudflare Web Analytics (Insights) is allowed in CSP on purpose — not the removed client/D1 metrics pipeline.
 
 ## Layout
 
@@ -75,7 +75,8 @@ Pause, help, about, object-info, achievements, and game-over should block gamepl
 - **Allowed:** P (resume), M (mute), Esc (help), K (achievements) as designed
 - **Blocked:** movement, jump, dash, abilities, etc.
 - Pause shell (`isPauseGameplayShell`) always returns from `draw` without simulation — use `lastGameplayFrame` when present, otherwise a static background fallback (never fall through into updates)
-- Freeze snapshot is captured only on the pause rising edge (`captureGameplayFreezeSnapshot` / `get()`), not every active frame
+- Freeze snapshot is captured on the pause rising edge and when opening help/achievements from active play (`captureGameplayFreezeSnapshot` / `get()`), not every active frame
+- Mid-run info overlays (help / object info / about / achievements) draw `drawPlayfieldUnderlay()` under chrome so the world does not vanish
 - Resize must not clear `lastGameplayFrame` while paused (snapshot is stretched to the new canvas size)
 
 ### p5 version
@@ -128,7 +129,7 @@ Playtest uses **system Brave** by default (`/Applications/Brave Browser.app/...`
 | Edit sources under `src/` | Commit `dist/`, `docs/`, `playtest-output/`, `node_modules/` |
 | Keep bomb counting single-owner | Double-count bombs on bolt/explosion paths |
 | Guard gameplay keys when paused / overlays open; never simulate under pause shell | Let movement, spawns, or hazards run while paused (incl. after resize) |
-| Keep deploy static-only | Add Functions, D1, analytics, or track beacons |
+| Keep deploy static-only; CF Web Analytics OK | Add Functions, D1, or in-app track beacons |
 | Update smoke contracts when changing control contracts | Leave smoke asserting removed behavior |
 | Use bare globals in browser automation | Assume `window.gameState` etc. |
 

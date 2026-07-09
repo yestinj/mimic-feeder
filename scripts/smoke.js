@@ -63,7 +63,7 @@ function checkControlContracts(playerSource, abilitiesSource, sketchSource) {
         'Dash supports RIGHT_ARROW double-tap and D double-tap'
     );
     assertContract(
-        /\(key === 'k' \|\| key === 'K'\)\)\s*\{\s*gameState\.showAchievementsScreen = true;/.test(sketchSource),
+        /\(key === 'k' \|\| key === 'K'\)\)\s*\{[\s\S]*?gameState\.showAchievementsScreen = true;/.test(sketchSource),
         'Achievements screen opens with K'
     );
 }
@@ -84,6 +84,10 @@ function checkAchievementPersistenceContracts(sketchSource, achievementsSource) 
     assertContract(
         initializeStatesIndex < loadAchievementsIndex,
         'restartGame reloads achievements after state initialization'
+    );
+    assertContract(
+        /recentSpawnXPositions\s*=\s*\[\s*\]/.test(restartBody),
+        'restartGame clears recentSpawnXPositions spawn clustering history'
     );
 
     assertContract(
@@ -110,7 +114,7 @@ function checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSour
         'keyPressed delegates to Achievements screen handler'
     );
     assertContract(
-        /keyCode === ESCAPE\)\s*\{\s*gameState\.showHelpScreen = true;/.test(sketchSource),
+        /keyCode === ESCAPE\)\s*\{[\s\S]*?gameState\.showHelpScreen = true;/.test(sketchSource),
         'Escape opens Help screen during gameplay'
     );
 
@@ -327,6 +331,24 @@ function checkPauseContracts(sketchSource) {
         drawBody.indexOf('isPauseGameplayShell()') < drawBody.indexOf('updatePlayer()'),
         'Player simulation does not run under pause shell'
     );
+    assertContract(
+        /function isMidRunInfoOverlay\(\)/.test(sketchSource) &&
+        /function drawPlayfieldUnderlay\(\)/.test(sketchSource) &&
+        /function ensureGameplayFreezeSnapshotForOverlay\(\)/.test(sketchSource),
+        'Mid-run overlay underlay helpers exist (M6)'
+    );
+    assertContract(
+        drawBody &&
+        /if \(isMidRunInfoOverlay\(\)\)/.test(drawBody) &&
+        /drawPlayfieldUnderlay\(\)/.test(drawBody) &&
+        drawBody.indexOf('isMidRunInfoOverlay()') < drawBody.indexOf('updatePlayer()'),
+        'Mid-run info overlays draw playfield underlay and skip simulation'
+    );
+    assertContract(
+        /ensureGameplayFreezeSnapshotForOverlay\(\);\s*gameState\.showHelpScreen = true/.test(sketchSource) &&
+        /ensureGameplayFreezeSnapshotForOverlay\(\);\s*gameState\.showAchievementsScreen = true/.test(sketchSource),
+        'Opening help/achievements ensures freeze snapshot from active play'
+    );
 }
 
 function checkBombCountContracts(abilitiesSource, utilsSource) {
@@ -395,6 +417,36 @@ function checkAchievementSaveContracts(achievementsSource) {
     );
 }
 
+function checkVersionContracts(constantsSource, packageSource) {
+    assertContract(
+        /const GAME_VERSION = "1\.0\.0-beta"/.test(constantsSource),
+        'GAME_VERSION is 1.0.0-beta'
+    );
+    assertContract(
+        /"version":\s*"1\.0\.0-beta"/.test(packageSource),
+        'package.json version is 1.0.0-beta'
+    );
+}
+
+function checkHighScoreStorageContracts(uiSource) {
+    assertContract(
+        /function saveHighScores\(\)\s*\{[\s\S]*try\s*\{[\s\S]*localStorage\.setItem\([\s\S]*catch \(error\)/.test(uiSource),
+        'saveHighScores guards localStorage writes with try/catch'
+    );
+    assertContract(
+        /function saveLastUsedName\(name\)\s*\{[\s\S]*try\s*\{[\s\S]*localStorage\.setItem\([\s\S]*catch \(error\)/.test(uiSource),
+        'saveLastUsedName guards localStorage writes with try/catch'
+    );
+    assertContract(
+        /function loadHighScores\(\)\s*\{[\s\S]*try\s*\{[\s\S]*localStorage\.getItem\([\s\S]*catch \(error\)/.test(uiSource),
+        'loadHighScores guards localStorage reads with try/catch'
+    );
+    assertContract(
+        /function loadLastUsedName\(\)\s*\{[\s\S]*try\s*\{[\s\S]*localStorage\.getItem\([\s\S]*catch \(error\)/.test(uiSource),
+        'loadLastUsedName guards localStorage reads with try/catch'
+    );
+}
+
 function main() {
     const playerSource = readRepoFile('src/js/player.js');
     const abilitiesSource = readRepoFile('src/js/abilities.js');
@@ -411,10 +463,14 @@ function main() {
     const buildSource = readRepoFile('build.js');
     const indexSource = readRepoFile('src/index.html');
     const assetSource = readRepoFile('src/js/assets.js');
+    const constantsSource = readRepoFile('src/js/constants.js');
+    const packageSource = readRepoFile('package.json');
 
     checkControlContracts(playerSource, abilitiesSource, sketchSource);
+    checkVersionContracts(constantsSource, packageSource);
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
     checkAchievementSaveContracts(achievementsSource);
+    checkHighScoreStorageContracts(uiSource);
     checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSource, aboutSource, achievementsSource);
     checkBuildAndAssetContracts(buildSource, indexSource, assetSource);
     checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);

@@ -62,36 +62,35 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 
 ### Medium
 
-#### M1 — Asset cache headers risk year-long stale media
-- **Where:** `src/_headers` — `/assets/*` → `max-age=31536000`
-- **Evidence:** JS is query-cache-busted (`app.min.js?v=…`); assets are **not** fingerprinted.
-- **Impact:** Replacing `explode.mp3` or sprites under the same path may leave players on old media until hard refresh / cache expiry.
-- **Suggestion:** Shorter asset max-age, `must-revalidate`, or content-hash / query bust for assets.
+#### M1 — Asset cache headers risk year-long stale media — **Fixed (2026-07-09)**
+- **Where:** `src/_headers` — `/assets/*`
+- **Was:** `max-age=31536000` on unversioned asset paths (stale sprites/SFX after in-place deploys).
+- **Now:** `public, max-age=86400, must-revalidate` (1 day). `app.min.js` still uses long cache + `?v=` bust.
 
 #### M2 — CDN p5 scripts have no Subresource Integrity
 - **Where:** `src/index.html` p5 / p5.sound script tags (currently **1.11.13** in working tree)
 - **Impact:** Pinned URL is good; without SRI, CDN compromise or wrong object is not browser-detectable. CSP allows cdnjs.
 - **Suggestion:** Add `integrity` + `crossorigin` for exact 1.11.13 builds, or vendor p5 under `src/` and serve from `'self'`.
 
-#### M3 — CSP still allows Cloudflare Web Analytics
+#### M3 — CSP still allows Cloudflare Web Analytics — **Won’t fix (intentional)**
 - **Where:** `src/_headers` CSP — `static.cloudflareinsights.com` / `cloudflareinsights.com`
-- **Impact:** App analytics code is gone, but CF dashboard Web Analytics injection remains permitted.
-- **Suggestion:** Drop those origins if zero-analytics is the product goal; confirm CF Web Analytics is off (alongside D1 unbind in `PRE_MERGE_PLAN.md` §7).
+- **Decision (2026-07-09):** Keep the Insights allowlist. Cloudflare Web Analytics is desired; only the old in-app / D1 track pipeline was removed.
+- **Note:** Configure Web Analytics in the CF dashboard as intended (separate from removed app metrics / D1).
 
-#### M4 — High-score / name `localStorage` writes lack try/catch
-- **Where:** `src/js/ui.js` `saveHighScores`, `saveLastUsedName` vs guarded `saveAchievements`
-- **Impact:** Private mode / quota throws can break name submit / game-over flow.
-- **Suggestion:** Same try/catch degrade-to-memory pattern as achievements.
+#### M4 — High-score / name `localStorage` writes lack try/catch — **Fixed (2026-07-09)**
+- **Where:** `src/js/ui.js` `saveHighScores`, `saveLastUsedName`, `loadHighScores`, `loadLastUsedName`
+- **Was:** Score/name `setItem` (and reads) could throw and break game-over submit / setup.
+- **Now:** try/catch on read and write; in-memory high scores and `lastUsedName` still update for the session. Smoke covers save/load guards.
 
 #### M5 — Boss fireball speed scales exponentially
 - **Where:** `src/js/objects.js` — `floorSpeedMultiplier = 2^floor((floor-2)/2)` on fireball speed and cooldown
 - **Impact:** Later floors become effectively undodgeable; balance/fairness issue more than crash.
 - **Suggestion:** Cap multiplier (e.g. 3–4×) or switch to linear/log scaling; separate speed vs fire-rate knobs.
 
-#### M6 — Help/about overlays drop the frozen playfield
-- **Where:** `src/js/sketch.js` draw routing — pause freeze only when no help/about/etc.
-- **Impact:** Esc while paused shows background + chrome only; live entities disappear until help closes (snapshot returns if still paused). Cosmetic/UX inconsistency.
-- **Suggestion:** Draw `lastGameplayFrame` (or capture once) under any overlay opened mid-run/pause.
+#### M6 — Help/about overlays drop the frozen playfield — **Fixed (2026-07-09)**
+- **Where:** `src/js/sketch.js` — `isMidRunInfoOverlay`, `drawPlayfieldUnderlay`, `ensureGameplayFreezeSnapshotForOverlay`
+- **Was:** Esc/K mid-run (or while paused) drew help/etc. on bare dungeon background only.
+- **Now:** Mid-run info overlays sit on the freeze snapshot (captured on open from active play, or kept from pause edge). Simulation still does not run while overlays are open.
 
 #### M7 — Returning players skip intro (undocumented)
 - **Where:** `src/js/sketch.js` setup — if last used name ≠ `"Player"`, intro skipped
@@ -127,23 +126,23 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 - **Where:** `objectProperties[OBJ_BOSS].countKey` vs kill path only updating `achievementStats.bossesDefeated`
 - **Suggestion:** Increment on defeat or remove unused count key.
 
-#### L4 — Restart does not clear `recentSpawnXPositions`
-- **Where:** `src/js/objects.js` module state vs `restartGame`
-- **Impact:** Minor spawn clustering memory across runs.
-- **Suggestion:** Reset in `restartGame`.
+#### L4 — Restart does not clear `recentSpawnXPositions` — **Fixed (2026-07-09)**
+- **Where:** `restartGame` in `sketch.js` clears `recentSpawnXPositions` (module state from `objects.js`)
+- **Was:** Spawn anti-clustering history carried across runs.
+- **Now:** Array reset on restart; smoke asserts the clear.
 
 #### L5 — Accessibility limits (expected for canvas game)
 - **Positive:** `lang`, noscript, canvas `role`/`aria-label`, keyboard controls, desktop note in README.
 - **Gaps:** No live region for score/lives; canvas-drawn hit targets; no `prefers-reduced-motion` for shake.
 - **Suggestion:** Optional reduced-motion; ensure canvas focus on start; long-term optional DOM HUD for critical state.
 
-#### L6 — Version / package drift
-- **Where:** `GAME_VERSION = "0.1.0-beta"` vs `package.json` `"version": "1.0.0"`
-- **Suggestion:** Single source of truth for public version string.
+#### L6 — Version / package drift — **Fixed (2026-07-09)**
+- **Where:** `constants.js` `GAME_VERSION`, `package.json` `version`
+- **Now:** Both **`1.0.0-beta`**. Smoke asserts the shared string.
 
-#### L7 — `.DS_Store` not gitignored
-- **Where:** `.gitignore` — untracked `.DS_Store` files appear in status
-- **Suggestion:** Add `.DS_Store` (and optionally `**/.DS_Store`).
+#### L7 — `.DS_Store` not gitignored — **Fixed (2026-07-09)**
+- **Where:** `.gitignore`
+- **Now:** `.DS_Store` ignored.
 
 #### L8 — OG image slightly heavy
 - **Where:** `src/assets/og-image.png` ~563 KB at 1200×630
@@ -191,9 +190,9 @@ No urgent asset integrity issues. Optional later: defer late-game packs (M9), re
 |--------|------------|
 | XSS | Low risk — names filtered; drawn with p5 `text` |
 | Secrets | No app secrets in client; `.dev.vars` gitignored |
-| CSP | Solid baseline; analytics origins residual (M3) |
+| CSP | Solid baseline; CF Web Analytics origins intentional (M3) |
 | CDN | Pinned version; no SRI (M2) |
-| Cache | Long-lived assets (M1) |
+| Cache | `app.min.js` long + `?v=`; assets 1 day + must-revalidate (M1) |
 
 ---
 
@@ -203,7 +202,7 @@ No urgent asset integrity issues. Optional later: defer late-game packs (M9), re
 2. **H2** — Snapshot on pause edge only (perf + clearer contract).
 3. **H3** — Fail build on missing JS modules (+ smoke).
 4. **M4** — localStorage try/catch parity for scores/name.
-5. **M1 / M2 / M3** — cache + SRI/CSP cleanup as deploy hygiene.
+5. **M2** — optional SRI on p5 CDN (M1 done; M3 intentional keep).
 6. **M8** — Playtest resize-under-pause; expand contracts for H1/H3.
 7. **M5 / M6 / M7** — Balance and overlay UX polish when convenient.
 8. **Lows / nits** — hygiene and docs drift as drive-bys.
