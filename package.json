@@ -16,12 +16,12 @@
   "devDependencies": {
     "clean-css": "^5.3.3",
     "docdash": "^2.0.2",
-    "esbuild": "^0.25.5",
-    "html-minifier": "^4.0.0",
+    "esbuild": "^0.28.1",
+    "html-minifier-terser": "^7.2.0",
     "http-server": "^14.1.1",
-    "jsdoc": "^4.0.2",
-    "nodemon": "^3.0.1",
-    "playwright": "^1.51.0"
+    "jsdoc": "^4.0.5",
+    "nodemon": "^3.1.14",
+    "playwright": "^1.61.1"
   },
   "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",
   "main": "build.js",

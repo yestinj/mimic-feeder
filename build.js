@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const htmlMinifier = require('html-minifier');
+const { minify: minifyHtml } = require('html-minifier-terser');
 const CleanCSS = require('clean-css');
 const esbuild = require('esbuild');
 
@@ -49,7 +49,7 @@ async function minifyHTML(inputDir, outputDir) {
             const bundleScriptTag = `<script src="app.min.js?v=${BUILD_CACHE_BUSTER}" defer></script>`;
             content = replaceGameScriptsWithBundle(content, bundleScriptTag);
 
-            const minified = htmlMinifier.minify(content, {
+            const minified = await minifyHtml(content, {
                 collapseWhitespace: true,
                 removeComments: true,
                 minifyCSS: true,
