@@ -66,7 +66,7 @@ Files share state via top-level `let` / `const` / `function` declarations. They 
 
 - `sketch.js` owns p5 lifecycle (`setup` / `draw` / `keyPressed` / etc.), `gameState`, pause freeze (`lastGameplayFrame`), and screen routing.
 - Collection / damage / bomb counting: prefer single ownership. Bomb tallies go through `handleBombCollection` (do not pre-increment elsewhere — smoke contracts guard this).
-- Achievements persist to `localStorage` (wrap writes in try/catch).
+- Achievements persist to `localStorage` (wrap reads, writes, and cleanup in try/catch).
 
 ### Overlays and input
 
@@ -81,7 +81,7 @@ Pause, help, about, object-info, achievements, and game-over should block gamepl
 
 ### p5 version
 
-Stay on **p5.js 1.11.x** CDN pins in `src/index.html` (currently **1.11.13** on cdnjs with SRI). Do not upgrade to p5 2.x without an explicit request and full playtest. When changing p5 version or CDN host, recompute `integrity` hashes for both `p5.min.js` and `p5.sound.min.js` (cdnjs builds may not byte-match jsDelivr).
+Stay on **p5.js 1.11.x** CDN pins in `src/index.html` (currently **1.11.13** on cdnjs). The script tags intentionally omit Subresource Integrity because cdnjs changed bytes at the same versioned paths and the stale hashes prevented the game from starting. Do not reintroduce `integrity` attributes unless the libraries move to immutable, self-hosted files. Do not upgrade to p5 2.x without an explicit request and full playtest; any version or CDN change requires `npm run build && npm run playtest`.
 
 ## Commands
 

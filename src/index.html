@@ -27,9 +27,9 @@
 
     <link rel="stylesheet" href="styles.css">
 
-    <!-- Load Libraries with defer (SRI for pinned cdnjs 1.11.13 builds; recompute hashes if version changes) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/p5.min.js" integrity="sha384-c9rpKiYvzflBYAUZFlskUwYPX81frVjpTdlpUUNJfe/tj0N8qdkoe50O8tjmjH3K" crossorigin="anonymous" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/addons/p5.sound.min.js" integrity="sha384-xQEX4q+S1+qp51oSHD9hhYU4vHaqlYuanxn79w9XaUev9cSWcIiYNj6sroTnQtCC" crossorigin="anonymous" defer></script>
+    <!-- Load explicitly versioned libraries from cdnjs. Browser playtests guard runtime availability. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/p5.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/addons/p5.sound.min.js" defer></script>
     <!-- Load Game Scripts with defer -->
     <!-- BUILD:GAME_SCRIPTS_START -->
     <script src="js/constants.js" defer></script>

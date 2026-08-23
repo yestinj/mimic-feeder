@@ -90,9 +90,20 @@ function checkAchievementPersistenceContracts(sketchSource, achievementsSource) 
         'restartGame clears recentSpawnXPositions spawn clustering history'
     );
 
+    const loadAchievementsBody = extractFunctionBody(achievementsSource, 'loadAchievements');
+    assertContract(!!loadAchievementsBody, 'loadAchievements function exists');
+
+    const storageTryIndex = loadAchievementsBody.indexOf('try {');
+    const storageReadIndex = loadAchievementsBody.indexOf("localStorage.getItem('mimicAchievements')");
     assertContract(
-        /function loadAchievements\(\)[\s\S]*try\s*\{[\s\S]*JSON\.parse\(savedAchievements\)[\s\S]*catch \(error\)/.test(achievementsSource),
-        'Achievements loading handles malformed storage safely'
+        storageTryIndex !== -1 && storageReadIndex !== -1 && storageTryIndex < storageReadIndex &&
+        loadAchievementsBody.includes('catch (error)'),
+        'Achievements loading guards localStorage reads and parsing'
+    );
+    assertContract(
+        /function clearStoredAchievementsSafely\(\)\s*\{[\s\S]*try\s*\{[\s\S]*localStorage\.removeItem\('mimicAchievements'\)[\s\S]*catch \(error\)/.test(achievementsSource) &&
+        loadAchievementsBody.includes('clearStoredAchievementsSafely();'),
+        'Achievements cleanup guards unavailable localStorage'
     );
 }
 
@@ -197,21 +208,17 @@ function checkReducedMotionContracts(sketchSource) {
     );
 }
 
-function checkP5SriContracts(indexSource) {
+function checkP5CdnContracts(indexSource) {
     assertContract(
         /cdnjs\.cloudflare\.com\/ajax\/libs\/p5\.js\/1\.11\.13\/p5\.min\.js/.test(indexSource) &&
         /cdnjs\.cloudflare\.com\/ajax\/libs\/p5\.js\/1\.11\.13\/addons\/p5\.sound\.min\.js/.test(indexSource),
         'index.html pins p5.js 1.11.13 and p5.sound on cdnjs'
     );
+
+    const p5ScriptTags = indexSource.match(/<script[^>]+cdnjs\.cloudflare\.com\/ajax\/libs\/p5\.js\/1\.11\.13\/[^>]+><\/script>/g) || [];
     assertContract(
-        /p5\.min\.js"[^>]*integrity="sha384-[A-Za-z0-9+/=]+"/.test(indexSource) &&
-        /p5\.sound\.min\.js"[^>]*integrity="sha384-[A-Za-z0-9+/=]+"/.test(indexSource),
-        'p5 CDN scripts include sha384 integrity attributes'
-    );
-    assertContract(
-        /p5\.min\.js"[^>]*crossorigin="anonymous"/.test(indexSource) &&
-        /p5\.sound\.min\.js"[^>]*crossorigin="anonymous"/.test(indexSource),
-        'p5 CDN scripts set crossorigin=anonymous for SRI'
+        p5ScriptTags.length === 2 && p5ScriptTags.every((tag) => !/\sintegrity=/.test(tag)),
+        'p5 CDN scripts intentionally omit brittle integrity attributes'
     );
 }
 
@@ -504,6 +511,28 @@ function checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource)
     );
 }
 
+function checkWizardStaffProgressionContracts(constantsSource, utilsSource) {
+    assertContract(
+        /!state\.player\.hasWizardStaff/.test(constantsSource) &&
+        /state\.game\.dungeonFloor > DUNGEON_FLOOR_FOR_STAFF_DROP/.test(constantsSource) &&
+        /state\.game\.dungeonFloor === DUNGEON_FLOOR_FOR_STAFF_DROP[\s\S]*state\.game\.dungeonZone >= DUNGEON_ZONE_FOR_STAFF_DROP/.test(constantsSource),
+        'Wizard staff remains spawn-eligible after its initial dungeon position until collected'
+    );
+
+    const levelUpBody = extractFunctionBody(utilsSource, 'checkForGameLevelUp');
+    assertContract(!!levelUpBody, 'checkForGameLevelUp function exists');
+
+    const bossBranchIndex = levelUpBody.indexOf('if (shouldSpawnBoss)');
+    const missingStaffGuardIndex = levelUpBody.indexOf('if (!playerState.hasWizardStaff)', bossBranchIndex);
+    const grantStaffIndex = levelUpBody.indexOf('handleWizardStaffCollection();', missingStaffGuardIndex);
+    const createBossIndex = levelUpBody.indexOf('createBoss();', grantStaffIndex);
+    assertContract(
+        bossBranchIndex !== -1 && missingStaffGuardIndex > bossBranchIndex &&
+        grantStaffIndex > missingStaffGuardIndex && createBossIndex > grantStaffIndex,
+        'Boss transition guarantees the wizard staff before creating the boss'
+    );
+}
+
 function checkVersionContracts(constantsSource, packageSource) {
     assertContract(
         /const GAME_VERSION = "1\.0\.0-beta"/.test(constantsSource),
@@ -556,13 +585,14 @@ function main() {
     checkControlContracts(playerSource, abilitiesSource, sketchSource);
     checkVersionContracts(constantsSource, packageSource);
     checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource);
+    checkWizardStaffProgressionContracts(constantsSource, utilsSource);
     checkBossTrackingAndContactContracts(constantsSource, sketchSource, abilitiesSource, objectsSource, helpSource);
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
     checkAchievementSaveContracts(achievementsSource);
     checkHighScoreStorageContracts(uiSource);
     checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSource, aboutSource, achievementsSource);
     checkBuildAndAssetContracts(buildSource, indexSource, assetSource);
-    checkP5SriContracts(indexSource);
+    checkP5CdnContracts(indexSource);
     checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);
     checkPlayTimeContracts(sketchSource);
     checkPauseContracts(sketchSource);

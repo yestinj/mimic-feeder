@@ -488,6 +488,14 @@ function checkForGameLevelUp() {
         // If we should spawn a boss, clear all objects and create the boss
         if (shouldSpawnBoss) {
             clearAllObjects();
+
+            // Shadow Bolt is the only boss-damaging ability. Normally the staff is
+            // collected from regular drops, but guarantee it here so a missed drop
+            // can never leave the run unable to progress.
+            if (!playerState.hasWizardStaff) {
+                handleWizardStaffCollection();
+            }
+
             createBoss();
         } else {
             queueGameLevelNotification(`Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`);

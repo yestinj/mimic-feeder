@@ -361,14 +361,15 @@ const objectProperties = {
 const spawnTable = [
     /**
      * Wizard Staff - Special item that grants shadow bolt ability
-     * Only spawns once per game when player reaches the right dungeon floor/zone
+     * Starts spawning at the configured dungeon position and remains eligible until collected
      */
     {
         type: OBJ_WIZARD_STAFF,
         condition: (state) =>
             !state.player.hasWizardStaff &&
-            state.game.dungeonFloor === DUNGEON_FLOOR_FOR_STAFF_DROP &&
-            state.game.dungeonZone === DUNGEON_ZONE_FOR_STAFF_DROP &&
+            (state.game.dungeonFloor > DUNGEON_FLOOR_FOR_STAFF_DROP ||
+                (state.game.dungeonFloor === DUNGEON_FLOOR_FOR_STAFF_DROP &&
+                    state.game.dungeonZone >= DUNGEON_ZONE_FOR_STAFF_DROP)) &&
             !objects.some(obj => obj.type === OBJ_WIZARD_STAFF)
     },
     /**

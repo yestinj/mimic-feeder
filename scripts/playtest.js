@@ -8,6 +8,8 @@
  * - pause freezes input side-effects (playTime, player position)
  * - mute still works while paused
  * - bolt-style bomb collection increments small_bomb by 1
+ * - wizard staff remains available and is guaranteed before a boss
+ * - denied localStorage access does not break achievement loading
  * - no /api/track network calls
  * - no unexpected page/console errors
  *
@@ -334,6 +336,92 @@ async function main() {
             bombCountResult.delta === 1,
             `Bolt-style bomb collection increments small_bomb by 1 (got delta=${bombCountResult.delta})`
         );
+
+        const staffEligibility = await page.evaluate(() => {
+            const staffEntry = spawnTable.find((entry) => entry.type === OBJ_WIZARD_STAFF);
+            if (!staffEntry || typeof staffEntry.condition !== 'function') {
+                return { ok: false, reason: 'wizard staff spawn condition missing' };
+            }
+
+            const savedObjects = objects;
+            const isEligible = (floor, zone, hasWizardStaff = false, staffOnScreen = false) => {
+                objects = staffOnScreen ? [{ type: OBJ_WIZARD_STAFF }] : [];
+                return staffEntry.condition({
+                    game: { dungeonFloor: floor, dungeonZone: zone },
+                    player: { hasWizardStaff },
+                });
+            };
+
+            try {
+                return {
+                    ok: true,
+                    beforeUnlock: isEligible(1, 5),
+                    atUnlock: isEligible(2, 1),
+                    afterUnlock: isEligible(2, 4),
+                    laterFloor: isEligible(3, 1),
+                    afterCollection: isEligible(3, 1, true),
+                    whileOnScreen: isEligible(3, 1, false, true),
+                };
+            } finally {
+                objects = savedObjects;
+            }
+        });
+        assert(staffEligibility.ok, `Wizard staff spawn condition is available (${staffEligibility.reason || 'ok'})`);
+        assert(staffEligibility.beforeUnlock === false, 'Wizard staff stays locked before Floor 2 Zone 1');
+        assert(staffEligibility.atUnlock === true, 'Wizard staff becomes eligible at Floor 2 Zone 1');
+        assert(staffEligibility.afterUnlock === true && staffEligibility.laterFloor === true, 'Wizard staff remains eligible on later zones and floors');
+        assert(staffEligibility.afterCollection === false, 'Wizard staff stops spawning after collection');
+        assert(staffEligibility.whileOnScreen === false, 'Wizard staff does not duplicate while one is on screen');
+
+        const bossStaffGuarantee = await page.evaluate(() => {
+            objects = [];
+            bossFireballs = [];
+            gameState.dungeonFloor = 2;
+            gameState.dungeonZone = 4;
+            gameState.objectsEaten = OBJECTS_PER_GAME_LEVEL;
+            playerState.hasWizardStaff = false;
+
+            checkForGameLevelUp();
+
+            return {
+                hasWizardStaff: playerState.hasWizardStaff,
+                dungeonZone: gameState.dungeonZone,
+                bossCount: objects.filter((obj) => obj.type === OBJ_BOSS).length,
+            };
+        });
+        assert(bossStaffGuarantee.dungeonZone === 5, 'Boss transition advances to Zone 5');
+        assert(bossStaffGuarantee.hasWizardStaff === true, 'Boss transition grants a missing wizard staff');
+        assert(bossStaffGuarantee.bossCount === 1, 'Boss transition creates exactly one boss');
+
+        const deniedStorageResult = await page.evaluate(() => {
+            const originalGetItem = Storage.prototype.getItem;
+            const originalRemoveItem = Storage.prototype.removeItem;
+            let thrownMessage = null;
+
+            Storage.prototype.getItem = () => {
+                throw new Error('Storage access denied for playtest');
+            };
+            Storage.prototype.removeItem = () => {
+                throw new Error('Storage cleanup denied for playtest');
+            };
+
+            gameState.achievements = { stale: { unlocked: true } };
+            try {
+                loadAchievements();
+            } catch (error) {
+                thrownMessage = String(error && error.message ? error.message : error);
+            } finally {
+                Storage.prototype.getItem = originalGetItem;
+                Storage.prototype.removeItem = originalRemoveItem;
+            }
+
+            return {
+                thrownMessage,
+                achievementCount: Object.keys(gameState.achievements).length,
+            };
+        });
+        assert(deniedStorageResult.thrownMessage === null, 'Denied localStorage access does not escape achievement loading');
+        assert(deniedStorageResult.achievementCount === 0, 'Denied localStorage access falls back to empty achievements');
 
         await page.waitForTimeout(300);
         assert(trackRequests.length === 0, 'No /api/track network requests');

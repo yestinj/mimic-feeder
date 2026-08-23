@@ -30,7 +30,7 @@ function drawHelpScreen() {
     const specialAbilityLines = [
         `Tentacles (Z): unlocks at Player level ${PLAYER_LEVEL_FOR_TENTACLES}.`,
         "Grabs multiple nearby objects at once. Cooldown applies.",
-        `Shadow Bolt (Space): staff can appear at Floor ${DUNGEON_FLOOR_FOR_STAFF_DROP} Zone ${DUNGEON_ZONE_FOR_STAFF_DROP}.`,
+        `Shadow Bolt (Space): staff starts appearing at Floor ${DUNGEON_FLOOR_FOR_STAFF_DROP} Zone ${DUNGEON_ZONE_FOR_STAFF_DROP}.`,
         "Fires a ranged bolt that destroys objects.",
         `Magnetism (X): magnet can appear at Floor ${DUNGEON_FLOOR_FOR_MAGNET_DROP} Zone ${DUNGEON_ZONE_FOR_MAGNET_DROP}.`,
         "On press, snapshots on-screen loot/hazards (not creatures, fireballs, staff, potion, or boss).",

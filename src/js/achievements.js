@@ -345,28 +345,39 @@ function saveAchievements() {
 }
 
 /**
+ * Removes saved achievements without allowing unavailable storage to break the game.
+ * @function
+ */
+function clearStoredAchievementsSafely() {
+    try {
+        localStorage.removeItem('mimicAchievements');
+    } catch (error) {
+        console.warn('Failed to clear achievements from localStorage.', error);
+    }
+}
+
+/**
  * Loads achievements from localStorage
  * @function
  */
 function loadAchievements() {
-    const savedAchievements = localStorage.getItem('mimicAchievements');
-    if (!savedAchievements) {
-        gameState.achievements = {};
-        return;
-    }
+    gameState.achievements = {};
 
     try {
+        const savedAchievements = localStorage.getItem('mimicAchievements');
+        if (!savedAchievements) {
+            return;
+        }
+
         const parsedAchievements = JSON.parse(savedAchievements);
         if (parsedAchievements && typeof parsedAchievements === 'object' && !Array.isArray(parsedAchievements)) {
             gameState.achievements = parsedAchievements;
         } else {
-            gameState.achievements = {};
-            localStorage.removeItem('mimicAchievements');
+            clearStoredAchievementsSafely();
         }
     } catch (error) {
-        console.warn('Failed to parse saved achievements. Resetting achievements storage.', error);
-        gameState.achievements = {};
-        localStorage.removeItem('mimicAchievements');
+        console.warn('Failed to load saved achievements. Resetting achievements storage.', error);
+        clearStoredAchievementsSafely();
     }
 }
 
