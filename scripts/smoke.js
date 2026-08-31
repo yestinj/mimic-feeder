@@ -276,6 +276,36 @@ function checkBuildAndAssetContracts(buildSource, indexSource, assetSource) {
         !assetSource.includes('assets/music/8-bit-heaven-26287.mp3'),
         'Runtime asset loader does not reference quarantined assets'
     );
+
+    const dungeonBackgroundPaths = [
+        'backgrounds/upper-dungeon.jpg',
+        'backgrounds/lower-undercroft.jpg',
+        'backgrounds/ancient-catacombs.jpg',
+        'backgrounds/underworld-depths.jpg',
+        'backgrounds/abyss.jpg',
+    ];
+    assertContract(
+        dungeonBackgroundPaths.every((assetPath) =>
+            fs.existsSync(path.join(__dirname, '..', 'src', 'assets', assetPath))
+        ),
+        'All five dungeon progression backgrounds exist'
+    );
+    assertContract(
+        dungeonBackgroundPaths.every((assetPath) => assetSource.includes(`assets/${assetPath}`)),
+        'Runtime asset loader includes every dungeon progression background'
+    );
+}
+
+function checkDungeonBackgroundContracts(sketchSource) {
+    assertContract(
+        /function getDungeonBackgroundIndex\(dungeonFloor\)/.test(sketchSource) &&
+        /Math\.floor\(\(normalizedFloor - 1\) \/ 2\)/.test(sketchSource),
+        'Dungeon backgrounds advance every two floors'
+    );
+    assertContract(
+        /Math\.min\(progressionIndex, finalBackgroundIndex\)/.test(sketchSource),
+        'Final dungeon background remains active for infinite later floors'
+    );
 }
 
 function checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource) {
@@ -592,6 +622,7 @@ function main() {
     checkHighScoreStorageContracts(uiSource);
     checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSource, aboutSource, achievementsSource);
     checkBuildAndAssetContracts(buildSource, indexSource, assetSource);
+    checkDungeonBackgroundContracts(sketchSource);
     checkP5CdnContracts(indexSource);
     checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);
     checkPlayTimeContracts(sketchSource);

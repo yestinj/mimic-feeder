@@ -22,9 +22,15 @@ let explosionFrames = [];
 let chainImage;
 let groundSplatFrames = [];
 
-// Background images
-let bgImage1;
-let bgImage2;
+// Dungeon backgrounds, ordered by their two-floor progression bands.
+const DUNGEON_BACKGROUND_PATHS = [
+    'assets/backgrounds/upper-dungeon.jpg',
+    'assets/backgrounds/lower-undercroft.jpg',
+    'assets/backgrounds/ancient-catacombs.jpg',
+    'assets/backgrounds/underworld-depths.jpg',
+    'assets/backgrounds/abyss.jpg'
+];
+let dungeonBackgroundImages = [];
 
 // Sound effects
 let jumpSound;
@@ -98,9 +104,8 @@ function preload() {
     objectImages[OBJ_DIAMOND] = loadImageWithErrorHandling('assets/diamond.png');
     objectImages[OBJ_WIZARD_STAFF] = loadImageWithErrorHandling('assets/staff.png');
 
-    // Load background images
-    bgImage1 = loadImageWithErrorHandling('assets/background_1.jpg');
-    bgImage2 = loadImageWithErrorHandling('assets/background_2.jpg');
+    // Load dungeon backgrounds in progression order.
+    dungeonBackgroundImages = DUNGEON_BACKGROUND_PATHS.map(loadImageWithErrorHandling);
 
     // Load ability and effect images
     for (let i = 0; i <= 3; i++) {

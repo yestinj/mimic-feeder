@@ -323,22 +323,31 @@ function windowResized() {
 }
 
 /**
+ * Returns the background band for a dungeon floor.
+ * Floors 1-2 use index 0, 3-4 use index 1, and so on; the final
+ * background remains in use for the infinite floors beyond its band.
+ * @param {number} dungeonFloor
+ * @returns {number}
+ */
+function getDungeonBackgroundIndex(dungeonFloor) {
+    const normalizedFloor = Number.isFinite(dungeonFloor) ? Math.max(1, Math.floor(dungeonFloor)) : 1;
+    const progressionIndex = Math.floor((normalizedFloor - 1) / 2);
+    const finalBackgroundIndex = Math.max(0, dungeonBackgroundImages.length - 1);
+    return Math.min(progressionIndex, finalBackgroundIndex);
+}
+
+/**
  * Draws the dungeon background for the current floor (no simulation).
  * @function
  */
 function drawDungeonBackground() {
-    if (gameState.dungeonFloor < 3) {
-        if (bgImage1) {
-            image(bgImage1, 0, 0, width, height);
-        } else {
-            background(20, 0, 0);
-        }
+    const backgroundIndex = getDungeonBackgroundIndex(gameState.dungeonFloor);
+    const dungeonBackground = dungeonBackgroundImages[backgroundIndex];
+
+    if (dungeonBackground) {
+        image(dungeonBackground, 0, 0, width, height);
     } else {
-        if (bgImage2) {
-            image(bgImage2, 0, 0, width, height);
-        } else {
-            background(0, 0, 20);
-        }
+        background(8, 6, 12);
     }
 }
 

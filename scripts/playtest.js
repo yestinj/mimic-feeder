@@ -217,6 +217,20 @@ async function main() {
         await waitForGameReady(page);
         assert(true, 'Game globals are available');
 
+        const dungeonBackgroundResult = await page.evaluate(() => ({
+            imageCount: dungeonBackgroundImages.length,
+            loaded: dungeonBackgroundImages.every((backgroundImage) =>
+                backgroundImage && backgroundImage.width > 0 && backgroundImage.height > 0
+            ),
+            indices: [1, 2, 3, 4, 5, 6, 7, 8, 9, 50].map(getDungeonBackgroundIndex),
+        }));
+        assert(dungeonBackgroundResult.imageCount === 5, 'Five dungeon backgrounds are available');
+        assert(dungeonBackgroundResult.loaded, 'All dungeon backgrounds loaded successfully');
+        assert(
+            dungeonBackgroundResult.indices.join(',') === '0,0,1,1,2,2,3,3,4,4',
+            `Dungeon backgrounds follow two-floor bands and hold on 9+ (got ${dungeonBackgroundResult.indices.join(',')})`
+        );
+
         // Deterministic start: force intro so returning-player localStorage cannot auto-skip.
         await page.evaluate(() => {
             try {
