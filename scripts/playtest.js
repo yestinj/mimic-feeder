@@ -9,6 +9,7 @@
  * - mute still works while paused
  * - bolt-style bomb collection increments small_bomb by 1
  * - wizard staff remains available and is guaranteed before a boss
+ * - boss music takes over during combat and the death cue stops it
  * - denied localStorage access does not break achievement loading
  * - no /api/track network calls
  * - no unexpected page/console errors
@@ -436,6 +437,45 @@ async function main() {
         assert(bossStaffGuarantee.dungeonZone === 5, 'Boss transition advances to Zone 5');
         assert(bossStaffGuarantee.hasWizardStaff === true, 'Boss transition grants a missing wizard staff');
         assert(bossStaffGuarantee.bossCount === 1, 'Boss transition creates exactly one boss');
+
+        const bossAudioAssets = await page.evaluate(() => ({
+            musicMapped: soundMap.boss_music === bossMusic,
+            deathMapped: soundMap.boss_death === bossDeathSound,
+            musicLoaded: !!bossMusic && bossMusic.isLoaded(),
+            deathLoaded: !!bossDeathSound && bossDeathSound.isLoaded(),
+        }));
+        assert(bossAudioAssets.musicMapped && bossAudioAssets.deathMapped, 'Boss audio is registered');
+        assert(bossAudioAssets.musicLoaded && bossAudioAssets.deathLoaded, 'Boss audio loaded successfully');
+
+        await page.evaluate(() => {
+            gameState.isMuted = false;
+            gameState.isPaused = false;
+            syncGameAudioState();
+            updateBackgroundMusic();
+        });
+        await page.waitForTimeout(150);
+        const bossMusicResult = await page.evaluate(() => ({
+            bossPlaying: bossMusic.isPlaying(),
+            normalPlaying: backgroundMusic1.isPlaying() || backgroundMusic2.isPlaying(),
+        }));
+        assert(bossMusicResult.bossPlaying, 'Boss music plays during the boss encounter');
+        assert(!bossMusicResult.normalPlaying, 'Normal music stops during the boss encounter');
+
+        await page.evaluate(() => {
+            const boss = objects.find((obj) => obj.type === OBJ_BOSS);
+            boss.isDying = true;
+            handleBossDefeatedAudio();
+        });
+        await page.waitForTimeout(100);
+        const bossDeathAudioResult = await page.evaluate(() => ({
+            bossPlaying: bossMusic.isPlaying(),
+            deathPlaying: bossDeathSound.isPlaying(),
+            normalPlaying: backgroundMusic1.isPlaying() || backgroundMusic2.isPlaying(),
+        }));
+        assert(!bossDeathAudioResult.bossPlaying, 'Boss music stops when the boss is defeated');
+        assert(bossDeathAudioResult.deathPlaying, 'Boss death cue plays when the boss is defeated');
+        assert(!bossDeathAudioResult.normalPlaying, 'Normal music waits during the boss death cue');
+        await page.evaluate(() => stopAllSounds(false, false));
 
         const deniedStorageResult = await page.evaluate(() => {
             const originalGetItem = Storage.prototype.getItem;

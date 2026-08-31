@@ -459,8 +459,10 @@ function setupSoundMap() {
         'cat_meow': catMeowSound,
         'cat_hurt': catHurtSound,
         'magnetism': magnetismSound,
+        'boss_death': bossDeathSound,
         'background_music1': backgroundMusic1,
-        'background_music2': backgroundMusic2
+        'background_music2': backgroundMusic2,
+        'boss_music': bossMusic
     };
 
     // Ensure all sound effects have a default volume if they were loaded without it
@@ -468,11 +470,13 @@ function setupSoundMap() {
     for (const key in soundMap) {
         const sound = soundMap[key];
         if (sound && typeof sound.setVolume === 'function' &&
-            key !== 'background_music1' && key !== 'background_music2') {
+            key !== 'background_music1' && key !== 'background_music2' && key !== 'boss_music') {
             // Only set if not already set by a specific HIGHER_SOUND_VOLUME call in assets.js
             // p5.sound doesn't have a getVolume, so we just re-apply the default
             // but we skip the ones we know are higher or music.
-            const higherVolumeSounds = ['collect', 'slurp', 'explode', 'cat_meow', 'cat_hurt', 'magnetism'];
+            const higherVolumeSounds = [
+                'collect', 'slurp', 'explode', 'cat_meow', 'cat_hurt', 'magnetism', 'boss_death'
+            ];
             if (!higherVolumeSounds.includes(key)) {
                 sound.setVolume(DEFAULT_SOUND_VOLUME);
             }

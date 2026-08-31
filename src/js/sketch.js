@@ -902,7 +902,8 @@ function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) 
             const sound = soundMap[soundName];
             if (sound && typeof sound.stop === 'function' && typeof sound.isLoaded === 'function' && sound.isLoaded()) {
                 if ((sound === gameOverSound && allowGameOverSound) ||
-                    (keepBackgroundMusic && (sound === backgroundMusic1 || sound === backgroundMusic2))) {
+                    (keepBackgroundMusic &&
+                        (sound === backgroundMusic1 || sound === backgroundMusic2 || sound === bossMusic))) {
                     // Skip these sounds based on parameters
                 } else {
                     sound.stop();
@@ -913,8 +914,48 @@ function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) 
 }
 
 /**
- * Manages background music based on current dungeon floor
- * Switches between two background tracks depending on floor number
+ * Stops every music track except an optional selected track.
+ * @param {?Object} [trackToKeep=null]
+ * @function
+ */
+function stopMusicTracks(trackToKeep = null) {
+    const musicTracks = [backgroundMusic1, backgroundMusic2, bossMusic];
+    for (const track of musicTracks) {
+        if (track && track !== trackToKeep && typeof track.isPlaying === 'function' && track.isPlaying()) {
+            track.stop();
+        }
+    }
+}
+
+/**
+ * Loops one music track and stops the other music tracks.
+ * @param {?Object} track
+ * @function
+ */
+function playExclusiveMusic(track) {
+    if (!track || typeof track.isLoaded !== 'function' || !track.isLoaded()) {
+        return;
+    }
+
+    stopMusicTracks(track);
+    if (!track.isPlaying()) {
+        track.loop();
+    }
+}
+
+/**
+ * Stops combat music and plays the boss death cue once.
+ * @function
+ */
+function handleBossDefeatedAudio() {
+    stopMusicTracks();
+    playSound('boss_death');
+}
+
+/**
+ * Manages normal and boss music based on the current encounter state.
+ * Boss music loops for the fight, then stays silent during the death animation.
+ * Normal floor music waits for the death cue to finish before resuming.
  * @function
  */
 function updateBackgroundMusic() {
@@ -922,31 +963,25 @@ function updateBackgroundMusic() {
         return;
     }
 
-    // Determine which background music should be playing based on floor
-    // Floors 1-2, 5-6, etc. use backgroundMusic1
-    // Floors 3-4, 7-8, etc. use backgroundMusic2
-    let shouldPlayMusic1 = gameState.dungeonFloor % 4 < 2;
-
-    // Check if the correct music is already playing
-    if (shouldPlayMusic1) {
-        if (backgroundMusic1 && !backgroundMusic1.isPlaying() && backgroundMusic1.isLoaded()) {
-            // Stop the other music if it's playing
-            if (backgroundMusic2 && backgroundMusic2.isPlaying()) {
-                backgroundMusic2.stop();
-            }
-            // Start playing backgroundMusic1 and loop it
-            backgroundMusic1.loop();
+    const boss = objects.find((obj) => obj.type === OBJ_BOSS);
+    if (boss) {
+        if (boss.isDying) {
+            stopMusicTracks();
+        } else {
+            playExclusiveMusic(bossMusic);
         }
-    } else {
-        if (backgroundMusic2 && !backgroundMusic2.isPlaying() && backgroundMusic2.isLoaded()) {
-            // Stop the other music if it's playing
-            if (backgroundMusic1 && backgroundMusic1.isPlaying()) {
-                backgroundMusic1.stop();
-            }
-            // Start playing backgroundMusic2 and loop it
-            backgroundMusic2.loop();
-        }
+        return;
     }
+
+    if (bossDeathSound && typeof bossDeathSound.isPlaying === 'function' && bossDeathSound.isPlaying()) {
+        stopMusicTracks();
+        return;
+    }
+
+    // Floors 1-2, 5-6, etc. use backgroundMusic1;
+    // Floors 3-4, 7-8, etc. use backgroundMusic2.
+    const shouldPlayMusic1 = gameState.dungeonFloor % 4 < 2;
+    playExclusiveMusic(shouldPlayMusic1 ? backgroundMusic1 : backgroundMusic2);
 }
 
 /**

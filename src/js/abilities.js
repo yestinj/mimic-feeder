@@ -139,6 +139,7 @@ function updateShadowBolts() {
                         obj.dieCurrentFrame = 0;
                         obj.dieFrameTimer = 0;
                         obj.dieDuration = 0;
+                        handleBossDefeatedAudio();
 
                         // Check for level up after gaining XP
                         checkForPlayerLevelUp();
