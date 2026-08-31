@@ -222,14 +222,44 @@ async function main() {
             loaded: dungeonBackgroundImages.every((backgroundImage) =>
                 backgroundImage && backgroundImage.width > 0 && backgroundImage.height > 0
             ),
-            indices: [1, 2, 3, 4, 5, 6, 7, 8, 9, 50].map(getDungeonBackgroundIndex),
+            indices: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 50].map(getDungeonBackgroundIndex),
         }));
-        assert(dungeonBackgroundResult.imageCount === 5, 'Five dungeon backgrounds are available');
+        assert(dungeonBackgroundResult.imageCount === 10, 'Ten dungeon backgrounds are available');
         assert(dungeonBackgroundResult.loaded, 'All dungeon backgrounds loaded successfully');
         assert(
-            dungeonBackgroundResult.indices.join(',') === '0,0,1,1,2,2,3,3,4,4',
-            `Dungeon backgrounds follow two-floor bands and hold on 9+ (got ${dungeonBackgroundResult.indices.join(',')})`
+            dungeonBackgroundResult.indices.join(',') === '0,1,2,3,4,5,6,7,8,9,9',
+            `Dungeon backgrounds advance every floor and hold on 10+ (got ${dungeonBackgroundResult.indices.join(',')})`
         );
+
+        const catProgressionResult = await page.evaluate(() => {
+            const catEntry = spawnTable.find((entry) => entry.type === OBJ_CAT);
+            if (!catEntry || typeof catEntry.condition !== 'function') {
+                return {ok: false};
+            }
+            const stateForFloor = (dungeonFloor) => ({
+                game: {dungeonFloor, dungeonZone: 1},
+                player: {},
+            });
+            return {
+                ok: true,
+                floor1: catEntry.condition(stateForFloor(1)),
+                floor2: catEntry.condition(stateForFloor(2)),
+                laterFloor: catEntry.condition(stateForFloor(10)),
+            };
+        });
+        assert(catProgressionResult.ok, 'Cat spawn progression condition is available');
+        assert(catProgressionResult.floor1 === false, 'Cats do not spawn on Floor 1');
+        assert(
+            catProgressionResult.floor2 === true && catProgressionResult.laterFloor === true,
+            'Cats spawn from Floor 2 onward'
+        );
+
+        const catHurtSoundResult = await page.evaluate(() => ({
+            mapped: soundMap.cat_hurt === catHurtSound,
+            loaded: !!catHurtSound && catHurtSound.isLoaded(),
+        }));
+        assert(catHurtSoundResult.mapped, 'Cat distress sound is registered');
+        assert(catHurtSoundResult.loaded, 'Cat distress sound loaded successfully');
 
         // Deterministic start: force intro so returning-player localStorage cannot auto-skip.
         await page.evaluate(() => {

@@ -22,12 +22,17 @@ let explosionFrames = [];
 let chainImage;
 let groundSplatFrames = [];
 
-// Dungeon backgrounds, ordered by their two-floor progression bands.
+// Dungeon backgrounds, ordered one per floor through Floor 10.
 const DUNGEON_BACKGROUND_PATHS = [
     'assets/backgrounds/upper-dungeon.jpg',
+    'assets/backgrounds/ageing-lower-halls.jpg',
     'assets/backgrounds/lower-undercroft.jpg',
+    'assets/backgrounds/buried-crypts.jpg',
     'assets/backgrounds/ancient-catacombs.jpg',
+    'assets/backgrounds/root-choked-necropolis.jpg',
     'assets/backgrounds/underworld-depths.jpg',
+    'assets/backgrounds/infernal-ruins.jpg',
+    'assets/backgrounds/void-threshold.jpg',
     'assets/backgrounds/abyss.jpg'
 ];
 let dungeonBackgroundImages = [];
@@ -49,6 +54,7 @@ let loseLifeSound;
 let popSound;
 let castSpellSound;
 let catMeowSound;
+let catHurtSound;
 let magnetismSound;
 
 // Background music
@@ -197,6 +203,7 @@ function preload() {
     popSound = loadSoundWithVolume('assets/shadowbolt_hit.mp3');
     castSpellSound = loadSoundWithVolume('assets/cast_spell.mp3');
     catMeowSound = loadSoundWithVolume('assets/cat_meow.mp3', HIGHER_SOUND_VOLUME);
+    catHurtSound = loadSoundWithVolume('assets/cat_hurt.mp3', HIGHER_SOUND_VOLUME);
     magnetismSound = loadSoundWithVolume('assets/magnetism.mp3', HIGHER_SOUND_VOLUME);
 
     // Load background music

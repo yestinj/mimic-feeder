@@ -279,16 +279,21 @@ function checkBuildAndAssetContracts(buildSource, indexSource, assetSource) {
 
     const dungeonBackgroundPaths = [
         'backgrounds/upper-dungeon.jpg',
+        'backgrounds/ageing-lower-halls.jpg',
         'backgrounds/lower-undercroft.jpg',
+        'backgrounds/buried-crypts.jpg',
         'backgrounds/ancient-catacombs.jpg',
+        'backgrounds/root-choked-necropolis.jpg',
         'backgrounds/underworld-depths.jpg',
+        'backgrounds/infernal-ruins.jpg',
+        'backgrounds/void-threshold.jpg',
         'backgrounds/abyss.jpg',
     ];
     assertContract(
         dungeonBackgroundPaths.every((assetPath) =>
             fs.existsSync(path.join(__dirname, '..', 'src', 'assets', assetPath))
         ),
-        'All five dungeon progression backgrounds exist'
+        'All ten dungeon progression backgrounds exist'
     );
     assertContract(
         dungeonBackgroundPaths.every((assetPath) => assetSource.includes(`assets/${assetPath}`)),
@@ -299,8 +304,8 @@ function checkBuildAndAssetContracts(buildSource, indexSource, assetSource) {
 function checkDungeonBackgroundContracts(sketchSource) {
     assertContract(
         /function getDungeonBackgroundIndex\(dungeonFloor\)/.test(sketchSource) &&
-        /Math\.floor\(\(normalizedFloor - 1\) \/ 2\)/.test(sketchSource),
-        'Dungeon backgrounds advance every two floors'
+        /const progressionIndex = normalizedFloor - 1/.test(sketchSource),
+        'Dungeon backgrounds advance every floor through Floor 10'
     );
     assertContract(
         /Math\.min\(progressionIndex, finalBackgroundIndex\)/.test(sketchSource),
@@ -563,6 +568,30 @@ function checkWizardStaffProgressionContracts(constantsSource, utilsSource) {
     );
 }
 
+function checkCatProgressionContracts(constantsSource) {
+    assertContract(
+        /const DUNGEON_FLOOR_FOR_CAT_SPAWN = 2/.test(constantsSource),
+        'Cats unlock on dungeon floor 2'
+    );
+    assertContract(
+        /type: OBJ_CAT,[\s\S]*condition: \(state\) => state\.game\.dungeonFloor >= DUNGEON_FLOOR_FOR_CAT_SPAWN/.test(constantsSource),
+        'Cat spawn weight is gated by the configured unlock floor'
+    );
+}
+
+function checkCatAudioContracts(assetSource, constantsSource, abilitiesSource) {
+    assertContract(
+        fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'cat_hurt.mp3')) &&
+        /catHurtSound = loadSoundWithVolume\('assets\/cat_hurt\.mp3', HIGHER_SOUND_VOLUME\)/.test(assetSource) &&
+        /'cat_hurt': catHurtSound/.test(constantsSource),
+        'Cat distress sound exists, loads, and is registered'
+    );
+    assertContract(
+        /playSound\(obj\.type === OBJ_CAT \? 'cat_hurt' : 'shadowbolt_hit'\)/.test(abilitiesSource),
+        'Shadow bolts use the cat distress sound only when destroying a cat'
+    );
+}
+
 function checkVersionContracts(constantsSource, packageSource) {
     assertContract(
         /const GAME_VERSION = "1\.0\.0-beta"/.test(constantsSource),
@@ -616,6 +645,8 @@ function main() {
     checkVersionContracts(constantsSource, packageSource);
     checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource);
     checkWizardStaffProgressionContracts(constantsSource, utilsSource);
+    checkCatProgressionContracts(constantsSource);
+    checkCatAudioContracts(assetSource, constantsSource, abilitiesSource);
     checkBossTrackingAndContactContracts(constantsSource, sketchSource, abilitiesSource, objectsSource, helpSource);
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
     checkAchievementSaveContracts(achievementsSource);

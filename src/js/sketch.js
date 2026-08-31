@@ -323,15 +323,15 @@ function windowResized() {
 }
 
 /**
- * Returns the background band for a dungeon floor.
- * Floors 1-2 use index 0, 3-4 use index 1, and so on; the final
- * background remains in use for the infinite floors beyond its band.
+ * Returns the background for a dungeon floor.
+ * Floors 1-10 each have their own background; the final background
+ * remains in use for the infinite floors beyond Floor 10.
  * @param {number} dungeonFloor
  * @returns {number}
  */
 function getDungeonBackgroundIndex(dungeonFloor) {
     const normalizedFloor = Number.isFinite(dungeonFloor) ? Math.max(1, Math.floor(dungeonFloor)) : 1;
-    const progressionIndex = Math.floor((normalizedFloor - 1) / 2);
+    const progressionIndex = normalizedFloor - 1;
     const finalBackgroundIndex = Math.max(0, dungeonBackgroundImages.length - 1);
     return Math.min(progressionIndex, finalBackgroundIndex);
 }

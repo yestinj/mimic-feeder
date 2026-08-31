@@ -144,7 +144,7 @@ function updateShadowBolts() {
                         checkForPlayerLevelUp();
                     }
                 } else if (obj.type !== OBJ_SMALL_BOMB) {
-                    playSound('shadowbolt_hit');
+                    playSound(obj.type === OBJ_CAT ? 'cat_hurt' : 'shadowbolt_hit');
                     shadowBoltExplosions.push({
                         x: obj.x, y: obj.y,
                         lifetime: SHADOW_BOLT_EXPLOSION_LIFETIME_FRAMES,

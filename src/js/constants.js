@@ -115,6 +115,8 @@ const DUNGEON_ZONE_FOR_STAFF_DROP = 1;
 const DUNGEON_FLOOR_FOR_MAGNET_DROP = 3;
 /** @const {number} DUNGEON_ZONE_FOR_MAGNET_DROP - Dungeon zone when magnet can drop */
 const DUNGEON_ZONE_FOR_MAGNET_DROP = 1;
+/** @const {number} DUNGEON_FLOOR_FOR_CAT_SPAWN - First dungeon floor where cats can spawn */
+const DUNGEON_FLOOR_FOR_CAT_SPAWN = 2;
 /** @const {number} DUNGEON_FLOOR_FOR_DRAGON_SPAWN - Dungeon floor level when dragons can spawn */
 const DUNGEON_FLOOR_FOR_DRAGON_SPAWN = 3;
 /** @const {number} DUNGEON_ZONE_FOR_DRAGON_SPAWN - Dungeon zone when dragons can spawn */
@@ -404,8 +406,12 @@ const spawnTable = [
     {type: OBJ_CROWN, probability: 0.03 * 1.111},
     /** Diamond - Very rare highest-value collectible */
     {type: OBJ_DIAMOND, probability: 0.02 * 1.111},
-    /** Cat - Special neutral object that makes a meow sound */
-    {type: OBJ_CAT, probability: 0.05 * 1.111}, // Moved cat earlier in the table
+    /** Cat - Special neutral object introduced after the first-floor tutorial */
+    {
+        type: OBJ_CAT,
+        probability: 0.05 * 1.111,
+        condition: (state) => state.game.dungeonFloor >= DUNGEON_FLOOR_FOR_CAT_SPAWN
+    },
     /** Elf - High-value enemy */
     {type: OBJ_ELF, probability: 0.10 * 1.111},
     /** Dwarf - Medium-value enemy */
@@ -451,6 +457,7 @@ function setupSoundMap() {
         'cast_spell': castSpellSound,
         'bling': castSpellSound,
         'cat_meow': catMeowSound,
+        'cat_hurt': catHurtSound,
         'magnetism': magnetismSound,
         'background_music1': backgroundMusic1,
         'background_music2': backgroundMusic2
@@ -465,7 +472,7 @@ function setupSoundMap() {
             // Only set if not already set by a specific HIGHER_SOUND_VOLUME call in assets.js
             // p5.sound doesn't have a getVolume, so we just re-apply the default
             // but we skip the ones we know are higher or music.
-            const higherVolumeSounds = ['collect', 'slurp', 'explode', 'cat_meow', 'magnetism'];
+            const higherVolumeSounds = ['collect', 'slurp', 'explode', 'cat_meow', 'cat_hurt', 'magnetism'];
             if (!higherVolumeSounds.includes(key)) {
                 sound.setVolume(DEFAULT_SOUND_VOLUME);
             }
