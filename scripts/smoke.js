@@ -630,9 +630,30 @@ function checkNinefoldJudgmentContracts(
         'Ordinary objects are suspended during judgment and restored for survivors'
     );
     assertContract(
-        /for \(let lane = 0; lane < laneCount; lane\+\+\)[\s\S]*lane === ninefoldJudgmentState\.safeLane[\s\S]*continue;/.test(judgmentSource) &&
+        /function getNinefoldCorridorWidth\(\)[\s\S]*player\.w \+ 14/.test(judgmentSource) &&
+        /const leftStart = corridorCenter - corridorWidth \/ 2 - fireballSize \/ 2/.test(judgmentSource) &&
+        /const rightStart = corridorCenter \+ corridorWidth \/ 2 \+ fireballSize \/ 2/.test(judgmentSource) &&
         /wavesReleased < NINEFOLD_WAVE_COUNT/.test(judgmentSource),
-        'Each judgment wave preserves one safe lane and the encounter is capped at nine waves'
+        'Each dense judgment wall leaves only mimic-width clearance and the encounter is capped at nine waves'
+    );
+    assertContract(
+        !/drawNinefoldTelegraph|Follow the open path/.test(judgmentSource),
+        'Judgment provides no corridor overlay or survival instruction'
+    );
+    assertContract(
+        /utterance\.rate = 0\.55/.test(judgmentSource) &&
+        /utterance\.pitch = 0\.1/.test(judgmentSource),
+        'Dungeon voice uses a substantially deeper, slower delivery'
+    );
+    assertContract(
+        /title: 'FIVE INNOCENT LIVES'/.test(judgmentSource) &&
+        /subtitle: 'The dungeon is watching'/.test(judgmentSource) &&
+        /drawShadowedText\('TEN LIVES TAKEN'/.test(judgmentSource) &&
+        /drawShadowedText\('YOU HAVE ANGERED THE DUNGEON'/.test(judgmentSource) &&
+        /drawShadowedText\('NOW—RUN'/.test(judgmentSource) &&
+        /drawShadowedText\('THE DUNGEON RELENTS'/.test(judgmentSource) &&
+        /drawShadowedText\('For now'/.test(judgmentSource),
+        'Displayed judgment messages omit full stops'
     );
     assertContract(
         /function damagePlayerDuringNinefoldJudgment\(\)[\s\S]*damageCooldown > 0[\s\S]*NINEFOLD_DAMAGE_COOLDOWN_FRAMES/.test(judgmentSource),

@@ -180,20 +180,20 @@ const CAT_KILL_JUDGMENT_THRESHOLD = 10;
 const NINEFOLD_WAVE_COUNT = 9;
 /** @const {number} NINEFOLD_SUMMON_DURATION_FRAMES - Apparition warning time before attacks */
 const NINEFOLD_SUMMON_DURATION_FRAMES = 210;
-/** @const {number} NINEFOLD_FIRST_TELEGRAPH_FRAMES - Extra warning before the first wave */
-const NINEFOLD_FIRST_TELEGRAPH_FRAMES = 66;
-/** @const {number} NINEFOLD_WAVE_INTERVAL_FRAMES - Warning time between later waves */
-const NINEFOLD_WAVE_INTERVAL_FRAMES = 66;
+/** @const {number} NINEFOLD_FIRST_WAVE_DELAY_FRAMES - Ominous pause before the first wave */
+const NINEFOLD_FIRST_WAVE_DELAY_FRAMES = 36;
+/** @const {number} NINEFOLD_WAVE_INTERVAL_FRAMES - Breathing room between later waves */
+const NINEFOLD_WAVE_INTERVAL_FRAMES = 36;
 /** @const {number} NINEFOLD_END_DURATION_FRAMES - Apparition fade after the final wave */
 const NINEFOLD_END_DURATION_FRAMES = 90;
 /** @const {number} NINEFOLD_DAMAGE_COOLDOWN_FRAMES - Prevents overlapping fireballs from stacking damage */
 const NINEFOLD_DAMAGE_COOLDOWN_FRAMES = 45;
 /** @const {number} NINEFOLD_FIREBALL_BASE_SPEED - First-wave speed in px per reference frame */
-const NINEFOLD_FIREBALL_BASE_SPEED = 10.5;
+const NINEFOLD_FIREBALL_BASE_SPEED = 11.5;
 /** @const {number} NINEFOLD_FIREBALL_SPEED_STEP - Additional speed for each later wave */
-const NINEFOLD_FIREBALL_SPEED_STEP = 0.65;
+const NINEFOLD_FIREBALL_SPEED_STEP = 0.7;
 /** @const {number} NINEFOLD_FIREBALL_MAX_SIZE - Maximum judgment fireball size in pixels */
-const NINEFOLD_FIREBALL_MAX_SIZE = 76;
+const NINEFOLD_FIREBALL_MAX_SIZE = 68;
 
 /**
  * Object Pulling / Effects - Constants for visual effects and animations

@@ -372,11 +372,11 @@ async function main() {
             ninefoldJudgmentState.phase = 'attack';
             ninefoldJudgmentState.phaseTimer = 0;
             ninefoldJudgmentState.wavesReleased = 0;
-            ninefoldJudgmentState.safeLane = getPlayerNinefoldLane();
-            ninefoldJudgmentState.waveTimer = NINEFOLD_FIRST_TELEGRAPH_FRAMES;
+            ninefoldJudgmentState.corridorCenter = player.x + player.w / 2;
+            ninefoldJudgmentState.waveTimer = NINEFOLD_FIRST_WAVE_DELAY_FRAMES;
         });
         await page.waitForTimeout(120);
-        await page.screenshot({ path: path.join(OUT_DIR, '03-ninefold-telegraph.png') });
+        await page.screenshot({ path: path.join(OUT_DIR, '03-ninefold-ready.png') });
 
         const judgmentWave = await page.evaluate(() => {
             ninefoldJudgmentState.waveTimer = 0;
@@ -384,14 +384,35 @@ async function main() {
             for (const fireball of judgmentFireballs) {
                 fireball.y = height * 0.27;
             }
+            const leftFireballs = judgmentFireballs.filter((fireball) =>
+                fireball.x < ninefoldJudgmentState.corridorCenter
+            );
+            const rightFireballs = judgmentFireballs.filter((fireball) =>
+                fireball.x > ninefoldJudgmentState.corridorCenter
+            );
+            const innerLeft = leftFireballs.reduce((closest, fireball) =>
+                !closest || fireball.x > closest.x ? fireball : closest, null
+            );
+            const innerRight = rightFireballs.reduce((closest, fireball) =>
+                !closest || fireball.x < closest.x ? fireball : closest, null
+            );
+            const actualCorridorWidth = innerRight.x - innerRight.w / 2 -
+                (innerLeft.x + innerLeft.w / 2);
             return {
                 fireballCount: judgmentFireballs.length,
-                laneCount: getNinefoldLaneCount(),
+                playerWidth: player.w,
+                actualCorridorWidth,
             };
         });
         assert(
-            judgmentWave.fireballCount === judgmentWave.laneCount - 1,
-            'A judgment wave fills every lane except its telegraphed safe path'
+            judgmentWave.fireballCount >= 14,
+            `A judgment wave forms a dense meteor wall (got ${judgmentWave.fireballCount} fireballs)`
+        );
+        assert(
+            judgmentWave.actualCorridorWidth > judgmentWave.playerWidth &&
+            judgmentWave.actualCorridorWidth - judgmentWave.playerWidth <= 15,
+            `Judgment opening gives the mimic only narrow clearance ` +
+            `(mimic=${judgmentWave.playerWidth}, opening=${judgmentWave.actualCorridorWidth})`
         );
         await page.waitForTimeout(60);
         await page.screenshot({ path: path.join(OUT_DIR, '04-ninefold-wave.png') });

@@ -16,7 +16,7 @@ function createNinefoldJudgmentState() {
         phaseTimer: 0,
         waveTimer: 0,
         wavesReleased: 0,
-        safeLane: null,
+        corridorCenter: null,
         damageCooldown: 0,
         impactSoundCooldown: 0,
         suspendedObjects: []
@@ -54,8 +54,8 @@ function recordShadowBoltCatKill() {
         gameState.catKillWarningIssued = true;
         enqueueCenterNotification({
             style: 'panel',
-            title: 'FIVE INNOCENT LIVES.',
-            subtitle: 'The dungeon is watching.',
+            title: 'FIVE INNOCENT LIVES',
+            subtitle: 'The dungeon is watching',
             duration: 240,
             titleColor: [255, 164, 164],
             subtitleColor: [235, 220, 230],
@@ -88,8 +88,8 @@ function speakDungeonLine(line) {
 
     try {
         const utterance = new SpeechSynthesisUtterance(line);
-        utterance.rate = 0.72;
-        utterance.pitch = 0.5;
+        utterance.rate = 0.55;
+        utterance.pitch = 0.1;
         utterance.volume = 1;
 
         const voices = window.speechSynthesis.getVoices();
@@ -162,77 +162,102 @@ function beginNinefoldJudgment() {
     ninefoldJudgmentState.phase = 'summoning';
     ninefoldJudgmentState.phaseTimer = 0;
     ninefoldJudgmentState.wavesReleased = 0;
-    ninefoldJudgmentState.safeLane = null;
+    ninefoldJudgmentState.corridorCenter = null;
     ninefoldJudgmentState.damageCooldown = 0;
     ninefoldJudgmentState.impactSoundCooldown = 0;
 }
 
-function getNinefoldLaneCount() {
-    return width < 700 ? 5 : 6;
+function getNinefoldCorridorWidth() {
+    return Math.min(width - 12, player.w + 14);
 }
 
-function getPlayerNinefoldLane() {
-    const laneCount = getNinefoldLaneCount();
-    const playerCenterX = player.x + player.w / 2;
-    return Math.max(0, Math.min(laneCount - 1, Math.floor(playerCenterX / (width / laneCount))));
+function clampNinefoldCorridorCenter(centerX) {
+    const halfCorridor = getNinefoldCorridorWidth() / 2;
+    return Math.max(halfCorridor + 6, Math.min(width - halfCorridor - 6, centerX));
 }
 
 /**
- * Keeps each next opening within two lanes so normal movement can reach it
- * during the telegraph, but never leaves the same lane open twice in a row.
- * @param {number} currentLane
+ * Moves the unseen opening far enough to demand a reaction, but keeps it within
+ * the distance the mimic can cover while the meteor wall crosses the screen.
+ * @param {?number} currentCenter
  * @returns {number}
  */
-function chooseNextNinefoldSafeLane(currentLane) {
-    const laneCount = getNinefoldLaneCount();
-    const candidates = [];
-    for (let lane = Math.max(0, currentLane - 2); lane <= Math.min(laneCount - 1, currentLane + 2); lane++) {
-        if (lane !== currentLane) {
-            candidates.push(lane);
+function chooseNextNinefoldCorridorCenter(currentCenter) {
+    const randomBetween = (minimum, maximum) => {
+        if (typeof random === 'function') {
+            return random(minimum, maximum);
         }
+        return minimum + Math.random() * (maximum - minimum);
+    };
+    const direction = randomBetween(0, 1) < 0.5 ? -1 : 1;
+    const corridorWidth = getNinefoldCorridorWidth();
+
+    if (!Number.isFinite(currentCenter)) {
+        const playerCenter = player.x + player.w / 2;
+        const minimumShift = corridorWidth * 0.65;
+        const maximumShift = Math.max(minimumShift, width * 0.18);
+        return clampNinefoldCorridorCenter(
+            playerCenter + direction * randomBetween(minimumShift, maximumShift)
+        );
     }
-    const choiceIndex = typeof random === 'function'
-        ? Math.floor(random(candidates.length))
-        : Math.floor(Math.random() * candidates.length);
-    return candidates[choiceIndex];
+
+    const minimumShift = Math.max(corridorWidth * 0.85, width * 0.11);
+    const maximumShift = Math.max(minimumShift, Math.min(width * 0.21, player.speed * 35));
+    let candidate = clampNinefoldCorridorCenter(
+        currentCenter + direction * randomBetween(minimumShift, maximumShift)
+    );
+
+    // If clamping against an edge swallowed most of the intended movement,
+    // send the opening in the other direction instead.
+    if (Math.abs(candidate - currentCenter) < minimumShift * 0.55) {
+        candidate = clampNinefoldCorridorCenter(
+            currentCenter - direction * randomBetween(minimumShift, maximumShift)
+        );
+    }
+    return candidate;
 }
 
 function startNinefoldAttack() {
     ninefoldJudgmentState.phase = 'attack';
     ninefoldJudgmentState.phaseTimer = 0;
-    ninefoldJudgmentState.waveTimer = NINEFOLD_FIRST_TELEGRAPH_FRAMES;
-    // The first opening appears over the player's current position, teaching
-    // the rule before later waves force movement.
-    ninefoldJudgmentState.safeLane = getPlayerNinefoldLane();
+    ninefoldJudgmentState.waveTimer = NINEFOLD_FIRST_WAVE_DELAY_FRAMES;
+    ninefoldJudgmentState.corridorCenter = chooseNextNinefoldCorridorCenter(null);
 }
 
 function spawnNinefoldWave() {
-    const laneCount = getNinefoldLaneCount();
-    const laneWidth = width / laneCount;
-    const fireballSize = Math.min(NINEFOLD_FIREBALL_MAX_SIZE, laneWidth * 0.58);
+    const fireballSize = Math.min(NINEFOLD_FIREBALL_MAX_SIZE, Math.max(50, width / 16));
+    const fireballSpacing = fireballSize * 0.82;
+    const corridorWidth = getNinefoldCorridorWidth();
+    const corridorCenter = ninefoldJudgmentState.corridorCenter;
     const waveNumber = ninefoldJudgmentState.wavesReleased;
     const speed = NINEFOLD_FIREBALL_BASE_SPEED + waveNumber * NINEFOLD_FIREBALL_SPEED_STEP;
-
-    for (let lane = 0; lane < laneCount; lane++) {
-        if (lane === ninefoldJudgmentState.safeLane) {
-            continue;
-        }
+    const spawnFireball = (x) => {
         judgmentFireballs.push({
-            x: laneWidth * (lane + 0.5),
-            y: -fireballSize / 2,
+            x,
+            y: fireballSize / 2,
             w: fireballSize,
             h: fireballSize,
             speed,
             currentFrame: waveNumber % Math.max(1, FIREBALL_TOTAL_FRAMES),
             frameTimer: 0
         });
+    };
+
+    // Place the inner two meteors exactly against the corridor boundaries,
+    // then overlap the rest slightly to form a dense wall with no side gaps.
+    const leftStart = corridorCenter - corridorWidth / 2 - fireballSize / 2;
+    const rightStart = corridorCenter + corridorWidth / 2 + fireballSize / 2;
+    for (let x = leftStart; x + fireballSize / 2 >= 0; x -= fireballSpacing) {
+        spawnFireball(x);
+    }
+    for (let x = rightStart; x - fireballSize / 2 <= width; x += fireballSpacing) {
+        spawnFireball(x);
     }
 
     ninefoldJudgmentState.wavesReleased += 1;
     triggerScreenShake(4);
-    // Keep this wave's corridor marked until every fireball has passed.
-    // The next route is selected only after the field is clear, preventing
-    // a future safe lane from being shown as safe for the current attack.
+    // Keep the next opening undecided until this wall has completely passed,
+    // so separate waves never combine into an impossible overlapping pattern.
     ninefoldJudgmentState.waveTimer = 0;
 }
 
@@ -322,38 +347,6 @@ function drawNinefoldFireballs() {
     }
 }
 
-function drawNinefoldTelegraph() {
-    if (ninefoldJudgmentState.phase !== 'attack' || ninefoldJudgmentState.safeLane === null) {
-        return;
-    }
-
-    const laneCount = getNinefoldLaneCount();
-    const laneWidth = width / laneCount;
-    const groundLevel = height - PLAYER_GROUND_Y_OFFSET;
-    const pulse = 0.5 + 0.5 * Math.sin(frameCount * 0.16);
-
-    push();
-    noStroke();
-    for (let lane = 0; lane < laneCount; lane++) {
-        const laneX = lane * laneWidth;
-        if (lane === ninefoldJudgmentState.safeLane) {
-            fill(126, 210, 210, 18 + pulse * 18);
-            rect(laneX + 3, 0, laneWidth - 6, groundLevel);
-            stroke(175, 245, 232, 120 + pulse * 80);
-            strokeWeight(2);
-            line(laneX + 3, 0, laneX + 3, groundLevel);
-            line(laneX + laneWidth - 3, 0, laneX + laneWidth - 3, groundLevel);
-            noStroke();
-        } else {
-            fill(190, 24, 36, 24 + pulse * 34);
-            rect(laneX + 3, 0, laneWidth - 6, groundLevel);
-            fill(255, 94, 35, 125 + pulse * 80);
-            ellipse(laneX + laneWidth / 2, 26, 12 + pulse * 8, 12 + pulse * 8);
-        }
-    }
-    pop();
-}
-
 function drawNinefoldApparition() {
     const state = ninefoldJudgmentState;
     let apparitionAlpha = 105;
@@ -394,7 +387,7 @@ function drawNinefoldApparition() {
 function beginNinefoldEnding() {
     ninefoldJudgmentState.phase = 'ending';
     ninefoldJudgmentState.phaseTimer = 0;
-    ninefoldJudgmentState.safeLane = null;
+    ninefoldJudgmentState.corridorCenter = null;
 }
 
 /**
@@ -451,8 +444,8 @@ function updateAndDrawNinefoldJudgment() {
             if (ninefoldJudgmentState.wavesReleased >= NINEFOLD_WAVE_COUNT) {
                 beginNinefoldEnding();
             } else {
-                ninefoldJudgmentState.safeLane = chooseNextNinefoldSafeLane(
-                    ninefoldJudgmentState.safeLane
+                ninefoldJudgmentState.corridorCenter = chooseNextNinefoldCorridorCenter(
+                    ninefoldJudgmentState.corridorCenter
                 );
                 ninefoldJudgmentState.waveTimer = NINEFOLD_WAVE_INTERVAL_FRAMES;
             }
@@ -466,7 +459,6 @@ function updateAndDrawNinefoldJudgment() {
     }
 
     drawNinefoldApparition();
-    drawNinefoldTelegraph();
     drawNinefoldFireballs();
 }
 
@@ -495,17 +487,17 @@ function drawNinefoldJudgmentForeground() {
             [28, 5, 17, 218],
             [222, 82, 122, 235]
         );
-        drawShadowedText('TEN LIVES TAKEN.', width / 2, panelY + 24, Math.max(24, 38 * scaleFactor),
+        drawShadowedText('TEN LIVES TAKEN', width / 2, panelY + 24, Math.max(24, 38 * scaleFactor),
             [255, 166, 178], CENTER, TOP, BOLD);
-        drawShadowedText('YOU HAVE ANGERED THE DUNGEON.', width / 2, panelY + 77 * scaleFactor,
+        drawShadowedText('YOU HAVE ANGERED THE DUNGEON', width / 2, panelY + 77 * scaleFactor,
             Math.max(17, 24 * scaleFactor), [240, 226, 236], CENTER, TOP, NORMAL);
-        drawShadowedText('NOW—RUN.', width / 2, panelY + 121 * scaleFactor,
+        drawShadowedText('NOW—RUN', width / 2, panelY + 121 * scaleFactor,
             Math.max(20, 30 * scaleFactor), [255, 215, 126], CENTER, TOP, BOLD);
     } else if (ninefoldJudgmentState.phase === 'attack') {
         const currentWave = judgmentFireballs.length > 0
             ? ninefoldJudgmentState.wavesReleased
             : Math.min(NINEFOLD_WAVE_COUNT, ninefoldJudgmentState.wavesReleased + 1);
-        const panelHeight = Math.max(68, 84 * scaleFactor);
+        const panelHeight = Math.max(54, 66 * scaleFactor);
         const panelY = Math.max(18, 26 * scaleFactor);
         drawHudPanel(
             panelX,
@@ -516,10 +508,8 @@ function drawNinefoldJudgmentForeground() {
             [24, 5, 17, 190],
             [218, 100, 139, 220]
         );
-        drawShadowedText(`NINEFOLD JUDGMENT · ${currentWave} / ${NINEFOLD_WAVE_COUNT}`, width / 2,
-            panelY + 12, Math.max(20, 30 * scaleFactor), [255, 175, 190], CENTER, TOP, BOLD);
-        drawShadowedText('Follow the open path.', width / 2, panelY + 48 * scaleFactor,
-            Math.max(14, 18 * scaleFactor), [229, 226, 214], CENTER, TOP, NORMAL);
+        drawShadowedText(`NINEFOLD JUDGMENT — ${currentWave} / ${NINEFOLD_WAVE_COUNT}`, width / 2,
+            panelY + 14, Math.max(20, 30 * scaleFactor), [255, 175, 190], CENTER, TOP, BOLD);
     } else if (ninefoldJudgmentState.phase === 'ending') {
         const panelHeight = Math.max(76, 98 * scaleFactor);
         const panelY = height * 0.68;
@@ -532,9 +522,9 @@ function drawNinefoldJudgmentForeground() {
             [18, 8, 20, 190],
             [168, 126, 181, 210]
         );
-        drawShadowedText('THE DUNGEON RELENTS.', width / 2, panelY + 17,
+        drawShadowedText('THE DUNGEON RELENTS', width / 2, panelY + 17,
             Math.max(21, 32 * scaleFactor), [225, 207, 231], CENTER, TOP, BOLD);
-        drawShadowedText('For now.', width / 2, panelY + 58 * scaleFactor,
+        drawShadowedText('For now', width / 2, panelY + 58 * scaleFactor,
             Math.max(14, 19 * scaleFactor), [201, 185, 207], CENTER, TOP, NORMAL);
     }
 }
