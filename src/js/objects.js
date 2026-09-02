@@ -6,6 +6,10 @@ let recentSpawnXPositions = [];
 const MIN_SPAWN_HORIZONTAL_DISTANCE = 50;
 
 function spawnObjects() {
+    if (isNinefoldJudgmentActive()) {
+        return;
+    }
+
     // Check if a boss exists - if so, don't spawn any objects
     for (let obj of objects) {
         if (obj.type === OBJ_BOSS) {

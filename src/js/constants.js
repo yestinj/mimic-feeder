@@ -170,6 +170,32 @@ const DASH_DOUBLE_TAP_WINDOW_FRAMES = 15;
 const DASH_DOUBLE_TAP_WINDOW_MS = frameUnitsToMs(DASH_DOUBLE_TAP_WINDOW_FRAMES);
 
 /**
+ * Ninefold Judgment - Consequence for deliberately destroying cats with Shadow Bolt
+ */
+/** @const {number} CAT_KILL_WARNING_THRESHOLD - Cat kills before the dungeon warns the player */
+const CAT_KILL_WARNING_THRESHOLD = 5;
+/** @const {number} CAT_KILL_JUDGMENT_THRESHOLD - Cat kills before the Ninefold Judgment begins */
+const CAT_KILL_JUDGMENT_THRESHOLD = 10;
+/** @const {number} NINEFOLD_WAVE_COUNT - One attack wave for each traditional cat life */
+const NINEFOLD_WAVE_COUNT = 9;
+/** @const {number} NINEFOLD_SUMMON_DURATION_FRAMES - Apparition warning time before attacks */
+const NINEFOLD_SUMMON_DURATION_FRAMES = 210;
+/** @const {number} NINEFOLD_FIRST_TELEGRAPH_FRAMES - Extra warning before the first wave */
+const NINEFOLD_FIRST_TELEGRAPH_FRAMES = 66;
+/** @const {number} NINEFOLD_WAVE_INTERVAL_FRAMES - Warning time between later waves */
+const NINEFOLD_WAVE_INTERVAL_FRAMES = 66;
+/** @const {number} NINEFOLD_END_DURATION_FRAMES - Apparition fade after the final wave */
+const NINEFOLD_END_DURATION_FRAMES = 90;
+/** @const {number} NINEFOLD_DAMAGE_COOLDOWN_FRAMES - Prevents overlapping fireballs from stacking damage */
+const NINEFOLD_DAMAGE_COOLDOWN_FRAMES = 45;
+/** @const {number} NINEFOLD_FIREBALL_BASE_SPEED - First-wave speed in px per reference frame */
+const NINEFOLD_FIREBALL_BASE_SPEED = 10.5;
+/** @const {number} NINEFOLD_FIREBALL_SPEED_STEP - Additional speed for each later wave */
+const NINEFOLD_FIREBALL_SPEED_STEP = 0.65;
+/** @const {number} NINEFOLD_FIREBALL_MAX_SIZE - Maximum judgment fireball size in pixels */
+const NINEFOLD_FIREBALL_MAX_SIZE = 76;
+
+/**
  * Object Pulling / Effects - Constants for visual effects and animations
  * These values are frame based
  */

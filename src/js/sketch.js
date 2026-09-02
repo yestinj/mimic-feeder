@@ -57,6 +57,9 @@ function initializeStates() {
         },
         catsRescued: 0,                               // Number of cats rescued
         catsRescuedPoints: 0,                         // Points from rescuing cats
+        shadowBoltCatsDestroyed: 0,                   // Deliberate cat kills in this run
+        catKillWarningIssued: false,                  // Five-kill warning is once per run
+        ninefoldJudgmentTriggered: false,             // Judgment is once per run
         collectedCount: 0,                            // Total objects collected
         destroyedCount: 0,                            // Total objects destroyed
         achievementStats: {                           // Run-based counters for mastery achievements
@@ -90,6 +93,8 @@ function initializeStates() {
         lastRightKeyPressAtMs: 0,                     // Timestamp of last right movement key press
         isDashing: false                              // Whether player is currently dashing
     };
+
+    resetNinefoldJudgment();
 }
 
 /**
@@ -480,12 +485,16 @@ function draw() {
     gameState.playTime += frameDelta / TARGET_FPS;
 
     updatePlayer();
-    spawnObjects();
-    updateObjects();
-    updateShadowBolts();
-    updateTongues();
-    updateMagnetism();
-    updateBossFireballs();
+    if (isNinefoldJudgmentActive()) {
+        updateAndDrawNinefoldJudgment();
+    } else {
+        spawnObjects();
+        updateObjects();
+        updateShadowBolts();
+        updateTongues();
+        updateMagnetism();
+        updateBossFireballs();
+    }
     updateBombExplosions();
     updateShadowBoltExplosions();
     updatePopups();
@@ -523,6 +532,7 @@ function draw() {
     rect(0, height - VISUAL_GROUND_HEIGHT, width, VISUAL_GROUND_HEIGHT);
     drawPlayer();
     drawOnboardingOverlays();
+    drawNinefoldJudgmentForeground();
     updateAndDrawCenterNotifications();
 
     drawUI();
@@ -848,9 +858,11 @@ function keyPressed() {
     startAudioIfNeeded();
     handlePlayerJump();
     handlePlayerDash();
-    handleTentaclesAbility();
-    handleShadowBolt();
-    handleMagnetismAbility();
+    if (!isNinefoldJudgmentActive()) {
+        handleTentaclesAbility();
+        handleShadowBolt();
+        handleMagnetismAbility();
+    }
 }
 
 /**
@@ -897,6 +909,7 @@ function mousePressed() {
  * @param {boolean} [keepBackgroundMusic=false] - Whether to keep background music playing
  */
 function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) {
+    stopDungeonVoice();
     for (const soundName in soundMap) {
         if (soundMap.hasOwnProperty(soundName)) {
             const sound = soundMap[soundName];
@@ -960,6 +973,11 @@ function handleBossDefeatedAudio() {
  */
 function updateBackgroundMusic() {
     if (shouldSilenceGameAudio()) {
+        return;
+    }
+
+    if (isNinefoldJudgmentActive()) {
+        stopMusicTracks();
         return;
     }
 
@@ -1029,6 +1047,7 @@ function restartGame() {
     shadowBoltExplosions = [];
     groundSplats = [];
     bossFireballs = [];
+    resetNinefoldJudgment();
 
     // Reset timers
     openChestTimer = 0;

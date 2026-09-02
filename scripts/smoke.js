@@ -592,6 +592,68 @@ function checkCatAudioContracts(assetSource, constantsSource, abilitiesSource) {
     );
 }
 
+function checkNinefoldJudgmentContracts(
+    constantsSource,
+    assetSource,
+    abilitiesSource,
+    judgmentSource,
+    objectsSource,
+    sketchSource
+) {
+    assertContract(
+        /const CAT_KILL_WARNING_THRESHOLD = 5/.test(constantsSource) &&
+        /const CAT_KILL_JUDGMENT_THRESHOLD = 10/.test(constantsSource) &&
+        /const NINEFOLD_WAVE_COUNT = 9/.test(constantsSource),
+        'Ninefold Judgment uses the agreed five-kill warning, ten-kill trigger, and nine waves'
+    );
+    assertContract(
+        fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'ninefold_judgment.png')) &&
+        /ninefoldJudgmentImage = loadImageWithErrorHandling\('assets\/ninefold_judgment\.png'\)/.test(assetSource),
+        'Ninefold Judgment apparition exists and is loaded'
+    );
+
+    const killCounterCalls = abilitiesSource.match(/recordShadowBoltCatKill\(\)/g) || [];
+    assertContract(
+        killCounterCalls.length === 1 &&
+        /if \(obj\.type === OBJ_CAT\) \{\s*recordShadowBoltCatKill\(\);\s*\}/.test(abilitiesSource),
+        'Only the Shadow Bolt cat-destruction branch records a deliberate cat kill'
+    );
+    assertContract(
+        /shadowBoltCatsDestroyed \+= 1/.test(judgmentSource) &&
+        /shadowBoltCatsDestroyed >= CAT_KILL_WARNING_THRESHOLD/.test(judgmentSource) &&
+        /shadowBoltCatsDestroyed >= CAT_KILL_JUDGMENT_THRESHOLD/.test(judgmentSource),
+        'Cat-kill tracking gates the warning and judgment at their configured thresholds'
+    );
+    assertContract(
+        /ninefoldJudgmentState\.suspendedObjects = objects;[\s\S]*objects = \[\];/.test(judgmentSource) &&
+        /objects = suspendedObjects;/.test(judgmentSource),
+        'Ordinary objects are suspended during judgment and restored for survivors'
+    );
+    assertContract(
+        /for \(let lane = 0; lane < laneCount; lane\+\+\)[\s\S]*lane === ninefoldJudgmentState\.safeLane[\s\S]*continue;/.test(judgmentSource) &&
+        /wavesReleased < NINEFOLD_WAVE_COUNT/.test(judgmentSource),
+        'Each judgment wave preserves one safe lane and the encounter is capped at nine waves'
+    );
+    assertContract(
+        /function damagePlayerDuringNinefoldJudgment\(\)[\s\S]*damageCooldown > 0[\s\S]*NINEFOLD_DAMAGE_COOLDOWN_FRAMES/.test(judgmentSource),
+        'Judgment damage has a cooldown so overlapping fireballs cannot stack unfairly'
+    );
+    assertContract(
+        /if \(isNinefoldJudgmentActive\(\)\) \{\s*return;\s*\}/.test(objectsSource) &&
+        /if \(isNinefoldJudgmentActive\(\)\) \{\s*updateAndDrawNinefoldJudgment\(\);/.test(sketchSource),
+        'Normal spawning and object simulation are suspended during judgment'
+    );
+    assertContract(
+        /if \(!isNinefoldJudgmentActive\(\)\) \{\s*handleTentaclesAbility\(\);\s*handleShadowBolt\(\);\s*handleMagnetismAbility\(\);/.test(sketchSource),
+        'Attack abilities are blocked during judgment while movement controls remain available'
+    );
+    assertContract(
+        /if \(isNinefoldJudgmentActive\(\)\) \{\s*stopMusicTracks\(\);\s*return;/.test(sketchSource) &&
+        /SpeechSynthesisUtterance/.test(judgmentSource),
+        'Judgment silences normal music and uses optional runtime speech for its warning lines'
+    );
+}
+
 function checkVersionContracts(constantsSource, packageSource) {
     assertContract(
         /const GAME_VERSION = "1\.0\.0-beta"/.test(constantsSource),
@@ -639,6 +701,7 @@ function main() {
     const indexSource = readRepoFile('src/index.html');
     const assetSource = readRepoFile('src/js/assets.js');
     const constantsSource = readRepoFile('src/js/constants.js');
+    const judgmentSource = readRepoFile('src/js/judgment.js');
     const packageSource = readRepoFile('package.json');
 
     checkControlContracts(playerSource, abilitiesSource, sketchSource);
@@ -647,6 +710,14 @@ function main() {
     checkWizardStaffProgressionContracts(constantsSource, utilsSource);
     checkCatProgressionContracts(constantsSource);
     checkCatAudioContracts(assetSource, constantsSource, abilitiesSource);
+    checkNinefoldJudgmentContracts(
+        constantsSource,
+        assetSource,
+        abilitiesSource,
+        judgmentSource,
+        objectsSource,
+        sketchSource
+    );
     checkBossTrackingAndContactContracts(constantsSource, sketchSource, abilitiesSource, objectsSource, helpSource);
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
     checkAchievementSaveContracts(achievementsSource);

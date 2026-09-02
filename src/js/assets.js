@@ -36,6 +36,7 @@ const DUNGEON_BACKGROUND_PATHS = [
     'assets/backgrounds/abyss.jpg'
 ];
 let dungeonBackgroundImages = [];
+let ninefoldJudgmentImage;
 
 // Sound effects
 let jumpSound;
@@ -114,6 +115,7 @@ function preload() {
 
     // Load dungeon backgrounds in progression order.
     dungeonBackgroundImages = DUNGEON_BACKGROUND_PATHS.map(loadImageWithErrorHandling);
+    ninefoldJudgmentImage = loadImageWithErrorHandling('assets/ninefold_judgment.png');
 
     // Load ability and effect images
     for (let i = 0; i <= 3; i++) {

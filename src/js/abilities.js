@@ -146,6 +146,9 @@ function updateShadowBolts() {
                     }
                 } else if (obj.type !== OBJ_SMALL_BOMB) {
                     playSound(obj.type === OBJ_CAT ? 'cat_hurt' : 'shadowbolt_hit');
+                    if (obj.type === OBJ_CAT) {
+                        recordShadowBoltCatKill();
+                    }
                     shadowBoltExplosions.push({
                         x: obj.x, y: obj.y,
                         lifetime: SHADOW_BOLT_EXPLOSION_LIFETIME_FRAMES,

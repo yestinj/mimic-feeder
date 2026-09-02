@@ -24,6 +24,7 @@ const JS_FILE_ORDER = [
     'player.js',
     'objects.js',
     'abilities.js',
+    'judgment.js',
     'ui.js',
     'introScreen.js',
     'nameInputScreen.js',

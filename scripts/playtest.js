@@ -10,6 +10,7 @@
  * - bolt-style bomb collection increments small_bomb by 1
  * - wizard staff remains available and is guaranteed before a boss
  * - boss music takes over during combat and the death cue stops it
+ * - Ninefold Judgment thresholds, apparition, suspension, and hit cooldown work
  * - denied localStorage access does not break achievement loading
  * - no /api/track network calls
  * - no unexpected page/console errors
@@ -262,6 +263,64 @@ async function main() {
         assert(catHurtSoundResult.mapped, 'Cat distress sound is registered');
         assert(catHurtSoundResult.loaded, 'Cat distress sound loaded successfully');
 
+        const judgmentContractResult = await page.evaluate(() => {
+            const savedMuted = gameState.isMuted;
+            const savedLives = playerState.lives;
+            const savedGameOverFlag = gameState.shouldTriggerGameOver;
+            gameState.isMuted = true;
+
+            resetNinefoldJudgment();
+            gameState.shadowBoltCatsDestroyed = 4;
+            gameState.catKillWarningIssued = false;
+            gameState.ninefoldJudgmentTriggered = false;
+            recordShadowBoltCatKill();
+            const warningAtFive = gameState.shadowBoltCatsDestroyed === 5 &&
+                gameState.catKillWarningIssued && !gameState.ninefoldJudgmentTriggered;
+
+            resetNinefoldJudgment();
+            gameState.shadowBoltCatsDestroyed = 9;
+            gameState.catKillWarningIssued = true;
+            recordShadowBoltCatKill();
+            const pendingAtTen = gameState.shadowBoltCatsDestroyed === 10 &&
+                gameState.ninefoldJudgmentTriggered && ninefoldJudgmentState.phase === 'pending';
+
+            ninefoldJudgmentState.phase = 'attack';
+            ninefoldJudgmentState.damageCooldown = 0;
+            playerState.lives = 3;
+            const firstHitApplied = damagePlayerDuringNinefoldJudgment();
+            const secondHitApplied = damagePlayerDuringNinefoldJudgment();
+            const livesAfterOverlappingHits = playerState.lives;
+
+            playerState.lives = savedLives;
+            gameState.shouldTriggerGameOver = savedGameOverFlag;
+            gameState.isMuted = savedMuted;
+            gameState.shadowBoltCatsDestroyed = 0;
+            gameState.catKillWarningIssued = false;
+            gameState.ninefoldJudgmentTriggered = false;
+            clearCenterNotifications();
+            resetNinefoldJudgment();
+
+            return {
+                imageLoaded: !!ninefoldJudgmentImage && ninefoldJudgmentImage.width > 0 &&
+                    ninefoldJudgmentImage.height > 0,
+                warningAtFive,
+                pendingAtTen,
+                waveCount: NINEFOLD_WAVE_COUNT,
+                firstHitApplied,
+                secondHitApplied,
+                livesAfterOverlappingHits,
+            };
+        });
+        assert(judgmentContractResult.imageLoaded, 'Ninefold Judgment apparition loaded successfully');
+        assert(judgmentContractResult.warningAtFive, 'Fifth deliberate cat kill issues the warning only');
+        assert(judgmentContractResult.pendingAtTen, 'Tenth deliberate cat kill queues the judgment');
+        assert(judgmentContractResult.waveCount === 9, 'Ninefold Judgment contains exactly nine waves');
+        assert(
+            judgmentContractResult.firstHitApplied && !judgmentContractResult.secondHitApplied &&
+            judgmentContractResult.livesAfterOverlappingHits === 2,
+            'Overlapping judgment hits cost only one life during the damage cooldown'
+        );
+
         // Deterministic start: force intro so returning-player localStorage cannot auto-skip.
         await page.evaluate(() => {
             try {
@@ -284,6 +343,73 @@ async function main() {
         assert(!gameplay.showIntroScreen && gameplay.gameStarted, 'Intro dismissed; gameplay started');
 
         await page.screenshot({ path: path.join(OUT_DIR, '01-gameplay.png') });
+
+        // Exercise the real draw path without waiting through the entire encounter.
+        const judgmentStart = await page.evaluate(() => {
+            const objectCountBefore = objects.length;
+            gameState.isMuted = true;
+            gameState.shadowBoltCatsDestroyed = 9;
+            gameState.catKillWarningIssued = true;
+            gameState.ninefoldJudgmentTriggered = false;
+            recordShadowBoltCatKill();
+            return {objectCountBefore};
+        });
+        await page.waitForTimeout(250);
+        const judgmentStarted = await page.evaluate(() => ({
+            phase: ninefoldJudgmentState.phase,
+            objectCount: objects.length,
+            suspendedCount: ninefoldJudgmentState.suspendedObjects.length,
+        }));
+        assert(judgmentStarted.phase === 'summoning', 'Queued judgment enters its summoning phase');
+        assert(judgmentStarted.objectCount === 0, 'Ordinary objects leave active simulation during judgment');
+        assert(
+            judgmentStarted.suspendedCount === judgmentStart.objectCountBefore,
+            'Every ordinary object is retained in suspended judgment state'
+        );
+        await page.screenshot({ path: path.join(OUT_DIR, '02-ninefold-summoning.png') });
+
+        await page.evaluate(() => {
+            ninefoldJudgmentState.phase = 'attack';
+            ninefoldJudgmentState.phaseTimer = 0;
+            ninefoldJudgmentState.wavesReleased = 0;
+            ninefoldJudgmentState.safeLane = getPlayerNinefoldLane();
+            ninefoldJudgmentState.waveTimer = NINEFOLD_FIRST_TELEGRAPH_FRAMES;
+        });
+        await page.waitForTimeout(120);
+        await page.screenshot({ path: path.join(OUT_DIR, '03-ninefold-telegraph.png') });
+
+        const judgmentWave = await page.evaluate(() => {
+            ninefoldJudgmentState.waveTimer = 0;
+            spawnNinefoldWave();
+            for (const fireball of judgmentFireballs) {
+                fireball.y = height * 0.27;
+            }
+            return {
+                fireballCount: judgmentFireballs.length,
+                laneCount: getNinefoldLaneCount(),
+            };
+        });
+        assert(
+            judgmentWave.fireballCount === judgmentWave.laneCount - 1,
+            'A judgment wave fills every lane except its telegraphed safe path'
+        );
+        await page.waitForTimeout(60);
+        await page.screenshot({ path: path.join(OUT_DIR, '04-ninefold-wave.png') });
+
+        await page.evaluate(() => {
+            completeNinefoldJudgment();
+            gameState.shadowBoltCatsDestroyed = 0;
+            gameState.catKillWarningIssued = false;
+            gameState.ninefoldJudgmentTriggered = false;
+            gameState.isMuted = false;
+            wasGameAudioSilenced = null;
+            syncGameAudioState();
+        });
+        const judgmentRestored = await readGameProbe(page);
+        assert(
+            judgmentRestored.objectCount === judgmentStart.objectCountBefore,
+            'Suspended ordinary objects return after judgment survival'
+        );
 
         await pressKey(page, 'ArrowRight', 8);
         await page.waitForTimeout(250);
