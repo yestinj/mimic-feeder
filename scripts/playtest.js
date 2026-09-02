@@ -381,9 +381,6 @@ async function main() {
         const judgmentWave = await page.evaluate(() => {
             ninefoldJudgmentState.waveTimer = 0;
             spawnNinefoldWave();
-            for (const fireball of judgmentFireballs) {
-                fireball.y = height * 0.27;
-            }
             const leftFireballs = judgmentFireballs.filter((fireball) =>
                 fireball.x < ninefoldJudgmentState.corridorCenter
             );
@@ -398,15 +395,18 @@ async function main() {
             );
             const actualCorridorWidth = innerRight.x - innerRight.w / 2 -
                 (innerLeft.x + innerLeft.w / 2);
+            const initialYPositions = judgmentFireballs.map((fireball) => fireball.y);
             return {
                 fireballCount: judgmentFireballs.length,
                 playerWidth: player.w,
                 actualCorridorWidth,
+                verticalSpread: Math.max(...initialYPositions) - Math.min(...initialYPositions),
+                delayedCount: judgmentFireballs.filter((fireball) => fireball.spawnDelay > 0).length,
             };
         });
         assert(
-            judgmentWave.fireballCount >= 14,
-            `A judgment wave forms a dense meteor wall (got ${judgmentWave.fireballCount} fireballs)`
+            judgmentWave.fireballCount >= 24,
+            `A judgment wave forms dense meteor rain (got ${judgmentWave.fireballCount} fireballs)`
         );
         assert(
             judgmentWave.actualCorridorWidth > judgmentWave.playerWidth &&
@@ -414,7 +414,12 @@ async function main() {
             `Judgment opening gives the mimic only narrow clearance ` +
             `(mimic=${judgmentWave.playerWidth}, opening=${judgmentWave.actualCorridorWidth})`
         );
-        await page.waitForTimeout(60);
+        assert(
+            judgmentWave.verticalSpread >= 100 && judgmentWave.delayedCount > 0,
+            `Judgment meteors have staggered heights and delays ` +
+            `(spread=${judgmentWave.verticalSpread}, delayed=${judgmentWave.delayedCount})`
+        );
+        await page.waitForTimeout(350);
         await page.screenshot({ path: path.join(OUT_DIR, '04-ninefold-wave.png') });
 
         await page.evaluate(() => {

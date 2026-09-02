@@ -176,6 +176,13 @@ function clampNinefoldCorridorCenter(centerX) {
     return Math.max(halfCorridor + 6, Math.min(width - halfCorridor - 6, centerX));
 }
 
+function randomNinefoldValue(minimum, maximum) {
+    if (typeof random === 'function') {
+        return random(minimum, maximum);
+    }
+    return minimum + Math.random() * (maximum - minimum);
+}
+
 /**
  * Moves the unseen opening far enough to demand a reaction, but keeps it within
  * the distance the mimic can cover while the meteor wall crosses the screen.
@@ -183,13 +190,7 @@ function clampNinefoldCorridorCenter(centerX) {
  * @returns {number}
  */
 function chooseNextNinefoldCorridorCenter(currentCenter) {
-    const randomBetween = (minimum, maximum) => {
-        if (typeof random === 'function') {
-            return random(minimum, maximum);
-        }
-        return minimum + Math.random() * (maximum - minimum);
-    };
-    const direction = randomBetween(0, 1) < 0.5 ? -1 : 1;
+    const direction = randomNinefoldValue(0, 1) < 0.5 ? -1 : 1;
     const corridorWidth = getNinefoldCorridorWidth();
 
     if (!Number.isFinite(currentCenter)) {
@@ -197,21 +198,21 @@ function chooseNextNinefoldCorridorCenter(currentCenter) {
         const minimumShift = corridorWidth * 0.65;
         const maximumShift = Math.max(minimumShift, width * 0.18);
         return clampNinefoldCorridorCenter(
-            playerCenter + direction * randomBetween(minimumShift, maximumShift)
+            playerCenter + direction * randomNinefoldValue(minimumShift, maximumShift)
         );
     }
 
     const minimumShift = Math.max(corridorWidth * 0.85, width * 0.11);
     const maximumShift = Math.max(minimumShift, Math.min(width * 0.21, player.speed * 35));
     let candidate = clampNinefoldCorridorCenter(
-        currentCenter + direction * randomBetween(minimumShift, maximumShift)
+        currentCenter + direction * randomNinefoldValue(minimumShift, maximumShift)
     );
 
     // If clamping against an edge swallowed most of the intended movement,
     // send the opening in the other direction instead.
     if (Math.abs(candidate - currentCenter) < minimumShift * 0.55) {
         candidate = clampNinefoldCorridorCenter(
-            currentCenter - direction * randomBetween(minimumShift, maximumShift)
+            currentCenter - direction * randomNinefoldValue(minimumShift, maximumShift)
         );
     }
     return candidate;
@@ -231,16 +232,43 @@ function spawnNinefoldWave() {
     const corridorCenter = ninefoldJudgmentState.corridorCenter;
     const waveNumber = ninefoldJudgmentState.wavesReleased;
     const speed = NINEFOLD_FIREBALL_BASE_SPEED + waveNumber * NINEFOLD_FIREBALL_SPEED_STEP;
-    const spawnFireball = (x) => {
+    const primaryVerticalSpread = Math.min(height * 0.2, 150);
+    const trailingVerticalMinimum = Math.min(height * 0.12, 90);
+    const trailingVerticalMaximum = Math.min(height * 0.34, 240);
+    let meteorColumnIndex = 0;
+    const spawnFireball = (x, trailing = false) => {
+        const verticalBand = (meteorColumnIndex % 5) / 4;
+        const trailingRange = trailingVerticalMaximum - trailingVerticalMinimum;
+        const verticalOffset = trailing
+            ? trailingVerticalMinimum + verticalBand * trailingRange * 0.75 +
+                randomNinefoldValue(0, trailingRange * 0.25)
+            : verticalBand * primaryVerticalSpread * 0.7 +
+                randomNinefoldValue(0, primaryVerticalSpread * 0.3);
         judgmentFireballs.push({
             x,
-            y: fireballSize / 2,
+            y: fireballSize / 2 - verticalOffset,
             w: fireballSize,
             h: fireballSize,
             speed,
             currentFrame: waveNumber % Math.max(1, FIREBALL_TOTAL_FRAMES),
-            frameTimer: 0
+            frameTimer: 0,
+            spawnDelay: trailing
+                ? randomNinefoldValue(4, 16)
+                : randomNinefoldValue(0, 8)
         });
+    };
+    const spawnMeteorColumn = (x, sideDirection) => {
+        spawnFireball(x);
+        if ((meteorColumnIndex + waveNumber) % 2 === 0) {
+            // Every other column receives a later meteor, nudged away from the
+            // opening so the narrow survivable route is never accidentally reduced.
+            const trailingX = x + sideDirection * randomNinefoldValue(
+                fireballSpacing * 0.08,
+                fireballSpacing * 0.2
+            );
+            spawnFireball(trailingX, true);
+        }
+        meteorColumnIndex += 1;
     };
 
     // Place the inner two meteors exactly against the corridor boundaries,
@@ -248,10 +276,10 @@ function spawnNinefoldWave() {
     const leftStart = corridorCenter - corridorWidth / 2 - fireballSize / 2;
     const rightStart = corridorCenter + corridorWidth / 2 + fireballSize / 2;
     for (let x = leftStart; x + fireballSize / 2 >= 0; x -= fireballSpacing) {
-        spawnFireball(x);
+        spawnMeteorColumn(x, -1);
     }
     for (let x = rightStart; x - fireballSize / 2 <= width; x += fireballSpacing) {
-        spawnFireball(x);
+        spawnMeteorColumn(x, 1);
     }
 
     ninefoldJudgmentState.wavesReleased += 1;
@@ -300,6 +328,10 @@ function updateNinefoldFireballs(frameDelta) {
 
     for (let i = judgmentFireballs.length - 1; i >= 0; i--) {
         const fireball = judgmentFireballs[i];
+        if (fireball.spawnDelay > 0) {
+            fireball.spawnDelay = Math.max(0, fireball.spawnDelay - frameDelta);
+            continue;
+        }
         fireball.y += fireball.speed * frameDelta;
         fireball.frameTimer += frameDelta;
         if (fireball.frameTimer >= FIREBALL_FRAME_DURATION) {
@@ -332,6 +364,9 @@ function updateNinefoldFireballs(frameDelta) {
 
 function drawNinefoldFireballs() {
     for (const fireball of judgmentFireballs) {
+        if (fireball.spawnDelay > 0) {
+            continue;
+        }
         const frameImage = fireballFrames[fireball.currentFrame];
         if (frameImage && frameImage.width) {
             push();

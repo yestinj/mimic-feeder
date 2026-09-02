@@ -637,6 +637,14 @@ function checkNinefoldJudgmentContracts(
         'Each dense judgment wall leaves only mimic-width clearance and the encounter is capped at nine waves'
     );
     assertContract(
+        /const primaryVerticalSpread = Math\.min\(height \* 0\.2, 150\)/.test(judgmentSource) &&
+        /spawnDelay: trailing/.test(judgmentSource) &&
+        /spawnMeteorColumn\(x, -1\)/.test(judgmentSource) &&
+        /spawnMeteorColumn\(x, 1\)/.test(judgmentSource) &&
+        /if \(fireball\.spawnDelay > 0\)/.test(judgmentSource),
+        'Judgment uses vertically scattered meteors, delayed drops, and trailing fireballs'
+    );
+    assertContract(
         !/drawNinefoldTelegraph|Follow the open path/.test(judgmentSource),
         'Judgment provides no corridor overlay or survival instruction'
     );
