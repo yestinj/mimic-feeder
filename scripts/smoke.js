@@ -652,9 +652,10 @@ function checkNinefoldJudgmentContracts(
         fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_warning.mp3')) &&
         fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_judgment.mp3')) &&
         fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_relents.mp3')) &&
-        /dungeonWarningSound = loadSoundWithVolume\('assets\/dungeon_warning\.mp3', HIGHER_SOUND_VOLUME\)/.test(assetSource) &&
-        /dungeonJudgmentSound = loadSoundWithVolume\('assets\/dungeon_judgment\.mp3', HIGHER_SOUND_VOLUME\)/.test(assetSource) &&
-        /dungeonRelentsSound = loadSoundWithVolume\('assets\/dungeon_relents\.mp3', HIGHER_SOUND_VOLUME\)/.test(assetSource) &&
+        /const DUNGEON_VOICE_VOLUME = 0\.7/.test(constantsSource) &&
+        /dungeonWarningSound = loadSoundWithVolume\('assets\/dungeon_warning\.mp3', DUNGEON_VOICE_VOLUME\)/.test(assetSource) &&
+        /dungeonJudgmentSound = loadSoundWithVolume\('assets\/dungeon_judgment\.mp3', DUNGEON_VOICE_VOLUME\)/.test(assetSource) &&
+        /dungeonRelentsSound = loadSoundWithVolume\('assets\/dungeon_relents\.mp3', DUNGEON_VOICE_VOLUME\)/.test(assetSource) &&
         /playDungeonVoice\('dungeon_warning'\)/.test(judgmentSource) &&
         /playDungeonVoice\('dungeon_judgment'\)/.test(judgmentSource) &&
         /playDungeonVoice\('dungeon_relents'\)/.test(judgmentSource) &&
@@ -688,6 +689,24 @@ function checkNinefoldJudgmentContracts(
         /if \(isNinefoldJudgmentActive\(\)\) \{\s*stopMusicTracks\(\);\s*return;/.test(sketchSource) &&
         /function stopDungeonVoice\(\)[\s\S]*dungeonWarningSound[\s\S]*dungeonJudgmentSound[\s\S]*dungeonRelentsSound/.test(judgmentSource),
         'Judgment silences normal music and its fixed voice clips can be stopped cleanly'
+    );
+}
+
+function checkAudioStartupContracts(constantsSource, sketchSource) {
+    const setupSource = sketchSource.match(/function setup\(\)[\s\S]*?\n\}/);
+    assertContract(
+        setupSource && !/startAudioIfNeeded\(\)/.test(setupSource[0]),
+        'Setup never attempts to start Web Audio without a user gesture'
+    );
+    assertContract(
+        /function startAudioIfNeeded\(\)[\s\S]*Promise\.resolve\(userStartAudio\(\)\)[\s\S]*audioStarted = isGameAudioContextRunning\(\)/.test(sketchSource),
+        'Audio is marked started only after userStartAudio resolves with a running context'
+    );
+    assertContract(
+        /if \(audioStarted && gameState\.gameStarted/.test(sketchSource) &&
+        /function updateBackgroundMusic\(\) \{\s*if \(!audioStarted \|\| !isGameAudioContextRunning\(\)\)/.test(sketchSource) &&
+        /if \(typeof audioStarted !== 'undefined' && !audioStarted\)/.test(constantsSource),
+        'Sound effects and music are gated until Web Audio is running'
     );
 }
 
@@ -755,6 +774,7 @@ function main() {
         objectsSource,
         sketchSource
     );
+    checkAudioStartupContracts(constantsSource, sketchSource);
     checkBossTrackingAndContactContracts(constantsSource, sketchSource, abilitiesSource, objectsSource, helpSource);
     checkAchievementPersistenceContracts(sketchSource, achievementsSource);
     checkAchievementSaveContracts(achievementsSource);

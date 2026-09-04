@@ -126,6 +126,11 @@ let bossFireballs = [];
  */
 let audioStarted = false;
 /**
+ * In-flight userStartAudio request, preventing duplicate resume attempts.
+ * @type {?Promise<boolean>}
+ */
+let audioStartPromise = null;
+/**
  * Game canvas aspect ratio
  * @const {number}
  */
@@ -230,7 +235,8 @@ function syncGameAudioState() {
 
     if (shouldSilence) {
         stopAllSounds(false, false);
-    } else if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen) {
+    } else if (audioStarted && gameState.gameStarted &&
+        !gameState.gameOver && !gameState.showIntroScreen) {
         updateBackgroundMusic();
     }
 }
@@ -282,7 +288,6 @@ function setup() {
             gameState.showIntroScreen = false;
             gameState.startTime = millis() / 1000;
             gameState.gameStarted = true;
-            startAudioIfNeeded();
         }
         isInitialPageLoad = false; // Mark that initial load has passed
     } else {
@@ -290,7 +295,6 @@ function setup() {
         gameState.showIntroScreen = false;
         gameState.startTime = millis() / 1000;
         gameState.gameStarted = true;
-        startAudioIfNeeded();
     }
 }
 
@@ -439,7 +443,8 @@ function draw() {
     }
 
     // Update background music based on level
-    if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen && !shouldSilenceGameAudio()) {
+    if (audioStarted && gameState.gameStarted && !gameState.gameOver &&
+        !gameState.showIntroScreen && !shouldSilenceGameAudio()) {
         updateBackgroundMusic();
     }
 
@@ -555,20 +560,53 @@ function triggerGameOver() {
 }
 
 /**
- * Starts the audio context if needed
- * Ensures audio can play when user interacts with the game
+ * Returns whether the p5 Web Audio context is currently running.
+ * @returns {boolean}
+ * @function
+ */
+function isGameAudioContextRunning() {
+    if (typeof getAudioContext !== 'function') {
+        return false;
+    }
+    const audioContext = getAudioContext();
+    return !!audioContext && audioContext.state === 'running';
+}
+
+/**
+ * Starts Web Audio from a keyboard or pointer interaction.
+ * The started flag is set only after the browser confirms that the context resumed.
+ * @returns {Promise<boolean>}
  * @function
  */
 function startAudioIfNeeded() {
-    if (getAudioContext() && getAudioContext().state === 'suspended' && !audioStarted) {
-        userStartAudio();
+    if (isGameAudioContextRunning()) {
         audioStarted = true;
-        updateBackgroundMusic(); // Start background music when audio is started
-    } else if (!getAudioContext() && !audioStarted) {
-        userStartAudio();
-        audioStarted = true;
-        updateBackgroundMusic(); // Start background music when audio is started
+        return Promise.resolve(true);
     }
+    if (audioStartPromise) {
+        return audioStartPromise;
+    }
+
+    audioStarted = false;
+    audioStartPromise = Promise.resolve(userStartAudio())
+        .then(() => {
+            audioStarted = isGameAudioContextRunning();
+            if (audioStarted && gameState.gameStarted && !gameState.gameOver &&
+                !gameState.showIntroScreen && !shouldSilenceGameAudio()) {
+                updateBackgroundMusic();
+            }
+            return audioStarted;
+        })
+        .catch((error) => {
+            audioStarted = false;
+            console.warn('Unable to start game audio after user interaction.', error);
+            return false;
+        })
+        .finally(() => {
+            audioStartPromise = null;
+        });
+
+    return audioStartPromise;
 }
 
 /**
@@ -972,6 +1010,11 @@ function handleBossDefeatedAudio() {
  * @function
  */
 function updateBackgroundMusic() {
+    if (!audioStarted || !isGameAudioContextRunning()) {
+        audioStarted = false;
+        return;
+    }
+
     if (shouldSilenceGameAudio()) {
         return;
     }

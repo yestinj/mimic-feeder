@@ -189,16 +189,22 @@ async function main() {
     const browser = await chromium.launch({
         executablePath: BROWSER_PATH,
         headless: true,
+        args: ['--autoplay-policy=user-gesture-required'],
     });
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
     const consoleErrors = [];
+    const audioPolicyMessages = [];
     const pageErrors = [];
     const trackRequests = [];
 
     page.on('console', (msg) => {
+        const messageText = msg.text();
+        if (/AudioContext was not allowed to start|user gesture/i.test(messageText)) {
+            audioPolicyMessages.push(messageText);
+        }
         if (msg.type() === 'error') {
-            consoleErrors.push(msg.text());
+            consoleErrors.push(messageText);
         }
     });
     page.on('pageerror', (err) => {
@@ -211,6 +217,9 @@ async function main() {
     });
 
     try {
+        await page.addInitScript(() => {
+            localStorage.setItem('mimicFeederLastUsedName', 'Returning Playtester');
+        });
         // CDN p5 + local assets: domcontentloaded is enough; then wait for canvas/game.
         await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForSelector('canvas', { timeout: 20000 });
@@ -218,6 +227,37 @@ async function main() {
 
         await waitForGameReady(page);
         assert(true, 'Game globals are available');
+
+        const returningAudioBeforeGesture = await page.evaluate(() => ({
+            showIntroScreen: gameState.showIntroScreen,
+            gameStarted: gameState.gameStarted,
+            audioStarted,
+            musicPlaying: backgroundMusic1.isPlaying() || backgroundMusic2.isPlaying(),
+        }));
+        assert(
+            !returningAudioBeforeGesture.showIntroScreen && returningAudioBeforeGesture.gameStarted,
+            'Returning player auto-skips the intro'
+        );
+        assert(
+            !returningAudioBeforeGesture.audioStarted &&
+            !returningAudioBeforeGesture.musicPlaying,
+            'Returning-player audio remains idle before the first user gesture'
+        );
+        await page.waitForTimeout(300);
+        assert(audioPolicyMessages.length === 0, 'No pre-interaction AudioContext retry warnings');
+
+        await page.click('canvas');
+        await page.waitForFunction(() =>
+            audioStarted && getAudioContext().state === 'running', null, {timeout: 5000}
+        );
+        const returningAudioAfterGesture = await page.evaluate(() => ({
+            audioStarted,
+            contextState: getAudioContext().state,
+        }));
+        assert(
+            returningAudioAfterGesture.audioStarted && returningAudioAfterGesture.contextState === 'running',
+            'First user gesture starts the returning player audio context'
+        );
 
         const dungeonBackgroundResult = await page.evaluate(() => ({
             imageCount: dungeonBackgroundImages.length,
@@ -672,6 +712,7 @@ async function main() {
 
         await page.waitForTimeout(300);
         assert(trackRequests.length === 0, 'No /api/track network requests');
+        assert(audioPolicyMessages.length === 0, 'No AudioContext autoplay-policy warnings');
 
         const hardConsoleErrors = consoleErrors.filter((text) => {
             const t = String(text).toLowerCase();

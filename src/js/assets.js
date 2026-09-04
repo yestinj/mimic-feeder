@@ -213,9 +213,9 @@ function preload() {
     catHurtSound = loadSoundWithVolume('assets/cat_hurt.mp3', HIGHER_SOUND_VOLUME);
     magnetismSound = loadSoundWithVolume('assets/magnetism.mp3', HIGHER_SOUND_VOLUME);
     bossDeathSound = loadSoundWithVolume('assets/boss_death.mp3', HIGHER_SOUND_VOLUME);
-    dungeonWarningSound = loadSoundWithVolume('assets/dungeon_warning.mp3', HIGHER_SOUND_VOLUME);
-    dungeonJudgmentSound = loadSoundWithVolume('assets/dungeon_judgment.mp3', HIGHER_SOUND_VOLUME);
-    dungeonRelentsSound = loadSoundWithVolume('assets/dungeon_relents.mp3', HIGHER_SOUND_VOLUME);
+    dungeonWarningSound = loadSoundWithVolume('assets/dungeon_warning.mp3', DUNGEON_VOICE_VOLUME);
+    dungeonJudgmentSound = loadSoundWithVolume('assets/dungeon_judgment.mp3', DUNGEON_VOICE_VOLUME);
+    dungeonRelentsSound = loadSoundWithVolume('assets/dungeon_relents.mp3', DUNGEON_VOICE_VOLUME);
 
     // Load background music
     backgroundMusic1 = loadSoundWithVolume('assets/music/background1.mp3', 0.4);

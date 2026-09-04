@@ -265,6 +265,8 @@ const MIN_OVERLAY_VIEWPORT_HEIGHT = 630;
 const DEFAULT_SOUND_VOLUME = 0.2;
 /** @const {number} HIGHER_SOUND_VOLUME - Higher volume for important game sounds (0-1) */
 const HIGHER_SOUND_VOLUME = 0.5;
+/** @const {number} DUNGEON_VOICE_VOLUME - Prominent volume for Ninefold Judgment voice lines */
+const DUNGEON_VOICE_VOLUME = 0.7;
 
 /**
  * Object Types - String constants used as keys for game objects
@@ -521,6 +523,14 @@ function setupSoundMap() {
  */
 function playSound(soundName) {
     if (!soundName) {
+        return;
+    }
+
+    // Never ask Web Audio to play before a user gesture has started its context.
+    if (typeof audioStarted !== 'undefined' && !audioStarted) {
+        return;
+    }
+    if (typeof isGameAudioContextRunning === 'function' && !isGameAudioContextRunning()) {
         return;
     }
 
