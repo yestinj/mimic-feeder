@@ -2,7 +2,9 @@
   Cache-Control: public, max-age=31536000
 
 /assets/*
-  Cache-Control: public, max-age=31536000
+  # Unversioned media paths: revalidate within a day so deploys refresh sprites/SFX.
+  # app.min.js keeps long cache via ?v= bust on the script URL.
+  Cache-Control: public, max-age=86400, must-revalidate
 
 /*
    Cache-Control: public, max-age=3600

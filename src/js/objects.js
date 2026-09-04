@@ -6,6 +6,10 @@ let recentSpawnXPositions = [];
 const MIN_SPAWN_HORIZONTAL_DISTANCE = 50;
 
 function spawnObjects() {
+    if (isNinefoldJudgmentActive()) {
+        return;
+    }
+
     // Check if a boss exists - if so, don't spawn any objects
     for (let obj of objects) {
         if (obj.type === OBJ_BOSS) {
@@ -13,10 +17,10 @@ function spawnObjects() {
         }
     }
 
-    if (frameCount % Math.round(gameState.objectSpawnRate) === 0) {
+    gameState.objectSpawnTimer += getFrameDelta();
+    if (gameState.objectSpawnTimer >= Math.round(gameState.objectSpawnRate)) {
+        gameState.objectSpawnTimer -= Math.round(gameState.objectSpawnRate);
         let typeToSpawn = null;
-        let spawnChance = random();
-        let cumulativeProb = 0;
         const currentState = {game: gameState, player: playerState};
 
         // First, check for special items with conditions (staff, potion, magnet)
@@ -32,33 +36,49 @@ function spawnObjects() {
             }
         }
 
-        // If no special item was selected, use probability-based selection
+        // If no special item was selected, use probability-weighted selection
         if (!typeToSpawn) {
+            let candidates = [];
+            let totalProb = 0;
             for (const entry of spawnTable) {
-                if (entry.probability) {
-                    // Skip dragon if not at required floor/zone
-                    if (entry.type === OBJ_DRAGON && 
-                        (gameState.dungeonFloor < DUNGEON_FLOOR_FOR_DRAGON_SPAWN || 
-                         (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_DRAGON_SPAWN && 
-                          gameState.dungeonZone < DUNGEON_ZONE_FOR_DRAGON_SPAWN))) {
-                        continue;
-                    }
+                if (!entry.probability) continue;
 
-                    cumulativeProb += entry.probability;
-                    if (spawnChance < cumulativeProb) {
-                        if (entry.condition && !entry.condition(currentState)) {
-                            continue;
-                        }
+                // Skip dragon if not at required floor/zone
+                if (entry.type === OBJ_DRAGON &&
+                    (gameState.dungeonFloor < DUNGEON_FLOOR_FOR_DRAGON_SPAWN ||
+                        (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_DRAGON_SPAWN &&
+                            gameState.dungeonZone < DUNGEON_ZONE_FOR_DRAGON_SPAWN))) {
+                    continue;
+                }
+
+                if (entry.condition && !entry.condition(currentState)) continue;
+
+                candidates.push(entry);
+                totalProb += entry.probability;
+            }
+
+            if (candidates.length > 0 && totalProb > 0) {
+                let pick = random() * totalProb;
+                let running = 0;
+                for (const entry of candidates) {
+                    running += entry.probability;
+                    if (pick <= running) {
                         typeToSpawn = entry.type;
                         break;
                     }
                 }
             }
         }
+        // Fallback: if still nothing selected, attempt last probabilistic entry if it's eligible
         if (!typeToSpawn && spawnTable.length > 0 && spawnTable[spawnTable.length - 1].probability) {
             const lastEntry = spawnTable[spawnTable.length - 1];
             if (!lastEntry.condition || lastEntry.condition(currentState)) {
-                typeToSpawn = lastEntry.type;
+                // Also ensure dragon gating if last is dragon
+                if (lastEntry.type !== OBJ_DRAGON ||
+                    gameState.dungeonFloor > DUNGEON_FLOOR_FOR_DRAGON_SPAWN ||
+                    (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_DRAGON_SPAWN && gameState.dungeonZone >= DUNGEON_ZONE_FOR_DRAGON_SPAWN)) {
+                    typeToSpawn = lastEntry.type;
+                }
             }
         }
         if (typeToSpawn) {
@@ -101,9 +121,21 @@ function spawnObjects() {
                     attempts++;
                 }
                 // Only spawn fireballs from the specified floor/zone, otherwise spawn bombs
-                const canSpawnFireball = gameState.dungeonFloor > DUNGEON_FLOOR_FOR_FIREBALL_SPAWN || 
-                                        (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_FIREBALL_SPAWN && 
-                                         gameState.dungeonZone >= DUNGEON_ZONE_FOR_FIREBALL_SPAWN);
+                const canSpawnFireball = gameState.dungeonFloor > DUNGEON_FLOOR_FOR_FIREBALL_SPAWN ||
+                    (gameState.dungeonFloor === DUNGEON_FLOOR_FOR_FIREBALL_SPAWN &&
+                        gameState.dungeonZone >= DUNGEON_ZONE_FOR_FIREBALL_SPAWN);
+
+                // Bias hazard spawns away from the player if too close to avoid unfair hits
+                const playerCenterX = player.x + player.w / 2;
+                const MIN_FAIR_DISTANCE = MIN_SPAWN_HORIZONTAL_DISTANCE + 30;
+                if (abs(bombX - playerCenterX) < MIN_FAIR_DISTANCE) {
+                    if (bombX <= playerCenterX) {
+                        bombX = max(0, playerCenterX - MIN_FAIR_DISTANCE);
+                    } else {
+                        bombX = min(width - 40, playerCenterX + MIN_FAIR_DISTANCE);
+                    }
+                }
+
                 if (random() < 0.5 || !canSpawnFireball) {
                     createObject(OBJ_SMALL_BOMB, bombX);
                 } else {
@@ -117,7 +149,7 @@ function spawnObjects() {
 function createObject(type, xPosition) {
     let initialVariation = random(0.75, 1.25);
     let currentDropSpeedScale = gameState.dropSpeedScale;
-    let baseVy_pps = BASE_DROP_SPEED_PIXELS_PER_SEC * currentDropSpeedScale;
+    let baseVy_pxs = BASE_DROP_SPEED_PX_PER_SECOND * currentDropSpeedScale;
 
     // Apply 3x speed multiplier for fireballs
     let speedMultiplier = (type === OBJ_FIREBALL) ? 3 : 1;
@@ -128,15 +160,16 @@ function createObject(type, xPosition) {
         y: -20,
         w: 20,
         h: 20,
-        vy: baseVy_pps * initialVariation * speedMultiplier,
-        baseVy: baseVy_pps,
+        vy: baseVy_pxs * initialVariation * speedMultiplier,
+        baseVy: baseVy_pxs,
         initialVariation: initialVariation,
         speedMultiplier: speedMultiplier,  // Store the multiplier for level updates
         beingPulled: false,
         pullProgress: 0,
         pullTarget: null,
         currentFrame: 0,
-        frameTimer: 0
+        frameTimer: 0,
+        spawnGlowTimer: 0
     };
 
     // Add dragon-specific properties if this is a dragon
@@ -153,6 +186,11 @@ function createObject(type, xPosition) {
     if (type === OBJ_FIREBALL) {
         obj.currentFrame = 0;
         obj.frameTimer = 0;
+    }
+
+    // Set a brief glow timer for valuable items
+    if (type === OBJ_CROWN || type === OBJ_DIAMOND) {
+        obj.spawnGlowTimer = 60;
     }
 
     const staticImg = objectImages[type];
@@ -191,8 +229,8 @@ function createObject(type, xPosition) {
             obj.w = 45;
             obj.h = 45;
         } else if (type === OBJ_DIAMOND) {
-            obj.w = 45;
-            obj.h = 45;
+            obj.w = 35;
+            obj.h = 35;
         } else if (type === OBJ_WIZARD_STAFF) {
             obj.w = staticImg.width * 1.5;
             obj.h = staticImg.height * 1.5;
@@ -223,15 +261,13 @@ function createObject(type, xPosition) {
         }
     } else {
         if (type === OBJ_CROWN) {
-            obj.w = 60; // Doubled from 30
-            obj.h = 60; // Doubled from 30
+            obj.w = 60;
         } else if (type === OBJ_DIAMOND) {
-            obj.w = 60; // Doubled from 30
-            obj.h = 60; // Doubled from 30
+            obj.w = 45;
         } else {
-            obj.w = 40; // Doubled from 20
-            obj.h = 40; // Doubled from 20
+            obj.w = 40;
         }
+        obj.h = obj.w;
     }
 
     obj.x = constrain(obj.x, obj.w / 2, width - obj.w / 2);
@@ -240,13 +276,24 @@ function createObject(type, xPosition) {
     if (recentSpawnXPositions.length > RECENT_SPAWN_X_POSITIONS_MAX) {
         recentSpawnXPositions.shift();
     }
+
+    // Play a subtle spawn cue for high-value items
+    if (type === OBJ_CROWN || type === OBJ_DIAMOND) {
+        playSound('bling');
+    }
 }
 
 function updateObjects() {
+    const frameDelta = getFrameDelta();
+    const deltaSeconds = getDeltaSeconds();
+
     for (let i = objects.length - 1; i >= 0; i--) {
         let obj = objects[i];
+        if (obj.spawnGlowTimer && obj.spawnGlowTimer > 0) {
+            obj.spawnGlowTimer = max(0, obj.spawnGlowTimer - frameDelta);
+        }
         if (obj.beingPulled && obj.pullTarget) {
-            obj.pullProgress += 1.0 / TENTACLE_PULL_DURATION_FRAMES;
+            obj.pullProgress += frameDelta / TENTACLE_PULL_DURATION_FRAMES;
             obj.pullProgress = min(obj.pullProgress, 1);
             obj.x = lerp(obj.x, obj.pullTarget.x, obj.pullProgress);
             obj.y = lerp(obj.y, obj.pullTarget.y, obj.pullProgress);
@@ -257,10 +304,10 @@ function updateObjects() {
         } else if (obj.type === OBJ_BOSS) {
             if (obj.isDying) {
                 // Handle boss die animation
-                obj.dieFrameTimer++;
+                obj.dieFrameTimer += frameDelta;
                 if (obj.dieFrameTimer >= BOSS_DIE_FRAME_DURATION) {
                     obj.dieCurrentFrame++;
-                    obj.dieFrameTimer = 0;
+                    obj.dieFrameTimer -= BOSS_DIE_FRAME_DURATION;
 
                     // Check if die animation is complete
                     if (obj.dieCurrentFrame >= BOSS_DIE_TOTAL_FRAMES) {
@@ -270,7 +317,7 @@ function updateObjects() {
                 }
 
                 // Increment die duration timer
-                obj.dieDuration++;
+                obj.dieDuration += frameDelta;
 
                 // Check if die duration is complete
                 if (obj.dieDuration >= BOSS_DIE_DURATION_FRAMES) {
@@ -279,9 +326,7 @@ function updateObjects() {
                     gameState.dungeonZone = 1;
 
                     // Show notification
-                    gameLevelNotification.active = true;
-                    gameLevelNotification.text = `Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`;
-                    gameLevelNotification.timer = GAME_LEVEL_NOTIFICATION_DURATION;
+                    queueGameLevelNotification(`Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`);
 
                     // Play sound
                     playSound('level_complete');
@@ -293,7 +338,8 @@ function updateObjects() {
                     gameState.objectSpawnRate = BASE_OBJECT_SPAWN_RATE_FRAMES / levelMultiplier;
                     gameState.objectSpawnRate = max(10, Math.round(gameState.objectSpawnRate));
 
-                    // Remove the boss
+                    // Remove the boss and clear its fireballs
+                    bossFireballs.length = 0;
                     objects.splice(i, 1);
                     continue;
                 }
@@ -302,10 +348,10 @@ function updateObjects() {
                 // Don't fire fireballs during die animation
             } else if (obj.isHit) {
                 // Handle boss hit animation
-                obj.hitFrameTimer++;
+                obj.hitFrameTimer += frameDelta;
                 if (obj.hitFrameTimer >= BOSS_HIT_FRAME_DURATION) {
                     obj.hitCurrentFrame++;
-                    obj.hitFrameTimer = 0;
+                    obj.hitFrameTimer -= BOSS_HIT_FRAME_DURATION;
 
                     // Check if hit animation is complete
                     if (obj.hitCurrentFrame >= BOSS_HIT_TOTAL_FRAMES) {
@@ -319,14 +365,14 @@ function updateObjects() {
                 // Don't fire fireballs during hit animation
             } else if (obj.isIdle) {
                 // Handle boss idle animation
-                obj.idleFrameTimer++;
+                obj.idleFrameTimer += frameDelta;
                 if (obj.idleFrameTimer >= BOSS_IDLE_FRAME_DURATION) {
                     obj.idleCurrentFrame = (obj.idleCurrentFrame + 1) % BOSS_IDLE_TOTAL_FRAMES;
-                    obj.idleFrameTimer = 0;
+                    obj.idleFrameTimer -= BOSS_IDLE_FRAME_DURATION;
                 }
 
                 // Increment idle duration timer
-                obj.idleDuration++;
+                obj.idleDuration += frameDelta;
 
                 // Check if idle duration is complete
                 if (obj.idleDuration >= BOSS_IDLE_DURATION_FRAMES) {
@@ -340,14 +386,14 @@ function updateObjects() {
                 // Don't fire fireballs during idle animation
             } else {
                 // Handle boss movement
-                obj.frameTimer++;
+                obj.frameTimer += frameDelta;
                 if (obj.frameTimer >= BOSS_FRAME_DURATION) {
                     obj.currentFrame = (obj.currentFrame + 1) % BOSS_TOTAL_FRAMES;
-                    obj.frameTimer = 0;
+                    obj.frameTimer -= BOSS_FRAME_DURATION;
                 }
 
                 // Move boss horizontally
-                obj.x += obj.speed * obj.directionX;
+                obj.x += obj.speed * obj.directionX * frameDelta;
 
                 // Check if boss hits the edge of the screen
                 if (obj.x - obj.w / 2 <= 0) {
@@ -360,19 +406,15 @@ function updateObjects() {
 
                 // Handle boss fireball firing
                 if (obj.fireballCooldown > 0) {
-                    obj.fireballCooldown--;
+                    obj.fireballCooldown = max(0, obj.fireballCooldown - frameDelta);
                 } else {
                     // Fire a fireball
-                    // Calculate speed multiplier based on floor number
-                    // Floor 2: 1x speed (base speed)
-                    // Floor 4: 2x speed
-                    // Floor 6: 4x speed
-                    // Floor 8: 8x speed, etc.
-                    let floorSpeedMultiplier = Math.pow(2, Math.floor((gameState.dungeonFloor - 2) / 2));
+                    // Floor 2: 1×, 4: 2×, 6+: 4× (capped — see getBossFloorSpeedMultiplier)
+                    let floorSpeedMultiplier = getBossFloorSpeedMultiplier();
 
                     let fireball = {
                         x: obj.x,
-                        y: obj.y + obj.h/2,
+                        y: obj.y + obj.h / 2,
                         w: 60,
                         h: 60,
                         speed: BOSS_FIREBALL_SPEED * floorSpeedMultiplier,
@@ -408,14 +450,6 @@ function updateObjects() {
                 image(bossDieFrames[obj.dieCurrentFrame], -drawWidth / 2, -obj.h / 2, drawWidth, obj.h);
 
                 pop();
-
-                // Display "Boss Defeated!" notification
-                fill(255, 0, 0);
-                textSize(48);
-                textAlign(CENTER, CENTER);
-                textStyle(BOLD);
-                text("Boss Defeated!", width / 2, height / 2);
-                textStyle(NORMAL);
             } else if (obj.isHit && bossHitFrames[obj.hitCurrentFrame] && bossHitFrames[obj.hitCurrentFrame].width) {
                 // Draw hit animation
                 image(bossHitFrames[obj.hitCurrentFrame], -drawWidth / 2, -obj.h / 2, drawWidth, obj.h);
@@ -471,24 +505,26 @@ function updateObjects() {
                 pop();
             }
 
-            // Skip the rest of the loop for boss
+            // Contact-safe boss: skip player/ground collision for this object.
+            // Only boss fireballs damage the player; the body is intentionally non-damaging.
+            // Shadow bolts still hit the boss via updateShadowBolts (separate loop).
             continue;
         } else if (obj.type === OBJ_DRAGON) {
             // Handle dragon's special behavior
             if (obj.isFlying) {
                 // Dragon is already flying away
-                obj.flightDuration++;
+                obj.flightDuration += frameDelta;
 
                 // Move the dragon in its flight direction
-                obj.x += obj.flightDirectionX * (deltaTime / 1000.0);
-                obj.y += obj.flightDirectionY * (deltaTime / 1000.0);
+                obj.x += obj.flightDirectionX * deltaSeconds;
+                obj.y += obj.flightDirectionY * deltaSeconds;
 
                 // Check if the dragon is about to hit the side of the canvas
                 if (obj.x - obj.w / 2 < 0 || obj.x + obj.w / 2 > width) {
                     // Start falling if it hits the side of the canvas
                     obj.isFlying = false;
                     obj.vy = obj.originalVy;
-                    obj.y += obj.vy * (deltaTime / 1000.0);
+                    obj.y += obj.vy * deltaSeconds;
                     // Don't continue, allow collision detection to happen
                 }
 
@@ -502,7 +538,7 @@ function updateObjects() {
                     // Reset to normal behavior
                     obj.isFlying = false;
                     obj.vy = obj.originalVy;
-                    obj.y += obj.vy * (deltaTime / 1000.0);
+                    obj.y += obj.vy * deltaSeconds;
                 }
             } else {
                 // Check if top of player is within 100px of bottom of dragon
@@ -524,15 +560,17 @@ function updateObjects() {
                     obj.isFlying = true;
                     obj.flightDuration = 0;
 
-                    // Set a random flight duration between 60 and 120 frames (1-2 seconds at 60fps)
-                    obj.maxFlightDuration = Math.floor(random(60, 120));
+                    // Set a random flight duration between 1x and 2x the base duration.
+                    obj.maxFlightDuration = Math.floor(
+                        random(DRAGON_FLIGHT_DURATION_FRAMES, DRAGON_FLIGHT_DURATION_FRAMES * 2)
+                    );
 
                     // Calculate a random angle for diagonal upward movement
                     let angle = random(DRAGON_FLIGHT_DIRECTION_MIN_ANGLE, DRAGON_FLIGHT_DIRECTION_MAX_ANGLE);
                     angle = angle * (Math.PI / 180); // Convert to radians
 
                     // Calculate flight direction components based on the angle
-                    let speed = 2 * abs(obj.baseVy);
+                    let speed = DRAGON_FLIGHT_SPEED_MULTIPLIER * abs(obj.baseVy);
                     obj.flightDirectionX = speed * Math.cos(angle);
                     obj.flightDirectionY = speed * Math.sin(angle); // Negative for upward movement
                     obj.originalVy = obj.vy;
@@ -541,38 +579,38 @@ function updateObjects() {
                     continue;
                 } else {
                     // Normal movement
-                    obj.y += obj.vy * (deltaTime / 1000.0);
+                    obj.y += obj.vy * deltaSeconds;
                 }
             }
         } else {
-            obj.y += obj.vy * (deltaTime / 1000.0);
+            obj.y += obj.vy * deltaSeconds;
         }
 
         if (obj.type === OBJ_HEALTH_POTION) {
-            obj.frameTimer++;
+            obj.frameTimer += frameDelta;
             if (obj.frameTimer >= HEALTH_POTION_FRAME_DURATION) {
                 obj.currentFrame = (obj.currentFrame + 1) % HEALTH_POTION_TOTAL_FRAMES;
-                obj.frameTimer = 0;
+                obj.frameTimer -= HEALTH_POTION_FRAME_DURATION;
             }
         } else if (obj.type === OBJ_FIREBALL) {
-            obj.frameTimer++;
+            obj.frameTimer += frameDelta;
             if (obj.frameTimer >= FIREBALL_FRAME_DURATION) {
                 obj.currentFrame = (obj.currentFrame + 1) % FIREBALL_TOTAL_FRAMES;
-                obj.frameTimer = 0;
+                obj.frameTimer -= FIREBALL_FRAME_DURATION;
             }
         } else if (obj.type === OBJ_MAGNET) {
-            obj.frameTimer++;
+            obj.frameTimer += frameDelta;
             if (obj.frameTimer >= MAGNET_FRAME_DURATION) {
                 obj.currentFrame = (obj.currentFrame + 1) % MAGNET_TOTAL_FRAMES;
-                obj.frameTimer = 0;
+                obj.frameTimer -= MAGNET_FRAME_DURATION;
             }
         } else if (obj.type === OBJ_CAT && obj.onFloor) {
             // Handle cats on the floor
-            obj.floorTimer++;
+            obj.floorTimer += frameDelta;
             // After 3 seconds (180 frames at 60fps), play sound, award points, and start fading
             if (obj.floorTimer >= 180) {
-                // Only play sound and award points once when timer reaches exactly 180
-                if (obj.floorTimer === 180) {
+                // Only play sound and award points once when the threshold is crossed.
+                if (!obj.rescueAwarded) {
                     playSound('cat_meow');
                     // Award 100 points and XP
                     let points = 100;
@@ -586,9 +624,10 @@ function updateObjects() {
 
                     // Check for level up after gaining XP
                     checkForPlayerLevelUp();
+                    obj.rescueAwarded = true;
                 }
 
-                obj.fadeAmount += 0.02; // Increase fade amount (0 = visible, 1 = invisible)
+                obj.fadeAmount += 0.02 * frameDelta; // Increase fade amount (0 = visible, 1 = invisible)
 
                 // Remove cat when fully faded out
                 if (obj.fadeAmount >= 1) {
@@ -655,7 +694,8 @@ function updateObjects() {
             const humanoidSplatTypes = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_DRAGON]; // Removed OBJ_CAT as it has special handling
 
             if (obj.type === OBJ_SMALL_BOMB) {
-                gameState.collectedCounts.small_bomb++;
+                // Ground miss: VFX only. Detonation achievements count player-caused
+                // detonations via handleBombCollection (contact / bolt / pull), not ground.
                 bombExplosions.push({
                     x: obj.x,
                     y: groundLevel - obj.h / 2,
@@ -669,7 +709,7 @@ function updateObjects() {
                 objects.splice(i, 1);
                 removed = true;
             } else if (obj.type === OBJ_FIREBALL) {
-                gameState.collectedCounts.fireball++;
+                // Ground miss: VFX only (see small-bomb note above).
                 bombExplosions.push({
                     x: obj.x,
                     y: groundLevel - obj.h / 2,
@@ -694,6 +734,7 @@ function updateObjects() {
                     obj.onFloor = true; // Mark cat as being on the floor
                     obj.floorTimer = 0; // Initialize timer for cat on floor
                     obj.fadeAmount = 0; // Initialize fade amount (0 = fully visible)
+                    obj.rescueAwarded = false; // Track one-time reward trigger with fractional timers
                 }
             } else if (humanoidSplatTypes.includes(obj.type)) {
                 playerState.lives -= 1;
@@ -772,6 +813,19 @@ function updateObjects() {
             if (staticImgToDraw && staticImgToDraw.width) {
                 push();
                 translate(obj.x, obj.y);
+
+                // Subtle spawn glow for high-value items
+                if ((obj.type === OBJ_CROWN || obj.type === OBJ_DIAMOND) && obj.spawnGlowTimer && obj.spawnGlowTimer > 0) {
+                    let alpha = map(obj.spawnGlowTimer, 60, 0, 120, 0, true);
+                    noStroke();
+                    if (obj.type === OBJ_CROWN) {
+                        fill(255, 215, 0, alpha);
+                    } else {
+                        fill(0, 200, 255, alpha);
+                    }
+                    let glowScale = 1.6;
+                    ellipse(0, 0, obj.w * glowScale, obj.h * glowScale);
+                }
 
                 // Apply fade effect for cats on the floor
                 if (obj.type === OBJ_CAT && obj.onFloor && obj.fadeAmount > 0) {

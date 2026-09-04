@@ -9,7 +9,7 @@
  * Game Configuration - Basic game settings and parameters
  */
 /** @const {string} GAME_VERSION - Game version number */
-const GAME_VERSION = "0.1.0-alpha";
+const GAME_VERSION = "1.0.0-beta";
 /** @const {string} GAME_AUTHOR - Game author name */
 const GAME_AUTHOR = "Yestin";
 /** @const {number} INITIAL_LIVES - Starting number of player lives */
@@ -22,10 +22,44 @@ const HUMANS_PER_MAX_LIFE_INCREASE = 50;
 const OBJECTS_PER_GAME_LEVEL = 10;
 /** @const {number} HEALTH_POTION_LEVEL_INTERVAL - Level interval for health potion spawns */
 const HEALTH_POTION_LEVEL_INTERVAL = 5;
+/** @const {number} TARGET_FPS - Reference frame rate used for frame-based tuning */
+const TARGET_FPS = 60;
+/** @const {number} FRAME_TIME_MS - Duration of a single reference frame in milliseconds */
+const FRAME_TIME_MS = 1000 / TARGET_FPS;
+/** @const {number} MAX_FRAME_DELTA - Maximum frame-step used for per-frame timers/movement */
+const MAX_FRAME_DELTA = 2.5;
+
+/**
+ * Returns frame-equivalent delta at TARGET_FPS (clamped for stability after long stalls).
+ * @returns {number}
+ */
+function getFrameDelta() {
+    if (typeof deltaTime !== 'number' || !Number.isFinite(deltaTime) || deltaTime <= 0) {
+        return 1;
+    }
+    return Math.min(deltaTime / FRAME_TIME_MS, MAX_FRAME_DELTA);
+}
+
+/**
+ * Returns elapsed seconds derived from clamped frame delta.
+ * @returns {number}
+ */
+function getDeltaSeconds() {
+    return getFrameDelta() / TARGET_FPS;
+}
+
+/**
+ * Converts 60fps frame-equivalent units to milliseconds.
+ * @param {number} frameUnits
+ * @returns {number}
+ */
+function frameUnitsToMs(frameUnits) {
+    return (frameUnits / TARGET_FPS) * 1000;
+}
 
 /**
  * Player Stats - Constants related to player movement, abilities, and progression
- * These values are frame/implicit deltaTime based
+ * Movement values are tuned as pixels-per-reference-frame at 60fps.
  */
 /** @const {number} PLAYER_INITIAL_SPEED - Initial movement speed of the player */
 const PLAYER_INITIAL_SPEED = 6;
@@ -59,8 +93,8 @@ const PLAYER_EATING_ZONE_HEIGHT_FACTOR = 0.3;
  */
 /** @const {number} BASE_OBJECT_SPAWN_RATE_FRAMES - Base rate at which objects spawn (in frames) */
 const BASE_OBJECT_SPAWN_RATE_FRAMES = 165;
-/** @const {number} BASE_DROP_SPEED_PIXELS_PER_SEC - Base speed at which objects fall (pixels per second) */
-const BASE_DROP_SPEED_PIXELS_PER_SEC = 60;
+/** @const {number} BASE_DROP_SPEED_PX_PER_SECOND - Base speed at which objects fall (pixels per second) */
+const BASE_DROP_SPEED_PX_PER_SECOND = 60;
 /** @const {number} INITIAL_DROP_SPEED_SCALE - Initial scaling factor for drop speed */
 const INITIAL_DROP_SPEED_SCALE = 2.0;
 /** @const {number} GAME_LEVEL_SCALING_INCREASE - How much game difficulty increases per level */
@@ -81,6 +115,8 @@ const DUNGEON_ZONE_FOR_STAFF_DROP = 1;
 const DUNGEON_FLOOR_FOR_MAGNET_DROP = 3;
 /** @const {number} DUNGEON_ZONE_FOR_MAGNET_DROP - Dungeon zone when magnet can drop */
 const DUNGEON_ZONE_FOR_MAGNET_DROP = 1;
+/** @const {number} DUNGEON_FLOOR_FOR_CAT_SPAWN - First dungeon floor where cats can spawn */
+const DUNGEON_FLOOR_FOR_CAT_SPAWN = 2;
 /** @const {number} DUNGEON_FLOOR_FOR_DRAGON_SPAWN - Dungeon floor level when dragons can spawn */
 const DUNGEON_FLOOR_FOR_DRAGON_SPAWN = 3;
 /** @const {number} DUNGEON_ZONE_FOR_DRAGON_SPAWN - Dungeon zone when dragons can spawn */
@@ -93,10 +129,10 @@ const DUNGEON_ZONE_FOR_FIREBALL_SPAWN = 1;
 /**
  * Dragon Behavior - Constants controlling dragon movement and actions
  */
-/** @const {number} DRAGON_FLIGHT_DURATION_FRAMES - How long dragons fly in a direction (60 frames = 1 second at 60fps) */
+/** @const {number} DRAGON_FLIGHT_DURATION_FRAMES - Base dragon flight duration; runtime range is this value to 2x this value */
 const DRAGON_FLIGHT_DURATION_FRAMES = 60;
 /** @const {number} DRAGON_FLIGHT_SPEED_MULTIPLIER - How much faster dragons move compared to other objects */
-const DRAGON_FLIGHT_SPEED_MULTIPLIER = 3;
+const DRAGON_FLIGHT_SPEED_MULTIPLIER = 2;
 /** @const {number} DRAGON_FLIGHT_DIRECTION_MIN_ANGLE - Minimum angle for dragon flight direction (in degrees) */
 const DRAGON_FLIGHT_DIRECTION_MIN_ANGLE = -160;
 /** @const {number} DRAGON_FLIGHT_DIRECTION_MAX_ANGLE - Maximum angle for dragon flight direction (in degrees) */
@@ -104,9 +140,9 @@ const DRAGON_FLIGHT_DIRECTION_MAX_ANGLE = -20;
 
 /**
  * Abilities - Constants related to player special abilities
- * These values are frame/implicit deltaTime based
+ * Cooldowns/durations use frame-equivalent units at 60fps.
  */
-/** @const {number} SHADOW_BOLT_SPEED - Speed of shadow bolt projectiles (negative for upward movement) */
+/** @const {number} SHADOW_BOLT_SPEED - Speed of shadow bolt projectiles in px per 60fps frame (negative is upward) */
 const SHADOW_BOLT_SPEED = -7;
 /** @const {number} SHADOW_BOLT_COOLDOWN_FRAMES - Cooldown between shadow bolt casts (15 frames = 0.5 seconds at 60fps) */
 const SHADOW_BOLT_COOLDOWN_FRAMES = 15;
@@ -122,16 +158,42 @@ const SHADOW_BOLT_FRAME_DURATION = 5;
 const SHADOW_BOLT_BOMB_POINTS = 10;
 /** @const {number} MAGNETISM_COOLDOWN_FRAMES - Cooldown between magnetism ability uses (600 frames = 10 seconds at 60fps) */
 const MAGNETISM_COOLDOWN_FRAMES = 600;
-/** @const {number} MAGNETISM_ATTRACTION_SPEED_MULTIPLIER - How much faster objects move when magnetized */
-const MAGNETISM_ATTRACTION_SPEED_MULTIPLIER = 2.0;
-/** @const {number} MAGNETISM_DURATION_FRAMES - How long magnetism effect lasts (600 frames = 10 seconds at 60fps) */
-const MAGNETISM_DURATION_FRAMES = 600;
+/** @const {number} MAGNETISM_ATTRACTION_SPEED_MULTIPLIER - Attraction speed multiplier for magnetized objects */
+const MAGNETISM_ATTRACTION_SPEED_MULTIPLIER = 5.0;
 /** @const {number} DASH_DISTANCE - Distance in pixels that the player dashes */
 const DASH_DISTANCE = 100;
 /** @const {number} DASH_COOLDOWN_FRAMES - Cooldown between dash ability uses (60 frames = 1 second at 60fps) */
 const DASH_COOLDOWN_FRAMES = 60;
 /** @const {number} DASH_DOUBLE_TAP_WINDOW_FRAMES - Time window in frames for detecting double tap (15 frames = 0.25 seconds at 60fps) */
 const DASH_DOUBLE_TAP_WINDOW_FRAMES = 15;
+/** @const {number} DASH_DOUBLE_TAP_WINDOW_MS - Time window in milliseconds for double tap detection */
+const DASH_DOUBLE_TAP_WINDOW_MS = frameUnitsToMs(DASH_DOUBLE_TAP_WINDOW_FRAMES);
+
+/**
+ * Ninefold Judgment - Consequence for deliberately destroying cats with Shadow Bolt
+ */
+/** @const {number} CAT_KILL_WARNING_THRESHOLD - Cat kills before the dungeon warns the player */
+const CAT_KILL_WARNING_THRESHOLD = 5;
+/** @const {number} CAT_KILL_JUDGMENT_THRESHOLD - Cat kills before the Ninefold Judgment begins */
+const CAT_KILL_JUDGMENT_THRESHOLD = 10;
+/** @const {number} NINEFOLD_WAVE_COUNT - One attack wave for each traditional cat life */
+const NINEFOLD_WAVE_COUNT = 9;
+/** @const {number} NINEFOLD_SUMMON_DURATION_FRAMES - Apparition warning time before attacks */
+const NINEFOLD_SUMMON_DURATION_FRAMES = 330;
+/** @const {number} NINEFOLD_FIRST_WAVE_DELAY_FRAMES - Ominous pause before the first wave */
+const NINEFOLD_FIRST_WAVE_DELAY_FRAMES = 36;
+/** @const {number} NINEFOLD_WAVE_INTERVAL_FRAMES - Breathing room between later waves */
+const NINEFOLD_WAVE_INTERVAL_FRAMES = 36;
+/** @const {number} NINEFOLD_END_DURATION_FRAMES - Apparition fade after the final wave */
+const NINEFOLD_END_DURATION_FRAMES = 210;
+/** @const {number} NINEFOLD_DAMAGE_COOLDOWN_FRAMES - Prevents overlapping fireballs from stacking damage */
+const NINEFOLD_DAMAGE_COOLDOWN_FRAMES = 45;
+/** @const {number} NINEFOLD_FIREBALL_BASE_SPEED - First-wave speed in px per reference frame */
+const NINEFOLD_FIREBALL_BASE_SPEED = 11.5;
+/** @const {number} NINEFOLD_FIREBALL_SPEED_STEP - Additional speed for each later wave */
+const NINEFOLD_FIREBALL_SPEED_STEP = 0.7;
+/** @const {number} NINEFOLD_FIREBALL_MAX_SIZE - Maximum judgment fireball size in pixels */
+const NINEFOLD_FIREBALL_MAX_SIZE = 68;
 
 /**
  * Object Pulling / Effects - Constants for visual effects and animations
@@ -191,6 +253,10 @@ const HIGH_SCORE_COUNT = 5;
 const NAME_INPUT_MAX_LENGTH = 10;
 /** @const {number} MIN_SHADOW_BOLT_EXPLOSION_SIZE - Minimum size for shadow bolt explosion effects */
 const MIN_SHADOW_BOLT_EXPLOSION_SIZE = SHADOW_BOLT_SIZE * 1.5;
+/** @const {number} MIN_OVERLAY_VIEWPORT_WIDTH - Minimum canvas width for full text-heavy overlays */
+const MIN_OVERLAY_VIEWPORT_WIDTH = 840;
+/** @const {number} MIN_OVERLAY_VIEWPORT_HEIGHT - Minimum canvas height for full text-heavy overlays */
+const MIN_OVERLAY_VIEWPORT_HEIGHT = 630;
 
 /**
  * Sound Volumes - Constants for audio volume levels
@@ -199,6 +265,8 @@ const MIN_SHADOW_BOLT_EXPLOSION_SIZE = SHADOW_BOLT_SIZE * 1.5;
 const DEFAULT_SOUND_VOLUME = 0.2;
 /** @const {number} HIGHER_SOUND_VOLUME - Higher volume for important game sounds (0-1) */
 const HIGHER_SOUND_VOLUME = 0.5;
+/** @const {number} DUNGEON_VOICE_VOLUME - Prominent volume for Ninefold Judgment voice lines */
+const DUNGEON_VOICE_VOLUME = 0.7;
 
 /**
  * Object Types - String constants used as keys for game objects
@@ -243,6 +311,22 @@ const BOSS_LIVES = 10;
 const BOSS_POINTS = 250;
 /** @const {number} BOSS_SPEED - Movement speed of the boss */
 const BOSS_SPEED = 3;
+/**
+ * Max floor-based speed/fire-rate multiplier for boss + fireballs.
+ * Formula is 2^floor((floor-2)/2) (floor 2: 1×, 4: 2×, 6: 4×, …) then clamped here.
+ * Other difficulty (drop speed, spawn rate, boss HP) keeps scaling with level/floor.
+ */
+const BOSS_FLOOR_SPEED_MULTIPLIER_MAX = 4;
+
+/**
+ * Floor-based boss/fireball speed multiplier (capped).
+ * @param {number} [dungeonFloor]
+ * @returns {number}
+ */
+function getBossFloorSpeedMultiplier(dungeonFloor = gameState.dungeonFloor) {
+    const raw = Math.pow(2, Math.floor((dungeonFloor - 2) / 2));
+    return Math.min(BOSS_FLOOR_SPEED_MULTIPLIER_MAX, raw);
+}
 /** @const {number} BOSS_FRAME_DURATION - Duration of each boss animation frame */
 const BOSS_FRAME_DURATION = 5;
 /** @const {number} BOSS_TOTAL_FRAMES - Total number of frames in boss animation */
@@ -253,7 +337,7 @@ const BOSS_HIT_FRAME_DURATION = 5;
 const BOSS_HIT_TOTAL_FRAMES = 7;
 /** @const {number} BOSS_FIREBALL_COOLDOWN_FRAMES - Cooldown between boss fireball attacks (180 frames = 3 seconds at 60fps) */
 const BOSS_FIREBALL_COOLDOWN_FRAMES = 180;
-/** @const {number} BOSS_FIREBALL_SPEED - Speed of boss fireballs in pixels per frame */
+/** @const {number} BOSS_FIREBALL_SPEED - Speed of boss fireballs in px per 60fps frame */
 const BOSS_FIREBALL_SPEED = 10;
 /** @const {number} BOSS_FIREBALL_FRAME_DURATION - Duration of each boss fireball animation frame */
 const BOSS_FIREBALL_FRAME_DURATION = 3;
@@ -296,7 +380,8 @@ const objectProperties = {
     [OBJ_HEALTH_POTION]: {xp: 0, sound: 'healthPotion', effect: 'gainLife', image: null, countKey: null},
     [OBJ_WIZARD_STAFF]: {xp: 0, sound: 'wizardStaff', effect: 'gainStaff', image: 'staffImage', countKey: null},
     [OBJ_MAGNET]: {xp: 0, sound: 'magnetism', effect: 'gainMagnet', image: null, countKey: 'magnet'},
-    [OBJ_BOSS]: {xp: BOSS_POINTS, sound: 'explode', effect: null, image: null, countKey: 'boss'},
+    // Boss is not collected via collectObject; defeats use achievementStats.bossesDefeated.
+    [OBJ_BOSS]: {xp: BOSS_POINTS, sound: 'explode', effect: null, image: null, countKey: null},
 };
 
 /**
@@ -306,14 +391,15 @@ const objectProperties = {
 const spawnTable = [
     /**
      * Wizard Staff - Special item that grants shadow bolt ability
-     * Only spawns once per game when player reaches the right dungeon floor/zone
+     * Starts spawning at the configured dungeon position and remains eligible until collected
      */
     {
         type: OBJ_WIZARD_STAFF,
         condition: (state) =>
             !state.player.hasWizardStaff &&
-            state.game.dungeonFloor === DUNGEON_FLOOR_FOR_STAFF_DROP &&
-            state.game.dungeonZone === DUNGEON_ZONE_FOR_STAFF_DROP &&
+            (state.game.dungeonFloor > DUNGEON_FLOOR_FOR_STAFF_DROP ||
+                (state.game.dungeonFloor === DUNGEON_FLOOR_FOR_STAFF_DROP &&
+                    state.game.dungeonZone >= DUNGEON_ZONE_FOR_STAFF_DROP)) &&
             !objects.some(obj => obj.type === OBJ_WIZARD_STAFF)
     },
     /**
@@ -339,13 +425,21 @@ const spawnTable = [
             state.game.dungeonZone === DUNGEON_ZONE_FOR_MAGNET_DROP
     },
     /** Dragon - Rare high-value enemy that only appears in later floors */
-    {type: OBJ_DRAGON, probability: 0.05, condition: (state) => state.game.dungeonFloor >= DUNGEON_FLOOR_FOR_DRAGON_SPAWN && state.game.dungeonZone >= DUNGEON_ZONE_FOR_DRAGON_SPAWN},
+    {
+        type: OBJ_DRAGON,
+        probability: 0.05,
+        condition: (state) => state.game.dungeonFloor >= DUNGEON_FLOOR_FOR_DRAGON_SPAWN && state.game.dungeonZone >= DUNGEON_ZONE_FOR_DRAGON_SPAWN
+    },
     /** Crown - Rare high-value collectible */
     {type: OBJ_CROWN, probability: 0.03 * 1.111},
     /** Diamond - Very rare highest-value collectible */
     {type: OBJ_DIAMOND, probability: 0.02 * 1.111},
-    /** Cat - Special neutral object that makes a meow sound */
-    {type: OBJ_CAT, probability: 0.05 * 1.111}, // Moved cat earlier in the table
+    /** Cat - Special neutral object introduced after the first-floor tutorial */
+    {
+        type: OBJ_CAT,
+        probability: 0.05 * 1.111,
+        condition: (state) => state.game.dungeonFloor >= DUNGEON_FLOOR_FOR_CAT_SPAWN
+    },
     /** Elf - High-value enemy */
     {type: OBJ_ELF, probability: 0.10 * 1.111},
     /** Dwarf - Medium-value enemy */
@@ -389,11 +483,37 @@ function setupSoundMap() {
         'lose_life': loseLifeSound,
         'shadowbolt_hit': popSound,
         'cast_spell': castSpellSound,
+        'bling': castSpellSound,
         'cat_meow': catMeowSound,
+        'cat_hurt': catHurtSound,
         'magnetism': magnetismSound,
+        'boss_death': bossDeathSound,
+        'dungeon_warning': dungeonWarningSound,
+        'dungeon_judgment': dungeonJudgmentSound,
+        'dungeon_relents': dungeonRelentsSound,
         'background_music1': backgroundMusic1,
-        'background_music2': backgroundMusic2
+        'background_music2': backgroundMusic2,
+        'boss_music': bossMusic
     };
+
+    // Ensure all sound effects have a default volume if they were loaded without it
+    // Note: this skips background music which has its own volume
+    for (const key in soundMap) {
+        const sound = soundMap[key];
+        if (sound && typeof sound.setVolume === 'function' &&
+            key !== 'background_music1' && key !== 'background_music2' && key !== 'boss_music') {
+            // Only set if not already set by a specific HIGHER_SOUND_VOLUME call in assets.js
+            // p5.sound doesn't have a getVolume, so we just re-apply the default
+            // but we skip the ones we know are higher or music.
+            const higherVolumeSounds = [
+                'collect', 'slurp', 'explode', 'cat_meow', 'cat_hurt', 'magnetism', 'boss_death',
+                'dungeon_warning', 'dungeon_judgment', 'dungeon_relents'
+            ];
+            if (!higherVolumeSounds.includes(key)) {
+                sound.setVolume(DEFAULT_SOUND_VOLUME);
+            }
+        }
+    }
 }
 
 /**
@@ -405,6 +525,28 @@ function playSound(soundName) {
     if (!soundName) {
         return;
     }
+
+    // Never ask Web Audio to play before a user gesture has started its context.
+    if (typeof audioStarted !== 'undefined' && !audioStarted) {
+        return;
+    }
+    if (typeof isGameAudioContextRunning === 'function' && !isGameAudioContextRunning()) {
+        return;
+    }
+
+    // Respect muted state and temporary audio silencing while gameplay overlays are open.
+    if (typeof gameState !== 'undefined' && gameState) {
+        const shouldSilence = gameState.isMuted ||
+            gameState.isPaused ||
+            gameState.showHelpScreen ||
+            gameState.showObjectInfoScreen ||
+            gameState.showAboutScreen ||
+            gameState.showAchievementsScreen;
+        if (shouldSilence) {
+            return;
+        }
+    }
+
     const sound = soundMap[soundName];
     if (sound && typeof sound.isLoaded === 'function' && sound.isLoaded()) {
         sound.play();

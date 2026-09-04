@@ -14,16 +14,160 @@ function collideRectRect(x1, y1, w1, h1, x2, y2, w2, h2) {
     return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
 }
 
+function isOverlayViewportSupported(minWidth = MIN_OVERLAY_VIEWPORT_WIDTH, minHeight = MIN_OVERLAY_VIEWPORT_HEIGHT) {
+    return width >= minWidth && height >= minHeight;
+}
+
+function getResponsiveOverlayBounds(
+    widthRatio,
+    heightRatio,
+    minWidth,
+    minHeight,
+    maxWidth = Infinity,
+    maxHeight = Infinity,
+    edgePadding = 24
+) {
+    const availableWidth = Math.max(240, width - edgePadding);
+    const availableHeight = Math.max(180, height - edgePadding);
+    const widthCap = Math.min(maxWidth, availableWidth);
+    const heightCap = Math.min(maxHeight, availableHeight);
+
+    const overlayWidth = Math.max(Math.min(width * widthRatio, widthCap), Math.min(minWidth, widthCap));
+    const overlayHeight = Math.max(Math.min(height * heightRatio, heightCap), Math.min(minHeight, heightCap));
+
+    return {
+        overlayWidth,
+        overlayHeight,
+        overlayX: (width - overlayWidth) / 2,
+        overlayY: (height - overlayHeight) / 2
+    };
+}
+
+function drawOverlayViewportWarning(title, navigationLines = [], minWidth = MIN_OVERLAY_VIEWPORT_WIDTH, minHeight = MIN_OVERLAY_VIEWPORT_HEIGHT) {
+    const bounds = getResponsiveOverlayBounds(0.8, 0.45, 320, 220, 760, 360);
+    const padding = 18;
+    const centerX = bounds.overlayX + bounds.overlayWidth / 2;
+    let currentY = bounds.overlayY + padding;
+
+    fill(160, 160, 160);
+    noStroke();
+    rect(bounds.overlayX, bounds.overlayY, bounds.overlayWidth, bounds.overlayHeight, 10);
+
+    fill(0);
+    textAlign(LEFT, TOP);
+    textStyle(BOLD);
+    textSize(24);
+    text(title, bounds.overlayX + padding, currentY);
+    currentY += 34;
+
+    textStyle(NORMAL);
+    textSize(14);
+    textLeading(18);
+    const statusText = `Resize window for full overlay view.\nMinimum canvas: ${minWidth} x ${minHeight}\nCurrent canvas: ${Math.round(width)} x ${Math.round(height)}`;
+    text(statusText, bounds.overlayX + padding, currentY, bounds.overlayWidth - (padding * 2));
+
+    textAlign(CENTER, BOTTOM);
+    textStyle(ITALIC);
+    textSize(13);
+    let navY = bounds.overlayY + bounds.overlayHeight - 16;
+    for (let i = navigationLines.length - 1; i >= 0; i--) {
+        text(navigationLines[i], centerX, navY);
+        navY -= 16;
+    }
+
+    textStyle(NORMAL);
+    textAlign(LEFT, BASELINE);
+}
+
+function computeAdaptiveOverlayLayout(overlayBounds, metricsBuilder, options = {}) {
+    const minScale = typeof options.minScale === 'number' ? options.minScale : 0.82;
+    const maxIterations = typeof options.maxIterations === 'number' ? options.maxIterations : 6;
+    const fitBias = typeof options.fitBias === 'number' ? options.fitBias : 0.98;
+    let layoutScale = typeof options.startScale === 'number' ? options.startScale : 1;
+
+    let metrics = metricsBuilder(layoutScale, overlayBounds.overlayWidth, overlayBounds.overlayHeight);
+    for (let i = 0; i < maxIterations && metrics.requiredHeight > metrics.availableHeight && layoutScale > minScale; i++) {
+        const fitRatio = metrics.availableHeight / Math.max(metrics.requiredHeight, 1);
+        layoutScale = Math.max(minScale, layoutScale * fitRatio * fitBias);
+        metrics = metricsBuilder(layoutScale, overlayBounds.overlayWidth, overlayBounds.overlayHeight);
+    }
+
+    if (metrics.requiredHeight > metrics.availableHeight) {
+        return null;
+    }
+
+    return {
+        ...overlayBounds,
+        layoutScale,
+        metrics,
+        scalePx: (value) => value * layoutScale
+    };
+}
+
+function wrapTextToLines(textValue, maxWidth) {
+    const lines = [];
+    const paragraphs = String(textValue ?? '').split('\n');
+
+    for (const paragraph of paragraphs) {
+        if (paragraph.length === 0) {
+            lines.push('');
+            continue;
+        }
+
+        const words = paragraph.split(/\s+/).filter(Boolean);
+        if (words.length === 0) {
+            lines.push('');
+            continue;
+        }
+
+        let line = words[0];
+        for (let i = 1; i < words.length; i++) {
+            const candidate = `${line} ${words[i]}`;
+            if (textWidth(candidate) <= maxWidth) {
+                line = candidate;
+            } else {
+                lines.push(line);
+                line = words[i];
+            }
+        }
+        lines.push(line);
+    }
+
+    return lines;
+}
+
+function measureWrappedTextHeight(textValue, maxWidth, lineHeight) {
+    const lines = wrapTextToLines(textValue, maxWidth);
+    return lines.length * lineHeight;
+}
+
+function drawWrappedTextBlock(textValue, x, y, maxWidth, lineHeight) {
+    const lines = wrapTextToLines(textValue, maxWidth);
+    for (let i = 0; i < lines.length; i++) {
+        text(lines[i], x, y + (i * lineHeight));
+    }
+    return lines.length * lineHeight;
+}
+
 function updatePopups() {
+    const frameDelta = getFrameDelta();
+
     for (let i = popups.length - 1; i >= 0; i--) {
         let popup = popups[i];
-        popup.y += POPUP_SPEED;
-        popup.lifetime -= 1;
+        popup.y += POPUP_SPEED * frameDelta;
+        popup.lifetime -= frameDelta;
         popup.alpha = map(popup.lifetime, POPUP_LIFETIME_FRAMES, 0, 255, 0);
-        fill(255, 255, 0, popup.alpha);
-        textSize(16);
-        textAlign(CENTER);
+        push();
+        textFont('Georgia');
+        textSize(18);
+        textStyle(BOLD);
+        textAlign(CENTER, CENTER);
+        noStroke();
+        fill(20, 10, 6, popup.alpha * 0.9);
+        text(popup.text, popup.x + 1.5, popup.y + 1.5);
+        fill(255, 230, 130, popup.alpha);
         text(popup.text, popup.x, popup.y);
+        pop();
         if (popup.lifetime <= 0) {
             popups.splice(i, 1);
         }
@@ -103,15 +247,14 @@ function handleHumanCollection() {
         playerState.lives = min(playerState.lives + 1, playerState.maxLives);
         gameState.humansForNextMaxLife += HUMANS_PER_MAX_LIFE_INCREASE;
 
-        // Activate notification for extra life
-        extraLifeNotification.active = true;
-        extraLifeNotification.timer = extraLifeNotification.duration;
+        // Queue notification for extra life
+        queueExtraLifeNotification();
         playSound('player_level_up'); // Use level up sound for extra life
     }
 }
 
 function handleBombCollection(obj) {
-    // Increment the appropriate counter based on the object type
+    // Player-caused detonation (hit, bolt, pull). Ground misses do not count.
     if (obj.type === OBJ_SMALL_BOMB) {
         gameState.collectedCounts.small_bomb++;
     } else if (obj.type === OBJ_FIREBALL) {
@@ -148,15 +291,13 @@ function handleHealthPotionCollection() {
 function handleWizardStaffCollection() {
     playerState.hasWizardStaff = true;
     gameState.collectedCount++;
-    staffNotification.active = true;
-    staffNotification.timer = STAFF_NOTIFICATION_DURATION;
+    queueStaffNotification();
 }
 
 function handleMagnetCollection() {
     playerState.hasMagnet = true;
     gameState.collectedCount++;
-    magnetNotification.active = true;
-    magnetNotification.timer = STAFF_NOTIFICATION_DURATION;
+    queueMagnetNotification();
 }
 
 function handleObjectBump(obj, index) {
@@ -178,7 +319,7 @@ function handleObjectBump(obj, index) {
 }
 
 function checkForPlayerLevelUp() {
-    if (playerState.experience >= playerState.experienceCap) {
+    while (playerState.experience >= playerState.experienceCap && playerState.experienceCap > 0) {
         let oldLevel = playerState.level;
         playerState.level += 1;
         // Calculate excess XP to carry over
@@ -193,16 +334,17 @@ function checkForPlayerLevelUp() {
         player.jumpPower *= PLAYER_JUMP_INCREASE_PER_LEVEL;
 
         if (playerState.level >= PLAYER_LEVEL_FOR_TENTACLES) {
+            let tentacleLine1;
+            let tentacleLine2;
             if (oldLevel < PLAYER_LEVEL_FOR_TENTACLES) {
-                tentacleNotification.line1 = "Tentacles Unlocked!";
-                tentacleNotification.line2 = "Press '1' Key to use";
+                tentacleLine1 = "Tentacles Unlocked!";
+                tentacleLine2 = "Press 'Z' Key to use";
             } else {
                 playerState.tentacleTargetLimit += 1;
-                tentacleNotification.line1 = "Tentacles +1";
-                tentacleNotification.line2 = `Target Limit: ${playerState.tentacleTargetLimit}`;
+                tentacleLine1 = "Tentacles +1";
+                tentacleLine2 = `Target Limit: ${playerState.tentacleTargetLimit}`;
             }
-            tentacleNotification.active = true;
-            tentacleNotification.timer = TENTACLE_NOTIFICATION_DURATION;
+            queueTentacleNotification(tentacleLine1, tentacleLine2);
         }
         playSound('player_level_up');
     }
@@ -216,7 +358,7 @@ function getCurrentLevel() {
 function getLevelFloorAndZone(level) {
     const floor = Math.floor((level - 1) / 5) + 1;
     const zone = ((level - 1) % 5) + 1;
-    return { floor, zone };
+    return {floor, zone};
 }
 
 // Function to clear all objects on screen with appropriate animations
@@ -260,12 +402,8 @@ function clearAllObjects() {
 
 // Function to create a boss
 function createBoss() {
-    // Calculate speed multiplier based on floor number
-    // Floor 2: 1x speed (base speed)
-    // Floor 4: 2x speed
-    // Floor 6: 4x speed
-    // Floor 8: 8x speed, etc.
-    let floorSpeedMultiplier = Math.pow(2, Math.floor((gameState.dungeonFloor - 2) / 2));
+    // Floor 2: 1×, 4: 2×, 6+: 4× (capped — see getBossFloorSpeedMultiplier)
+    let floorSpeedMultiplier = getBossFloorSpeedMultiplier();
 
     // Calculate additional lives based on floor number
     // Boss spawns at floor 2, 4, 6, etc. (even floors)
@@ -310,9 +448,7 @@ function createBoss() {
     objects.push(boss);
 
     // Show boss notification
-    gameLevelNotification.active = true;
-    gameLevelNotification.text = "BOSS FIGHT!";
-    gameLevelNotification.timer = GAME_LEVEL_NOTIFICATION_DURATION;
+    queueBossFightNotification();
     playSound('level_complete');
 }
 
@@ -342,7 +478,7 @@ function checkForGameLevelUp() {
 
         for (let obj of objects) {
             if (obj.type !== OBJ_BOSS) { // Don't update boss speed
-                obj.baseVy = BASE_DROP_SPEED_PIXELS_PER_SEC * gameState.dropSpeedScale;
+                obj.baseVy = BASE_DROP_SPEED_PX_PER_SECOND * gameState.dropSpeedScale;
                 // Apply the stored speed multiplier (for fireballs)
                 let speedMultiplier = obj.speedMultiplier || 1;
                 obj.vy = obj.baseVy * obj.initialVariation * speedMultiplier;
@@ -352,11 +488,17 @@ function checkForGameLevelUp() {
         // If we should spawn a boss, clear all objects and create the boss
         if (shouldSpawnBoss) {
             clearAllObjects();
+
+            // Shadow Bolt is the only boss-damaging ability. Normally the staff is
+            // collected from regular drops, but guarantee it here so a missed drop
+            // can never leave the run unable to progress.
+            if (!playerState.hasWizardStaff) {
+                handleWizardStaffCollection();
+            }
+
             createBoss();
         } else {
-            gameLevelNotification.active = true;
-            gameLevelNotification.text = `Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`;
-            gameLevelNotification.timer = GAME_LEVEL_NOTIFICATION_DURATION;
+            queueGameLevelNotification(`Floor ${gameState.dungeonFloor} Zone ${gameState.dungeonZone}`);
             playSound('level_complete');
         }
     }

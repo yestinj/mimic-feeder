@@ -43,19 +43,31 @@ function initializeStates() {
         showObjectInfoScreen: false,                   // Whether to show object info screen
         showAboutScreen: false,                        // Whether to show about screen
         showAchievementsScreen: false,                 // Whether to show achievements screen
+        isPaused: false,                               // Whether the game is paused
+        isMuted: false,                                // Whether the game is muted
         shouldTriggerGameOver: false,                  // Flag to trigger game over on next frame
         objectSpawnRate: BASE_OBJECT_SPAWN_RATE_FRAMES,// Rate at which objects spawn
+        objectSpawnTimer: 0,                           // Frame-equivalent accumulator for spawn cadence
         dropSpeedScale: INITIAL_DROP_SPEED_SCALE,      // Speed at which objects fall
         lastHealthPotionLevel: 0,                      // Last level a health potion appeared
         humansForNextMaxLife: HUMANS_PER_MAX_LIFE_INCREASE, // Humans needed for next max life increase
         collectedCounts: {                             // Counts of each object type collected
             human: 0, goblin: 0, elf: 0, wraith: 0, cat: 0,
-            dwarf: 0, dragon: 0, small_bomb: 0, crown: 0, diamond: 0, magnet: 0
+            dwarf: 0, dragon: 0, small_bomb: 0, fireball: 0, crown: 0, diamond: 0, magnet: 0
         },
         catsRescued: 0,                               // Number of cats rescued
         catsRescuedPoints: 0,                         // Points from rescuing cats
+        shadowBoltCatsDestroyed: 0,                   // Deliberate cat kills in this run
+        catKillWarningIssued: false,                  // Five-kill warning is once per run
+        ninefoldJudgmentTriggered: false,             // Judgment is once per run
         collectedCount: 0,                            // Total objects collected
         destroyedCount: 0,                            // Total objects destroyed
+        achievementStats: {                           // Run-based counters for mastery achievements
+            shadowBoltsCast: 0,
+            tentaclesUsed: 0,
+            dashesUsed: 0,
+            bossesDefeated: 0
+        },
         achievements: {},                             // Player's achievements
     };
 
@@ -73,14 +85,16 @@ function initializeStates() {
         usingTentacles: false,                        // Whether tentacles are currently active
         tentacleTargetLimit: INITIAL_TENTACLE_TARGET_LIMIT, // Max objects tentacles can target
         magnetismCooldown: 0,                         // Cooldown timer for magnetism ability
-        usingMagnetism: false,                        // Whether magnetism is currently active
-        magnetizedObjects: [],                        // Objects currently affected by magnetism
+        usingMagnetism: false,                        // Activation pulse flag for magnetism (cooldown gates re-use)
+        magnetizedObjects: [],                        // Snapshot objects marked for persistent pull until removed
         shadowBoltCooldown: 0,                        // Cooldown timer for shadow bolt ability
         dashCooldown: 0,                              // Cooldown timer for dash ability
-        lastLeftKeyPressTime: 0,                      // Frame count of last left arrow key press
-        lastRightKeyPressTime: 0,                     // Frame count of last right arrow key press
+        lastLeftKeyPressAtMs: 0,                      // Timestamp of last left movement key press
+        lastRightKeyPressAtMs: 0,                     // Timestamp of last right movement key press
         isDashing: false                              // Whether player is currently dashing
     };
+
+    resetNinefoldJudgment();
 }
 
 /**
@@ -111,6 +125,11 @@ let bossFireballs = [];
  * @type {boolean}
  */
 let audioStarted = false;
+/**
+ * In-flight userStartAudio request, preventing duplicate resume attempts.
+ * @type {?Promise<boolean>}
+ */
+let audioStartPromise = null;
 /**
  * Game canvas aspect ratio
  * @const {number}
@@ -146,10 +165,81 @@ const JUMP_EAT_OPEN_DURATION = 45;
 let isInitialPageLoad = true;
 
 /**
- * Screen shake amount for visual feedback
+ * Screen shake amount for visual feedback (skipped when prefers-reduced-motion)
  * @type {number}
  */
 let screenShakeAmount = 0;
+
+/**
+ * True when the user/OS requests reduced motion (vestibular accessibility).
+ * @returns {boolean}
+ */
+function prefersReducedMotion() {
+    return typeof matchMedia === 'function' &&
+        matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+/**
+ * Tracks whether game audio was silenced in the previous sync pass
+ * @type {?boolean}
+ */
+let wasGameAudioSilenced = null;
+/**
+ * Last fully rendered gameplay frame, used to freeze the world while paused.
+ * Captured only on the pause rising edge (not every active frame).
+ * @type {?p5.Image}
+ */
+let lastGameplayFrame = null;
+
+/**
+ * Captures the current canvas into lastGameplayFrame for the pause freeze.
+ * Call on the pause rising edge while the buffer still holds the last gameplay draw
+ * (before the pause overlay is painted).
+ * @function
+ */
+function captureGameplayFreezeSnapshot() {
+    if (typeof get === 'function') {
+        lastGameplayFrame = get();
+    }
+}
+
+/**
+ * Returns whether gameplay audio should currently be silenced
+ * @returns {boolean}
+ * @function
+ */
+function shouldSilenceGameAudio() {
+    return !!(
+        gameState.isMuted ||
+        gameState.isPaused ||
+        gameState.showHelpScreen ||
+        gameState.showObjectInfoScreen ||
+        gameState.showAboutScreen ||
+        gameState.showAchievementsScreen
+    );
+}
+
+/**
+ * Synchronizes audio output with the current game UI/state
+ * @function
+ */
+function syncGameAudioState() {
+    const shouldSilence = shouldSilenceGameAudio();
+    if (wasGameAudioSilenced === shouldSilence) {
+        return;
+    }
+
+    wasGameAudioSilenced = shouldSilence;
+    if (typeof masterVolume === 'function') {
+        masterVolume(shouldSilence ? 0 : 1);
+    }
+
+    if (shouldSilence) {
+        stopAllSounds(false, false);
+    } else if (audioStarted && gameState.gameStarted &&
+        !gameState.gameOver && !gameState.showIntroScreen) {
+        updateBackgroundMusic();
+    }
+}
 
 /**
  * p5.js setup function - Called once at the beginning
@@ -198,7 +288,6 @@ function setup() {
             gameState.showIntroScreen = false;
             gameState.startTime = millis() / 1000;
             gameState.gameStarted = true;
-            startAudioIfNeeded();
         }
         isInitialPageLoad = false; // Mark that initial load has passed
     } else {
@@ -206,7 +295,6 @@ function setup() {
         gameState.showIntroScreen = false;
         gameState.startTime = millis() / 1000;
         gameState.gameStarted = true;
-        startAudioIfNeeded();
     }
 }
 
@@ -226,6 +314,11 @@ function windowResized() {
         canvasHeight = canvasWidth / ASPECT_RATIO;
     }
     resizeCanvas(canvasWidth, canvasHeight);
+    // Keep the pause freeze snapshot across resize (drawn stretched to the new canvas).
+    // Clearing it while paused used to fall through into full simulation under the pause UI.
+    if (!gameState.isPaused) {
+        lastGameplayFrame = null;
+    }
 
     // Reposition UI buttons
     if (typeof retryButton !== 'undefined') {
@@ -239,43 +332,129 @@ function windowResized() {
 }
 
 /**
+ * Returns the background for a dungeon floor.
+ * Floors 1-10 each have their own background; the final background
+ * remains in use for the infinite floors beyond Floor 10.
+ * @param {number} dungeonFloor
+ * @returns {number}
+ */
+function getDungeonBackgroundIndex(dungeonFloor) {
+    const normalizedFloor = Number.isFinite(dungeonFloor) ? Math.max(1, Math.floor(dungeonFloor)) : 1;
+    const progressionIndex = normalizedFloor - 1;
+    const finalBackgroundIndex = Math.max(0, dungeonBackgroundImages.length - 1);
+    return Math.min(progressionIndex, finalBackgroundIndex);
+}
+
+/**
+ * Draws the dungeon background for the current floor (no simulation).
+ * @function
+ */
+function drawDungeonBackground() {
+    const backgroundIndex = getDungeonBackgroundIndex(gameState.dungeonFloor);
+    const dungeonBackground = dungeonBackgroundImages[backgroundIndex];
+
+    if (dungeonBackground) {
+        image(dungeonBackground, 0, 0, width, height);
+    } else {
+        background(8, 6, 12);
+    }
+}
+
+/**
+ * True when pause should freeze the playfield (not intro/game-over/full-screen overlays).
+ * @returns {boolean}
+ */
+function isPauseGameplayShell() {
+    return gameState.isPaused &&
+        !gameState.showIntroScreen &&
+        !gameState.gameOver &&
+        !gameState.showHelpScreen &&
+        !gameState.showObjectInfoScreen &&
+        !gameState.showAboutScreen &&
+        !gameState.showAchievementsScreen;
+}
+
+/**
+ * True when a mid-run info overlay is open (help / object info / about / achievements).
+ * These freeze simulation via early return in draw(); they should sit on a playfield underlay.
+ * @returns {boolean}
+ */
+function isMidRunInfoOverlay() {
+    return !gameState.showIntroScreen &&
+        !gameState.gameOver &&
+        (gameState.showHelpScreen ||
+            gameState.showObjectInfoScreen ||
+            gameState.showAboutScreen ||
+            gameState.showAchievementsScreen);
+}
+
+/**
+ * Draws the frozen playfield (or a static dungeon fallback) under pause / info overlays.
+ * @function
+ */
+function drawPlayfieldUnderlay() {
+    if (lastGameplayFrame) {
+        image(lastGameplayFrame, 0, 0, width, height);
+    } else {
+        drawDungeonBackground();
+        fill(80, 80, 80);
+        rect(0, height - VISUAL_GROUND_HEIGHT, width, VISUAL_GROUND_HEIGHT);
+    }
+}
+
+/**
+ * Ensures a freeze snapshot exists when opening help/achievements from active play.
+ * While already paused, keep the pause-edge snapshot (do not re-get() pause chrome).
+ * @function
+ */
+function ensureGameplayFreezeSnapshotForOverlay() {
+    if (!gameState.isPaused) {
+        captureGameplayFreezeSnapshot();
+    }
+}
+
+/**
  * p5.js draw function - Called continuously to render and update the game
  * This is the main game loop that handles rendering and game logic
  * @function
  */
 function draw() {
-    // Apply screen shake effect if active
-    if (screenShakeAmount > 0) {
+    const frameDelta = getFrameDelta();
+
+    // Keep audio state aligned with pause/help/mute state.
+    syncGameAudioState();
+
+    // Frozen playfield while paused: never run simulation under the pause UI.
+    // Prefer the last captured gameplay frame; if missing (rare: pause before first
+    // capture), draw a static background only — do not fall through into updates.
+    if (isPauseGameplayShell()) {
+        drawPlayfieldUnderlay();
+        drawPauseScreen();
+        return;
+    }
+
+    // Screen shake (skipped for pause freeze above, and when prefers-reduced-motion).
+    if (screenShakeAmount > 0 && !prefersReducedMotion()) {
         translate(random(-screenShakeAmount, screenShakeAmount), random(-screenShakeAmount, screenShakeAmount));
-        screenShakeAmount *= 0.9; // Decay
+        screenShakeAmount *= Math.pow(0.9, frameDelta); // Decay at a stable real-time rate
         if (screenShakeAmount < 0.5) screenShakeAmount = 0;
+    } else if (screenShakeAmount > 0 && prefersReducedMotion()) {
+        screenShakeAmount = 0;
     }
 
     // Update background music based on level
-    if (gameState.gameStarted && !gameState.gameOver && !gameState.showIntroScreen) {
+    if (audioStarted && gameState.gameStarted && !gameState.gameOver &&
+        !gameState.showIntroScreen && !shouldSilenceGameAudio()) {
         updateBackgroundMusic();
     }
 
-    // Draw the appropriate background based on dungeon floor
-    if (gameState.dungeonFloor < 3) {
-        if (bgImage1) {
-            image(bgImage1, 0, 0, width, height);
-        } else {
-            background(20, 0, 0);
-        }
-    } else {
-        if (bgImage2) {
-            image(bgImage2, 0, 0, width, height);
-        } else {
-            background(0, 0, 20);
-        }
-    }
-
     if (gameState.showIntroScreen) {
+        drawDungeonBackground();
         drawIntroScreen();
         return;
     }
     if (gameState.gameOver) {
+        drawDungeonBackground();
         if (gameState.enteringName) {
             drawNameInputScreen();
         } else {
@@ -283,35 +462,44 @@ function draw() {
         }
         return;
     }
-    if (gameState.showHelpScreen) {
-        drawHelpScreen();
+
+    // Mid-run info overlays: keep last playfield under semi-transparent chrome (M6).
+    // Simulation is not run while these are open (return below).
+    if (isMidRunInfoOverlay()) {
+        drawPlayfieldUnderlay();
+        if (gameState.showHelpScreen) {
+            drawHelpScreen();
+        } else if (gameState.showObjectInfoScreen) {
+            drawObjectInfoScreen();
+        } else if (gameState.showAboutScreen) {
+            drawAboutScreen();
+        } else if (gameState.showAchievementsScreen) {
+            drawAchievementsScreen();
+        }
         return;
     }
-    if (gameState.showObjectInfoScreen) {
-        drawObjectInfoScreen();
-        return;
-    }
-    if (gameState.showAboutScreen) {
-        drawAboutScreen();
-        return;
-    }
-    if (gameState.showAchievementsScreen) {
-        drawAchievementsScreen();
-        return;
-    }
+
+    drawDungeonBackground();
 
     if (!gameState.gameStarted) {
         gameState.startTime = millis() / 1000;
         gameState.gameStarted = true;
     }
 
+    // Active gameplay only below this point (pause shell returns earlier).
+    gameState.playTime += frameDelta / TARGET_FPS;
+
     updatePlayer();
-    spawnObjects();
-    updateObjects();
-    updateShadowBolts();
-    updateTongues();
-    updateMagnetism();
-    updateBossFireballs();
+    if (isNinefoldJudgmentActive()) {
+        updateAndDrawNinefoldJudgment();
+    } else {
+        spawnObjects();
+        updateObjects();
+        updateShadowBolts();
+        updateTongues();
+        updateMagnetism();
+        updateBossFireballs();
+    }
     updateBombExplosions();
     updateShadowBoltExplosions();
     updatePopups();
@@ -319,56 +507,24 @@ function draw() {
 
     // Check for achievements and update notifications
     checkAchievements();
-    updateAchievementNotification();
-
-    if (gameLevelNotification.active) {
-        gameLevelNotification.timer -= 1;
-        if (gameLevelNotification.timer <= 0) {
-            gameLevelNotification.active = false;
-        }
-    }
-    if (staffNotification.active) {
-        staffNotification.timer -= 1;
-        if (staffNotification.timer <= 0) {
-            staffNotification.active = false;
-        }
-    }
-    if (tentacleNotification.active) {
-        tentacleNotification.timer -= 1;
-        if (tentacleNotification.timer <= 0) {
-            tentacleNotification.active = false;
-        }
-    }
-    if (magnetNotification.active) {
-        magnetNotification.timer -= 1;
-        if (magnetNotification.timer <= 0) {
-            magnetNotification.active = false;
-        }
-    }
-    if (extraLifeNotification.active) {
-        extraLifeNotification.timer -= 1;
-        if (extraLifeNotification.timer <= 0) {
-            extraLifeNotification.active = false;
-        }
-    }
 
     if (playerState.tentaclesCooldown > 0) {
-        playerState.tentaclesCooldown -= 1;
+        playerState.tentaclesCooldown = max(0, playerState.tentaclesCooldown - frameDelta);
     }
     if (playerState.magnetismCooldown > 0) {
-        playerState.magnetismCooldown -= 1;
+        playerState.magnetismCooldown = max(0, playerState.magnetismCooldown - frameDelta);
     }
     if (playerState.shadowBoltCooldown > 0) {
-        playerState.shadowBoltCooldown -= 1;
+        playerState.shadowBoltCooldown = max(0, playerState.shadowBoltCooldown - frameDelta);
     }
     if (openChestTimer > 0) {
-        openChestTimer -= 1;
+        openChestTimer = max(0, openChestTimer - frameDelta);
     }
     if (shadowBoltAjarTimer > 0) {
-        shadowBoltAjarTimer -= 1;
+        shadowBoltAjarTimer = max(0, shadowBoltAjarTimer - frameDelta);
     }
     if (jumpEatOpenTimer > 0) {
-        jumpEatOpenTimer -= 1;
+        jumpEatOpenTimer = max(0, jumpEatOpenTimer - frameDelta);
     }
 
 
@@ -380,79 +536,12 @@ function draw() {
     fill(80, 80, 80);
     rect(0, height - VISUAL_GROUND_HEIGHT, width, VISUAL_GROUND_HEIGHT);
     drawPlayer();
-
-    if (gameLevelNotification.active) {
-        fill(255, 255, 0);
-        textSize(48);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(gameLevelNotification.text, width / 2, height / 2);
-        textStyle(NORMAL);
-    }
-    if (staffNotification.active) {
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 40, 340, 80, 10);
-        fill(255, 215, 0);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(staffNotification.line1, width / 2, height / 2 - 10);
-        textSize(18);
-        textStyle(ITALIC);
-        fill(230);
-        text(staffNotification.line2, width / 2, height / 2 + 20);
-        textStyle(NORMAL);
-    }
-    if (tentacleNotification.active) {
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 40, 340, 80, 10);
-        fill(138, 43, 226);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(tentacleNotification.line1, width / 2, height / 2 - 10);
-        textSize(18);
-        textStyle(ITALIC);
-        fill(230);
-        text(tentacleNotification.line2, width / 2, height / 2 + 20);
-        textStyle(NORMAL);
-    }
-
-    if (magnetNotification.active) {
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 40, 340, 80, 10);
-        fill(0, 100, 255);
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(magnetNotification.line1, width / 2, height / 2 - 10);
-        textSize(18);
-        textStyle(ITALIC);
-        fill(230);
-        text(magnetNotification.line2, width / 2, height / 2 + 20);
-        textStyle(NORMAL);
-    }
-
-    if (extraLifeNotification.active) {
-        fill(0, 0, 0, 150);
-        noStroke();
-        rect(width / 2 - 170, height / 2 - 40, 340, 80, 10);
-        fill(255, 0, 0); // Red color for extra life
-        textSize(28);
-        textAlign(CENTER, CENTER);
-        textStyle(BOLD);
-        text(extraLifeNotification.line1, width / 2, height / 2 - 10);
-        textSize(18);
-        textStyle(ITALIC);
-        fill(230);
-        text(extraLifeNotification.line2, width / 2, height / 2 + 20);
-        textStyle(NORMAL);
-    }
+    drawOnboardingOverlays();
+    drawNinefoldJudgmentForeground();
+    updateAndDrawCenterNotifications();
 
     drawUI();
+    // Pause freeze snapshot is captured on the P rising edge only (see captureGameplayFreezeSnapshot).
 }
 
 /**
@@ -463,26 +552,61 @@ function draw() {
 function triggerGameOver() {
     gameState.gameOver = true;
     gameState.enteringName = true;
-    gameState.playTime = (millis() / 1000) - gameState.startTime;
+    gameState.isPaused = false;
+    lastGameplayFrame = null;
+    clearCenterNotifications();
     playSound('game_over');
     stopAllSounds(true, false); // Stop all sounds including background music
 }
 
 /**
- * Starts the audio context if needed
- * Ensures audio can play when user interacts with the game
+ * Returns whether the p5 Web Audio context is currently running.
+ * @returns {boolean}
+ * @function
+ */
+function isGameAudioContextRunning() {
+    if (typeof getAudioContext !== 'function') {
+        return false;
+    }
+    const audioContext = getAudioContext();
+    return !!audioContext && audioContext.state === 'running';
+}
+
+/**
+ * Starts Web Audio from a keyboard or pointer interaction.
+ * The started flag is set only after the browser confirms that the context resumed.
+ * @returns {Promise<boolean>}
  * @function
  */
 function startAudioIfNeeded() {
-    if (getAudioContext() && getAudioContext().state === 'suspended' && !audioStarted) {
-        userStartAudio();
+    if (isGameAudioContextRunning()) {
         audioStarted = true;
-        updateBackgroundMusic(); // Start background music when audio is started
-    } else if (!getAudioContext() && !audioStarted) {
-        userStartAudio();
-        audioStarted = true;
-        updateBackgroundMusic(); // Start background music when audio is started
+        return Promise.resolve(true);
     }
+    if (audioStartPromise) {
+        return audioStartPromise;
+    }
+
+    audioStarted = false;
+    audioStartPromise = Promise.resolve(userStartAudio())
+        .then(() => {
+            audioStarted = isGameAudioContextRunning();
+            if (audioStarted && gameState.gameStarted && !gameState.gameOver &&
+                !gameState.showIntroScreen && !shouldSilenceGameAudio()) {
+                updateBackgroundMusic();
+            }
+            return audioStarted;
+        })
+        .catch((error) => {
+            audioStarted = false;
+            console.warn('Unable to start game audio after user interaction.', error);
+            return false;
+        })
+        .finally(() => {
+            audioStartPromise = null;
+        });
+
+    return audioStartPromise;
 }
 
 /**
@@ -491,12 +615,14 @@ function startAudioIfNeeded() {
  * @function
  */
 function updateBombExplosions() {
+    const frameDelta = getFrameDelta();
+
     for (let i = bombExplosions.length - 1; i >= 0; i--) {
         let explosion = bombExplosions[i];
-        explosion.frameTimer++;
+        explosion.frameTimer += frameDelta;
         if (explosion.frameTimer >= EXPLOSION_FRAME_DURATION) {
             explosion.currentFrame++;
-            explosion.frameTimer = 0;
+            explosion.frameTimer -= EXPLOSION_FRAME_DURATION;
         }
 
         // Determine which frames to use based on explosion type
@@ -533,9 +659,11 @@ function updateBombExplosions() {
 }
 
 function updateShadowBoltExplosions() {
+    const frameDelta = getFrameDelta();
+
     for (let i = shadowBoltExplosions.length - 1; i >= 0; i--) {
         let effect = shadowBoltExplosions[i];
-        effect.lifetime -= 1;
+        effect.lifetime -= frameDelta;
         if (effect.lifetime <= 0) {
             shadowBoltExplosions.splice(i, 1);
             continue;
@@ -567,12 +695,14 @@ function updateShadowBoltExplosions() {
 
 
 function updateGroundSplats() {
+    const frameDelta = getFrameDelta();
+
     for (let i = groundSplats.length - 1; i >= 0; i--) {
         let splat = groundSplats[i];
-        splat.frameTimer += 1;
+        splat.frameTimer += frameDelta;
         if (splat.frameTimer >= GROUND_SPLAT_FRAME_DURATION) {
             splat.currentFrame += 1;
-            splat.frameTimer = 0;
+            splat.frameTimer -= GROUND_SPLAT_FRAME_DURATION;
         }
         if (splat.currentFrame >= GROUND_SPLAT_TOTAL_FRAMES) {
             groundSplats.splice(i, 1);
@@ -597,17 +727,19 @@ function updateGroundSplats() {
 }
 
 function updateBossFireballs() {
+    const frameDelta = getFrameDelta();
+
     for (let i = bossFireballs.length - 1; i >= 0; i--) {
         let fireball = bossFireballs[i];
 
         // Update position
-        fireball.y += fireball.speed;
+        fireball.y += fireball.speed * frameDelta;
 
         // Update animation
-        fireball.frameTimer++;
+        fireball.frameTimer += frameDelta;
         if (fireball.frameTimer >= BOSS_FIREBALL_FRAME_DURATION) {
             fireball.currentFrame = (fireball.currentFrame + 1) % BOSS_FIREBALL_TOTAL_FRAMES;
-            fireball.frameTimer = 0;
+            fireball.frameTimer -= BOSS_FIREBALL_FRAME_DURATION;
         }
 
         // Draw fireball
@@ -615,8 +747,8 @@ function updateBossFireballs() {
             push();
             translate(fireball.x, fireball.y);
             // Rotate 90 degrees clockwise (PI/2 radians)
-            rotate(PI/2);
-            image(bossFireballFrames[fireball.currentFrame], -fireball.w/2, -fireball.h/2, fireball.w, fireball.h);
+            rotate(PI / 2);
+            image(bossFireballFrames[fireball.currentFrame], -fireball.w / 2, -fireball.h / 2, fireball.w, fireball.h);
             pop();
         } else {
             // Fallback if image not loaded
@@ -629,7 +761,7 @@ function updateBossFireballs() {
 
         // Check for collision with player
         if (collideRectRect(
-            fireball.x - fireball.w/2, fireball.y - fireball.h/2, fireball.w, fireball.h,
+            fireball.x - fireball.w / 2, fireball.y - fireball.h / 2, fireball.w, fireball.h,
             player.x, player.y, player.w, player.h
         )) {
             // Player hit by fireball
@@ -659,11 +791,11 @@ function updateBossFireballs() {
 
         // Check if fireball hit ground
         let groundLevel = height - PLAYER_GROUND_Y_OFFSET;
-        if (fireball.y + fireball.h/2 >= groundLevel) {
+        if (fireball.y + fireball.h / 2 >= groundLevel) {
             // Create explosion
             bombExplosions.push({
                 x: fireball.x,
-                y: groundLevel - fireball.h/2,
+                y: groundLevel - fireball.h / 2,
                 currentFrame: 0,
                 frameTimer: 0,
                 objWidth: fireball.w,
@@ -710,24 +842,53 @@ function keyPressed() {
         return;
     }
 
-    // Show help screen when Escape is pressed during gameplay
-    if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
-        !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
-        keyCode === ESCAPE) {
-        gameState.showHelpScreen = true;
+    // Handle Pause and Mute keys regardless of state (except during intro/gameover if desired)
+    // But P is mostly for during gameplay.
+    if (key === 'p' || key === 'P') {
+        if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
+            !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen) {
+            if (!gameState.isPaused) {
+                // Rising edge: canvas still shows the last active gameplay frame (no pause chrome).
+                captureGameplayFreezeSnapshot();
+                gameState.isPaused = true;
+            } else {
+                gameState.isPaused = false;
+            }
+            syncGameAudioState();
+            return;
+        }
+    }
+
+    if (key === 'm' || key === 'M') {
+        gameState.isMuted = !gameState.isMuted;
+        syncGameAudioState();
         return;
     }
 
-    // Show achievements screen when 'A' key is pressed during gameplay
+    // Show help screen when Escape is pressed during gameplay (including while paused)
     if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
         !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
-        key === 'a') {
+        keyCode === ESCAPE) {
+        ensureGameplayFreezeSnapshotForOverlay();
+        gameState.showHelpScreen = true;
+        syncGameAudioState();
+        return;
+    }
+
+    // Show achievements screen when 'K' key is pressed during gameplay (including while paused)
+    if (!gameState.showIntroScreen && !gameState.gameOver && !gameState.showHelpScreen &&
+        !gameState.showObjectInfoScreen && !gameState.showAboutScreen && !gameState.showAchievementsScreen &&
+        (key === 'k' || key === 'K')) {
+        ensureGameplayFreezeSnapshotForOverlay();
         gameState.showAchievementsScreen = true;
+        syncGameAudioState();
         return;
     }
 
     // Skip gameplay controls if not in active game state
-    if (gameState.showIntroScreen || gameState.gameOver || gameState.showHelpScreen) {
+    if (gameState.showIntroScreen || gameState.gameOver || gameState.isPaused ||
+        gameState.showHelpScreen || gameState.showObjectInfoScreen ||
+        gameState.showAboutScreen || gameState.showAchievementsScreen) {
         return;
     }
 
@@ -735,9 +896,11 @@ function keyPressed() {
     startAudioIfNeeded();
     handlePlayerJump();
     handlePlayerDash();
-    handleTentaclesAbility();
-    handleShadowBolt();
-    handleMagnetismAbility();
+    if (!isNinefoldJudgmentActive()) {
+        handleTentaclesAbility();
+        handleShadowBolt();
+        handleMagnetismAbility();
+    }
 }
 
 /**
@@ -784,12 +947,14 @@ function mousePressed() {
  * @param {boolean} [keepBackgroundMusic=false] - Whether to keep background music playing
  */
 function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) {
+    stopDungeonVoice();
     for (const soundName in soundMap) {
         if (soundMap.hasOwnProperty(soundName)) {
             const sound = soundMap[soundName];
             if (sound && typeof sound.stop === 'function' && typeof sound.isLoaded === 'function' && sound.isLoaded()) {
                 if ((sound === gameOverSound && allowGameOverSound) ||
-                    (keepBackgroundMusic && (sound === backgroundMusic1 || sound === backgroundMusic2))) {
+                    (keepBackgroundMusic &&
+                        (sound === backgroundMusic1 || sound === backgroundMusic2 || sound === bossMusic))) {
                     // Skip these sounds based on parameters
                 } else {
                     sound.stop();
@@ -800,36 +965,84 @@ function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) 
 }
 
 /**
- * Manages background music based on current dungeon floor
- * Switches between two background tracks depending on floor number
+ * Stops every music track except an optional selected track.
+ * @param {?Object} [trackToKeep=null]
+ * @function
+ */
+function stopMusicTracks(trackToKeep = null) {
+    const musicTracks = [backgroundMusic1, backgroundMusic2, bossMusic];
+    for (const track of musicTracks) {
+        if (track && track !== trackToKeep && typeof track.isPlaying === 'function' && track.isPlaying()) {
+            track.stop();
+        }
+    }
+}
+
+/**
+ * Loops one music track and stops the other music tracks.
+ * @param {?Object} track
+ * @function
+ */
+function playExclusiveMusic(track) {
+    if (!track || typeof track.isLoaded !== 'function' || !track.isLoaded()) {
+        return;
+    }
+
+    stopMusicTracks(track);
+    if (!track.isPlaying()) {
+        track.loop();
+    }
+}
+
+/**
+ * Stops combat music and plays the boss death cue once.
+ * @function
+ */
+function handleBossDefeatedAudio() {
+    stopMusicTracks();
+    playSound('boss_death');
+}
+
+/**
+ * Manages normal and boss music based on the current encounter state.
+ * Boss music loops for the fight, then stays silent during the death animation.
+ * Normal floor music waits for the death cue to finish before resuming.
  * @function
  */
 function updateBackgroundMusic() {
-    // Determine which background music should be playing based on floor
-    // Floors 1-2, 5-6, etc. use backgroundMusic1
-    // Floors 3-4, 7-8, etc. use backgroundMusic2
-    let shouldPlayMusic1 = gameState.dungeonFloor % 4 < 2;
-
-    // Check if the correct music is already playing
-    if (shouldPlayMusic1) {
-        if (backgroundMusic1 && !backgroundMusic1.isPlaying() && backgroundMusic1.isLoaded()) {
-            // Stop the other music if it's playing
-            if (backgroundMusic2 && backgroundMusic2.isPlaying()) {
-                backgroundMusic2.stop();
-            }
-            // Start playing backgroundMusic1 and loop it
-            backgroundMusic1.loop();
-        }
-    } else {
-        if (backgroundMusic2 && !backgroundMusic2.isPlaying() && backgroundMusic2.isLoaded()) {
-            // Stop the other music if it's playing
-            if (backgroundMusic1 && backgroundMusic1.isPlaying()) {
-                backgroundMusic1.stop();
-            }
-            // Start playing backgroundMusic2 and loop it
-            backgroundMusic2.loop();
-        }
+    if (!audioStarted || !isGameAudioContextRunning()) {
+        audioStarted = false;
+        return;
     }
+
+    if (shouldSilenceGameAudio()) {
+        return;
+    }
+
+    if (isNinefoldJudgmentActive()) {
+        stopMusicTracks();
+        return;
+    }
+
+    const boss = objects.find((obj) => obj.type === OBJ_BOSS);
+    if (boss) {
+        if (boss.isDying) {
+            stopMusicTracks();
+        } else {
+            playExclusiveMusic(bossMusic);
+        }
+        return;
+    }
+
+    if (bossDeathSound && typeof bossDeathSound.isPlaying === 'function' && bossDeathSound.isPlaying()) {
+        stopMusicTracks();
+        return;
+    }
+
+    // Floors 1-2, 5-6, etc. use backgroundMusic1;
+    // Floors 3-4, 7-8, etc. use backgroundMusic2.
+    const shouldPlayMusic1 = gameState.dungeonFloor % 4 < 2;
+    playExclusiveMusic(shouldPlayMusic1 ? backgroundMusic1 : backgroundMusic2);
 }
 
 /**
@@ -838,6 +1051,9 @@ function updateBackgroundMusic() {
  * @function
  */
 function triggerScreenShake(intensity) {
+    if (prefersReducedMotion()) {
+        return;
+    }
     screenShakeAmount = intensity;
 }
 
@@ -850,6 +1066,9 @@ function restartGame() {
     // Stop all sounds and reset game state
     stopAllSounds(false, false); // Stop all sounds including background music
     initializeStates(); // This resets gameState.lastUsedName to "Player"
+    // Spawn anti-clustering history is module state in objects.js — clear across runs.
+    recentSpawnXPositions = [];
+    loadAchievements(); // Restore persisted achievements after state initialization
 
     // Load name from localStorage and set up name input
     loadLastUsedName();
@@ -871,22 +1090,15 @@ function restartGame() {
     shadowBoltExplosions = [];
     groundSplats = [];
     bossFireballs = [];
+    resetNinefoldJudgment();
 
     // Reset timers
     openChestTimer = 0;
     shadowBoltAjarTimer = 0;
     jumpEatOpenTimer = 0;
 
-    // Reset notifications
-    gameLevelNotification.active = false;
-    gameLevelNotification.timer = 0;
-    gameLevelNotification.text = "";
-    staffNotification.active = false;
-    staffNotification.timer = 0;
-    tentacleNotification.active = false;
-    tentacleNotification.timer = 0;
-    magnetNotification.active = false;
-    magnetNotification.timer = 0;
+    // Reset queued center notifications
+    clearCenterNotifications();
 
     // Reset audio and game state
     audioStarted = false;
@@ -900,5 +1112,7 @@ function restartGame() {
     achievementsCurrentPage = 0;
 
     gameState.startTime = millis() / 1000;
+    gameState.isPaused = false;
+    lastGameplayFrame = null;
     startAudioIfNeeded();
 }

@@ -3,7 +3,7 @@ let shadowBolts = []; // This array is for the projectiles themselves
 let openChestTimer = 0; // For tentacles ability visual
 
 function handleTentaclesAbility() {
-    if (key === '1' && playerState.level >= PLAYER_LEVEL_FOR_TENTACLES && playerState.tentaclesCooldown <= 0) {
+    if ((key === 'z' || key === 'Z') && playerState.level >= PLAYER_LEVEL_FOR_TENTACLES && playerState.tentaclesCooldown <= 0) {
         tongues = [];
         let foundTarget = false;
         const humanoidTypes = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_CAT, OBJ_DRAGON];
@@ -27,6 +27,7 @@ function handleTentaclesAbility() {
             playerState.tentaclesCooldown = TENTACLE_COOLDOWN_FRAMES;
             playerState.usingTentacles = true;
             openChestTimer = 60; // Duration for tentacles open sprite
+            gameState.achievementStats.tentaclesUsed += 1;
         }
     }
 }
@@ -40,6 +41,7 @@ function handleShadowBolt() {
             currentFrame: 0, frameTimer: 0
         };
         shadowBolts.push(bolt);
+        gameState.achievementStats.shadowBoltsCast += 1;
         playSound('cast_spell');
         shadowBoltAjarTimer = SHADOW_BOLT_AJAR_DURATION;
 
@@ -49,13 +51,15 @@ function handleShadowBolt() {
 }
 
 function updateShadowBolts() {
+    const frameDelta = getFrameDelta();
+
     for (let i = shadowBolts.length - 1; i >= 0; i--) {
         let bolt = shadowBolts[i];
-        bolt.y += bolt.vy;
-        bolt.frameTimer += 1;
+        bolt.y += bolt.vy * frameDelta;
+        bolt.frameTimer += frameDelta;
         if (bolt.frameTimer >= SHADOW_BOLT_FRAME_DURATION) {
             bolt.currentFrame = (bolt.currentFrame + 1) % 4;
-            bolt.frameTimer = 0;
+            bolt.frameTimer -= SHADOW_BOLT_FRAME_DURATION;
         }
         const displaySize = SHADOW_BOLT_SIZE;
         if (shadowBoltFrames[bolt.currentFrame] && shadowBoltFrames[bolt.currentFrame].width) {
@@ -98,6 +102,10 @@ function updateShadowBolts() {
 
                 // Special handling for boss
                 if (obj.type === OBJ_BOSS) {
+                    if (obj.isDying) {
+                        continue;
+                    }
+
                     playSound('shadowbolt_hit');
                     shadowBoltExplosions.push({
                         x: bolt.x, y: bolt.y,
@@ -114,7 +122,7 @@ function updateShadowBolts() {
                     obj.hitFrameTimer = 0;
 
                     // Check if boss is defeated
-                    if (obj.lives <= 0) {
+                    if (obj.lives <= 0 && !obj.isDying) {
                         // Award points
                         let points = BOSS_POINTS;
                         gameState.score += points;
@@ -123,18 +131,24 @@ function updateShadowBolts() {
 
                         // Clear any remaining boss fireballs
                         bossFireballs = [];
+                        gameState.achievementStats.bossesDefeated += 1;
+                        queueBossDefeatedNotification();
 
                         // Set boss to die state
                         obj.isDying = true;
                         obj.dieCurrentFrame = 0;
                         obj.dieFrameTimer = 0;
                         obj.dieDuration = 0;
+                        handleBossDefeatedAudio();
 
                         // Check for level up after gaining XP
                         checkForPlayerLevelUp();
                     }
                 } else if (obj.type !== OBJ_SMALL_BOMB) {
-                    playSound('shadowbolt_hit');
+                    playSound(obj.type === OBJ_CAT ? 'cat_hurt' : 'shadowbolt_hit');
+                    if (obj.type === OBJ_CAT) {
+                        recordShadowBoltCatKill();
+                    }
                     shadowBoltExplosions.push({
                         x: obj.x, y: obj.y,
                         lifetime: SHADOW_BOLT_EXPLOSION_LIFETIME_FRAMES,
@@ -144,7 +158,7 @@ function updateShadowBolts() {
                     objects.splice(j, 1);
                 } else {
                     // if its a small bomb
-                    gameState.collectedCounts.small_bomb++;
+                    // Counting is owned by handleBombCollection (avoid double-count).
                     let points = SHADOW_BOLT_BOMB_POINTS;
                     // Award XP along with score
                     playerState.experience += points;
@@ -173,13 +187,15 @@ function updateShadowBolts() {
 function handlePlayerDash() {
     // Only process dash if cooldown is not active
     if (playerState.dashCooldown <= 0) {
-        const currentFrame = frameCount;
+        const currentTimeMs = millis();
+        const leftDashPressed = keyCode === LEFT_ARROW || keyCode === 65; // LEFT or A
+        const rightDashPressed = keyCode === RIGHT_ARROW || keyCode === 68; // RIGHT or D
 
-        // Check for left arrow double tap
-        if (keyCode === LEFT_ARROW) {
-            const timeSinceLastPress = currentFrame - playerState.lastLeftKeyPressTime;
+        // Check for left movement key double tap
+        if (leftDashPressed) {
+            const timeSinceLastPress = currentTimeMs - playerState.lastLeftKeyPressAtMs;
 
-            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_FRAMES && timeSinceLastPress > 0) {
+            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_MS && timeSinceLastPress > 0) {
                 // Double tap detected - perform dash to the left
                 player.x -= DASH_DISTANCE;
                 player.x = constrain(player.x, 0, width - player.w); // Keep player within bounds
@@ -189,17 +205,18 @@ function handlePlayerDash() {
                 // Add visual feedback
                 triggerScreenShake(3);
                 playSound('cast_spell'); // Reuse existing sound for now
+                gameState.achievementStats.dashesUsed += 1;
             }
 
             // Update last press time
-            playerState.lastLeftKeyPressTime = currentFrame;
+            playerState.lastLeftKeyPressAtMs = currentTimeMs;
         }
 
-        // Check for right arrow double tap
-        else if (keyCode === RIGHT_ARROW) {
-            const timeSinceLastPress = currentFrame - playerState.lastRightKeyPressTime;
+        // Check for right movement key double tap
+        else if (rightDashPressed) {
+            const timeSinceLastPress = currentTimeMs - playerState.lastRightKeyPressAtMs;
 
-            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_FRAMES && timeSinceLastPress > 0) {
+            if (timeSinceLastPress <= DASH_DOUBLE_TAP_WINDOW_MS && timeSinceLastPress > 0) {
                 // Double tap detected - perform dash to the right
                 player.x += DASH_DISTANCE;
                 player.x = constrain(player.x, 0, width - player.w); // Keep player within bounds
@@ -209,66 +226,58 @@ function handlePlayerDash() {
                 // Add visual feedback
                 triggerScreenShake(3);
                 playSound('cast_spell'); // Reuse existing sound for now
+                gameState.achievementStats.dashesUsed += 1;
             }
 
             // Update last press time
-            playerState.lastRightKeyPressTime = currentFrame;
+            playerState.lastRightKeyPressAtMs = currentTimeMs;
         }
     }
 }
 
-function handleMagnetismAbility() {
-    if (key === '2' && playerState.hasMagnet && playerState.magnetismCooldown <= 0) {
-        playerState.usingMagnetism = true;
-        playerState.magnetismCooldown = MAGNETISM_COOLDOWN_FRAMES;
-        playerState.magnetismDuration = MAGNETISM_DURATION_FRAMES;
+const MAGNETISM_HUMANOID_TYPES = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_CAT, OBJ_DRAGON];
+const MAGNETISM_HAZARD_TYPES = [OBJ_FIREBALL];
+const MAGNETISM_EXCLUDED_TYPES = [OBJ_WIZARD_STAFF, OBJ_HEALTH_POTION, OBJ_BOSS];
 
-        // Store the objects that are on screen when the ability is activated
-        playerState.magnetizedObjects = [...objects];
+function isObjectMagnetizable(obj) {
+    return !MAGNETISM_HUMANOID_TYPES.includes(obj.type) &&
+        !MAGNETISM_HAZARD_TYPES.includes(obj.type) &&
+        !MAGNETISM_EXCLUDED_TYPES.includes(obj.type);
+}
+
+function handleMagnetismAbility() {
+    if ((key === 'x' || key === 'X') && playerState.hasMagnet && playerState.magnetismCooldown <= 0) {
+        playerState.magnetismCooldown = MAGNETISM_COOLDOWN_FRAMES;
+        playerState.usingMagnetism = true;
+
+        // Magnetism contract:
+        // Snapshot eligible on-screen objects at activation and do not add newly spawned objects.
+        const snapshotObjects = objects.filter(isObjectMagnetizable);
+        playerState.magnetizedObjects = snapshotObjects;
+
+        // Mark snapshot objects immediately so they continue being affected until eaten/removed.
+        for (let obj of snapshotObjects) {
+            obj.magnetized = true;
+            if (!obj.initialFallingSpeed) {
+                obj.initialFallingSpeed = abs(obj.vy);
+            }
+        }
 
         playSound('magnetism');
     }
 }
 
 function updateMagnetism() {
-    // Process all magnetized objects, regardless of whether the ability is active
-    const humanoidTypes = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_CAT, OBJ_DRAGON];
-    const hazardTypes = [OBJ_FIREBALL];
-    const nonMagnetizedItems = [OBJ_WIZARD_STAFF, OBJ_HEALTH_POTION, OBJ_BOSS]; // Staff, potion, and boss should not be magnetized
+    const deltaSeconds = getDeltaSeconds();
 
     if (playerState.usingMagnetism) {
-        playerState.magnetismDuration -= 1;
-        if (playerState.magnetismDuration <= 0) {
-            playerState.usingMagnetism = false;
-        }
+        // Cooldown gates re-activation only; existing magnetized snapshot keeps pulling.
+        playerState.usingMagnetism = false;
+    }
 
-        // Only magnetize objects that were on screen when the ability was activated
-        if (playerState.magnetizedObjects) {
-            for (let obj of playerState.magnetizedObjects) {
-                // Skip if the object is no longer in the game
-                if (!objects.includes(obj)) {
-                    continue;
-                }
-
-                // Skip humanoids, hazards, and non-magnetized items
-                if (humanoidTypes.includes(obj.type) || hazardTypes.includes(obj.type) || nonMagnetizedItems.includes(obj.type)) {
-                    continue;
-                }
-
-                // Skip objects that are already being pulled by tentacles
-                if (obj.beingPulled) {
-                    continue;
-                }
-
-                // Mark the object as magnetized when the ability is active
-                obj.magnetized = true;
-
-                // Store the initial falling speed when the object becomes magnetized
-                if (!obj.initialFallingSpeed) {
-                    obj.initialFallingSpeed = abs(obj.vy);
-                }
-            }
-        }
+    if (playerState.magnetizedObjects && playerState.magnetizedObjects.length > 0) {
+        // Keep only live references to avoid stale snapshot entries.
+        playerState.magnetizedObjects = playerState.magnetizedObjects.filter(obj => objects.includes(obj));
     }
 
     for (let obj of objects) {
@@ -301,11 +310,11 @@ function updateMagnetism() {
 
             // Move horizontally towards player at exactly 5x the object's initial falling speed
             // Use deltaTime to ensure consistent movement regardless of frame rate
-            obj.x += dx * 5 * obj.initialFallingSpeed * (deltaTime / 1000.0);
+            obj.x += dx * MAGNETISM_ATTRACTION_SPEED_MULTIPLIER * obj.initialFallingSpeed * deltaSeconds;
 
             // Move vertically towards player (both upwards and downwards)
             // Override the normal vertical movement with magnetism-controlled movement
-            obj.y += dy * 5 * obj.initialFallingSpeed * (deltaTime / 1000.0);
+            obj.y += dy * MAGNETISM_ATTRACTION_SPEED_MULTIPLIER * obj.initialFallingSpeed * deltaSeconds;
             // Since we're manually moving the object vertically, we need to prevent the normal
             // downward movement in updateObjects() by setting vy to 0
             obj.vy = 0;
@@ -314,6 +323,8 @@ function updateMagnetism() {
 }
 
 function updateTongues() {
+    const frameDelta = getFrameDelta();
+
     for (let i = tongues.length - 1; i >= 0; i--) {
         let tongue = tongues[i];
         let objIndex = objects.indexOf(tongue.target);
@@ -323,7 +334,7 @@ function updateTongues() {
         }
         let obj = objects[objIndex];
         if (!tongue.isPulling) {
-            tongue.progress += 1.0 / TENTACLE_EXTENSION_DURATION_FRAMES;
+            tongue.progress += frameDelta / TENTACLE_EXTENSION_DURATION_FRAMES;
             tongue.progress = min(tongue.progress, 1);
             if (tongue.progress >= 1) {
                 tongue.isPulling = true;

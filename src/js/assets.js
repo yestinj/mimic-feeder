@@ -22,9 +22,21 @@ let explosionFrames = [];
 let chainImage;
 let groundSplatFrames = [];
 
-// Background images
-let bgImage1;
-let bgImage2;
+// Dungeon backgrounds, ordered one per floor through Floor 10.
+const DUNGEON_BACKGROUND_PATHS = [
+    'assets/backgrounds/upper-dungeon.jpg',
+    'assets/backgrounds/ageing-lower-halls.jpg',
+    'assets/backgrounds/lower-undercroft.jpg',
+    'assets/backgrounds/buried-crypts.jpg',
+    'assets/backgrounds/ancient-catacombs.jpg',
+    'assets/backgrounds/root-choked-necropolis.jpg',
+    'assets/backgrounds/underworld-depths.jpg',
+    'assets/backgrounds/infernal-ruins.jpg',
+    'assets/backgrounds/void-threshold.jpg',
+    'assets/backgrounds/abyss.jpg'
+];
+let dungeonBackgroundImages = [];
+let ninefoldJudgmentImage;
 
 // Sound effects
 let jumpSound;
@@ -43,11 +55,17 @@ let loseLifeSound;
 let popSound;
 let castSpellSound;
 let catMeowSound;
+let catHurtSound;
 let magnetismSound;
+let bossDeathSound;
+let dungeonWarningSound;
+let dungeonJudgmentSound;
+let dungeonRelentsSound;
 
 // Background music
 let backgroundMusic1;
 let backgroundMusic2;
+let bossMusic;
 
 function preload() {
     // Helper function to load an image with error handling
@@ -98,9 +116,9 @@ function preload() {
     objectImages[OBJ_DIAMOND] = loadImageWithErrorHandling('assets/diamond.png');
     objectImages[OBJ_WIZARD_STAFF] = loadImageWithErrorHandling('assets/staff.png');
 
-    // Load background images
-    bgImage1 = loadImageWithErrorHandling('assets/background_1.jpg');
-    bgImage2 = loadImageWithErrorHandling('assets/background_2.jpg');
+    // Load dungeon backgrounds in progression order.
+    dungeonBackgroundImages = DUNGEON_BACKGROUND_PATHS.map(loadImageWithErrorHandling);
+    ninefoldJudgmentImage = loadImageWithErrorHandling('assets/ninefold_judgment.png');
 
     // Load ability and effect images
     for (let i = 0; i <= 3; i++) {
@@ -192,9 +210,15 @@ function preload() {
     popSound = loadSoundWithVolume('assets/shadowbolt_hit.mp3');
     castSpellSound = loadSoundWithVolume('assets/cast_spell.mp3');
     catMeowSound = loadSoundWithVolume('assets/cat_meow.mp3', HIGHER_SOUND_VOLUME);
+    catHurtSound = loadSoundWithVolume('assets/cat_hurt.mp3', HIGHER_SOUND_VOLUME);
     magnetismSound = loadSoundWithVolume('assets/magnetism.mp3', HIGHER_SOUND_VOLUME);
+    bossDeathSound = loadSoundWithVolume('assets/boss_death.mp3', HIGHER_SOUND_VOLUME);
+    dungeonWarningSound = loadSoundWithVolume('assets/dungeon_warning.mp3', DUNGEON_VOICE_VOLUME);
+    dungeonJudgmentSound = loadSoundWithVolume('assets/dungeon_judgment.mp3', DUNGEON_VOICE_VOLUME);
+    dungeonRelentsSound = loadSoundWithVolume('assets/dungeon_relents.mp3', DUNGEON_VOICE_VOLUME);
 
     // Load background music
     backgroundMusic1 = loadSoundWithVolume('assets/music/background1.mp3', 0.4);
     backgroundMusic2 = loadSoundWithVolume('assets/music/background2.mp3', 0.4);
+    bossMusic = loadSoundWithVolume('assets/music/boss.mp3', 0.4);
 }
