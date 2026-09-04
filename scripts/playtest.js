@@ -263,6 +263,17 @@ async function main() {
         assert(catHurtSoundResult.mapped, 'Cat distress sound is registered');
         assert(catHurtSoundResult.loaded, 'Cat distress sound loaded successfully');
 
+        const dungeonVoiceResult = await page.evaluate(() => ({
+            mapped: soundMap.dungeon_warning === dungeonWarningSound &&
+                soundMap.dungeon_judgment === dungeonJudgmentSound &&
+                soundMap.dungeon_relents === dungeonRelentsSound,
+            loaded: [dungeonWarningSound, dungeonJudgmentSound, dungeonRelentsSound].every(
+                (sound) => sound && sound.isLoaded()
+            ),
+        }));
+        assert(dungeonVoiceResult.mapped, 'Fixed dungeon voice clips are registered');
+        assert(dungeonVoiceResult.loaded, 'Fixed dungeon voice clips loaded successfully');
+
         const judgmentContractResult = await page.evaluate(() => {
             const savedMuted = gameState.isMuted;
             const savedLives = playerState.lives;

@@ -179,13 +179,13 @@ const CAT_KILL_JUDGMENT_THRESHOLD = 10;
 /** @const {number} NINEFOLD_WAVE_COUNT - One attack wave for each traditional cat life */
 const NINEFOLD_WAVE_COUNT = 9;
 /** @const {number} NINEFOLD_SUMMON_DURATION_FRAMES - Apparition warning time before attacks */
-const NINEFOLD_SUMMON_DURATION_FRAMES = 210;
+const NINEFOLD_SUMMON_DURATION_FRAMES = 330;
 /** @const {number} NINEFOLD_FIRST_WAVE_DELAY_FRAMES - Ominous pause before the first wave */
 const NINEFOLD_FIRST_WAVE_DELAY_FRAMES = 36;
 /** @const {number} NINEFOLD_WAVE_INTERVAL_FRAMES - Breathing room between later waves */
 const NINEFOLD_WAVE_INTERVAL_FRAMES = 36;
 /** @const {number} NINEFOLD_END_DURATION_FRAMES - Apparition fade after the final wave */
-const NINEFOLD_END_DURATION_FRAMES = 90;
+const NINEFOLD_END_DURATION_FRAMES = 210;
 /** @const {number} NINEFOLD_DAMAGE_COOLDOWN_FRAMES - Prevents overlapping fireballs from stacking damage */
 const NINEFOLD_DAMAGE_COOLDOWN_FRAMES = 45;
 /** @const {number} NINEFOLD_FIREBALL_BASE_SPEED - First-wave speed in px per reference frame */
@@ -486,6 +486,9 @@ function setupSoundMap() {
         'cat_hurt': catHurtSound,
         'magnetism': magnetismSound,
         'boss_death': bossDeathSound,
+        'dungeon_warning': dungeonWarningSound,
+        'dungeon_judgment': dungeonJudgmentSound,
+        'dungeon_relents': dungeonRelentsSound,
         'background_music1': backgroundMusic1,
         'background_music2': backgroundMusic2,
         'boss_music': bossMusic
@@ -501,7 +504,8 @@ function setupSoundMap() {
             // p5.sound doesn't have a getVolume, so we just re-apply the default
             // but we skip the ones we know are higher or music.
             const higherVolumeSounds = [
-                'collect', 'slurp', 'explode', 'cat_meow', 'cat_hurt', 'magnetism', 'boss_death'
+                'collect', 'slurp', 'explode', 'cat_meow', 'cat_hurt', 'magnetism', 'boss_death',
+                'dungeon_warning', 'dungeon_judgment', 'dungeon_relents'
             ];
             if (!higherVolumeSounds.includes(key)) {
                 sound.setVolume(DEFAULT_SOUND_VOLUME);

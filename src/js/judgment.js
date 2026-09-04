@@ -4,9 +4,6 @@
  * then summons a one-time, nine-wave survival event at ten kills.
  */
 
-const CAT_KILL_WARNING_LINE = 'Five innocent lives. The dungeon is watching.';
-const CAT_KILL_JUDGMENT_LINE = 'Ten lives taken. You have angered the dungeon. Now—run.';
-
 let judgmentFireballs = [];
 let ninefoldJudgmentState = createNinefoldJudgmentState();
 
@@ -63,7 +60,7 @@ function recordShadowBoltCatKill() {
             titleSize: 34,
             subtitleSize: 22
         });
-        speakDungeonLine(CAT_KILL_WARNING_LINE);
+        playDungeonVoice('dungeon_warning');
     }
 
     if (!gameState.ninefoldJudgmentTriggered &&
@@ -75,56 +72,18 @@ function recordShadowBoltCatKill() {
     }
 }
 
-/**
- * Uses a local browser voice when available. The warning text is always rendered,
- * so speech support is enhancement rather than a gameplay dependency.
- * @param {string} line
- */
-function speakDungeonLine(line) {
-    if (gameState.isMuted || typeof window === 'undefined' ||
-        !window.speechSynthesis || typeof SpeechSynthesisUtterance !== 'function') {
-        return;
-    }
-
-    try {
-        const utterance = new SpeechSynthesisUtterance(line);
-        utterance.rate = 0.55;
-        utterance.pitch = 0.1;
-        utterance.volume = 1;
-
-        const voices = window.speechSynthesis.getVoices();
-        const preferredNames = [
-            /daniel/i,
-            /alex/i,
-            /google uk english male/i,
-            /microsoft (david|mark|george)/i,
-            /english.*male/i
-        ];
-        for (const pattern of preferredNames) {
-            const preferredVoice = voices.find((voice) =>
-                pattern.test(voice.name) && /^en([_-]|$)/i.test(voice.lang)
-            );
-            if (preferredVoice) {
-                utterance.voice = preferredVoice;
-                break;
-            }
-        }
-
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
-    } catch (error) {
-        console.warn('Dungeon voice unavailable:', error);
-    }
+function playDungeonVoice(soundName) {
+    stopDungeonVoice();
+    playSound(soundName);
 }
 
 function stopDungeonVoice() {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-        return;
-    }
-    try {
-        window.speechSynthesis.cancel();
-    } catch (error) {
-        // Speech is optional; text remains visible if cancellation is unsupported.
+    const dungeonVoiceSounds = [dungeonWarningSound, dungeonJudgmentSound, dungeonRelentsSound];
+    for (const sound of dungeonVoiceSounds) {
+        if (sound && typeof sound.stop === 'function' &&
+            typeof sound.isLoaded === 'function' && sound.isLoaded()) {
+            sound.stop();
+        }
     }
 }
 
@@ -157,7 +116,7 @@ function beginNinefoldJudgment() {
     clearCenterNotifications();
     stopMusicTracks();
     triggerScreenShake(10);
-    speakDungeonLine(CAT_KILL_JUDGMENT_LINE);
+    playDungeonVoice('dungeon_judgment');
 
     ninefoldJudgmentState.phase = 'summoning';
     ninefoldJudgmentState.phaseTimer = 0;
@@ -423,6 +382,7 @@ function beginNinefoldEnding() {
     ninefoldJudgmentState.phase = 'ending';
     ninefoldJudgmentState.phaseTimer = 0;
     ninefoldJudgmentState.corridorCenter = null;
+    playDungeonVoice('dungeon_relents');
 }
 
 /**

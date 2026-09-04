@@ -649,9 +649,17 @@ function checkNinefoldJudgmentContracts(
         'Judgment provides no corridor overlay or survival instruction'
     );
     assertContract(
-        /utterance\.rate = 0\.55/.test(judgmentSource) &&
-        /utterance\.pitch = 0\.1/.test(judgmentSource),
-        'Dungeon voice uses a substantially deeper, slower delivery'
+        fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_warning.mp3')) &&
+        fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_judgment.mp3')) &&
+        fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_relents.mp3')) &&
+        /dungeonWarningSound = loadSoundWithVolume\('assets\/dungeon_warning\.mp3', HIGHER_SOUND_VOLUME\)/.test(assetSource) &&
+        /dungeonJudgmentSound = loadSoundWithVolume\('assets\/dungeon_judgment\.mp3', HIGHER_SOUND_VOLUME\)/.test(assetSource) &&
+        /dungeonRelentsSound = loadSoundWithVolume\('assets\/dungeon_relents\.mp3', HIGHER_SOUND_VOLUME\)/.test(assetSource) &&
+        /playDungeonVoice\('dungeon_warning'\)/.test(judgmentSource) &&
+        /playDungeonVoice\('dungeon_judgment'\)/.test(judgmentSource) &&
+        /playDungeonVoice\('dungeon_relents'\)/.test(judgmentSource) &&
+        !/SpeechSynthesisUtterance|speechSynthesis/.test(judgmentSource),
+        'Judgment uses the approved fixed dungeon voice for warning, judgment, and survival'
     );
     assertContract(
         /title: 'FIVE INNOCENT LIVES'/.test(judgmentSource) &&
@@ -678,8 +686,8 @@ function checkNinefoldJudgmentContracts(
     );
     assertContract(
         /if \(isNinefoldJudgmentActive\(\)\) \{\s*stopMusicTracks\(\);\s*return;/.test(sketchSource) &&
-        /SpeechSynthesisUtterance/.test(judgmentSource),
-        'Judgment silences normal music and uses optional runtime speech for its warning lines'
+        /function stopDungeonVoice\(\)[\s\S]*dungeonWarningSound[\s\S]*dungeonJudgmentSound[\s\S]*dungeonRelentsSound/.test(judgmentSource),
+        'Judgment silences normal music and its fixed voice clips can be stopped cleanly'
     );
 }
 
