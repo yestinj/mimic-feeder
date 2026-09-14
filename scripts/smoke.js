@@ -652,7 +652,7 @@ function checkNinefoldJudgmentContracts(
         fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_warning.mp3')) &&
         fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_judgment.mp3')) &&
         fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'dungeon_relents.mp3')) &&
-        /const DUNGEON_VOICE_VOLUME = 0\.7/.test(constantsSource) &&
+        /const DUNGEON_VOICE_VOLUME = 0\.85/.test(constantsSource) &&
         /dungeonWarningSound = loadSoundWithVolume\('assets\/dungeon_warning\.mp3', DUNGEON_VOICE_VOLUME\)/.test(assetSource) &&
         /dungeonJudgmentSound = loadSoundWithVolume\('assets\/dungeon_judgment\.mp3', DUNGEON_VOICE_VOLUME\)/.test(assetSource) &&
         /dungeonRelentsSound = loadSoundWithVolume\('assets\/dungeon_relents\.mp3', DUNGEON_VOICE_VOLUME\)/.test(assetSource) &&

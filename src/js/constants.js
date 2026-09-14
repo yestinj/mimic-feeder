@@ -266,7 +266,7 @@ const DEFAULT_SOUND_VOLUME = 0.2;
 /** @const {number} HIGHER_SOUND_VOLUME - Higher volume for important game sounds (0-1) */
 const HIGHER_SOUND_VOLUME = 0.5;
 /** @const {number} DUNGEON_VOICE_VOLUME - Prominent volume for Ninefold Judgment voice lines */
-const DUNGEON_VOICE_VOLUME = 0.7;
+const DUNGEON_VOICE_VOLUME = 0.85;
 
 /**
  * Object Types - String constants used as keys for game objects
