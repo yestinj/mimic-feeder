@@ -91,7 +91,7 @@ function drawObjectInfoScreen() {
         ]);
         return;
     }
-    ({ overlayWidth, overlayHeight, overlayX, overlayY } = layout);
+    let { overlayWidth, overlayHeight, overlayX, overlayY } = layout;
     const { metrics, scalePx } = layout;
 
     // Draw the overlay background
