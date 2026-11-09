@@ -1,9 +1,13 @@
 {
   "name": "mimic-feeder",
-  "version": "1.0.0",
+  "version": "1.0.0-beta",
   "private": true,
   "scripts": {
     "build": "node build.js",
+    "lint": "node scripts/lint.js",
+    "smoke": "node scripts/smoke.js",
+    "playtest": "node scripts/playtest.js",
+    "test": "npm run lint && npm run build && npm run smoke",
     "start": "npx http-server dist -o",
     "dev": "nodemon --watch src --ext js,html,css --exec \"npm run build && echo 'Build complete, refresh your browser'\"",
     "docs": "jsdoc -c jsdoc.json",
@@ -12,11 +16,12 @@
   "devDependencies": {
     "clean-css": "^5.3.3",
     "docdash": "^2.0.2",
-    "esbuild": "^0.25.5",
-    "html-minifier": "^4.0.0",
+    "esbuild": "^0.28.1",
+    "html-minifier-terser": "^7.2.0",
     "http-server": "^14.1.1",
-    "jsdoc": "^4.0.2",
-    "nodemon": "^3.0.1"
+    "jsdoc": "^4.0.5",
+    "nodemon": "^3.1.14",
+    "playwright": "^1.61.1"
   },
   "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",
   "main": "build.js",

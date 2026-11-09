@@ -1,0 +1,5 @@
+# Cloudflare Pages config. Deployments are automatic via the GitHub integration.
+# No Pages Functions or D1 bindings are required for this static game.
+name = "mimic-feeder"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-02-17"

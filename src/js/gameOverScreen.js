@@ -1,187 +1,429 @@
-function drawGameOverScreen() {
-    // Draw "Game Over" title (using existing style)
-    textSize(100);
-    textAlign(CENTER, CENTER);
-    textStyle(BOLD);
-    fill(0);
-    stroke(0);
-    strokeWeight(4);
-    text("Game Over", width / 2 + 4, height / 2 - 250 + 4); // Shadow/Outline
-    fill(255, 0, 0);
-    noStroke();
-    strokeWeight(0);
-    text("Game Over", width / 2, height / 2 - 250); // Red fill
-    textStyle(NORMAL); // Reset style
+function fitTextToWidth(textValue, maxWidth) {
+    const normalizedText = String(textValue ?? '');
+    if (maxWidth <= 0 || normalizedText.length === 0) {
+        return '';
+    }
+    if (textWidth(normalizedText) <= maxWidth) {
+        return normalizedText;
+    }
 
-    // Draw retry button (using retryButton coords)
-    fill(255);
-    rect(retryButton.x, retryButton.y, retryButton.w, retryButton.h, 10);
-    fill(0);
-    textSize(24);
-    textAlign(CENTER, CENTER);
-    text("Retry", retryButton.x + retryButton.w / 2, retryButton.y + retryButton.h / 2);
+    const ellipsis = '...';
+    if (textWidth(ellipsis) > maxWidth) {
+        return '';
+    }
 
-    // --- Stats Display ---
-    // Define statsY based on button position FIRST
-    let statsY = retryButton.y + retryButton.h + 40;
+    let low = 0;
+    let high = normalizedText.length;
+    while (low < high) {
+        const mid = Math.floor((low + high + 1) / 2);
+        const candidate = `${normalizedText.slice(0, mid)}${ellipsis}`;
+        if (textWidth(candidate) <= maxWidth) {
+            low = mid;
+        } else {
+            high = mid - 1;
+        }
+    }
+    return `${normalizedText.slice(0, low)}${ellipsis}`;
+}
 
-    // Set text properties for stats
-    fill(255);
-    textSize(24);
-    textAlign(CENTER);
+function buildGameOverLayoutMetrics(layoutScale, preferStacked, totalItemRows, visibleItemRows, scoreRowCount) {
+    const scalePx = (value) => value * layoutScale;
+    const viewportPadding = constrain(Math.min(width, height) * 0.02, 8, 24);
+    const panelX = viewportPadding;
+    const panelY = viewportPadding;
+    const panelWidth = width - (viewportPadding * 2);
+    const panelHeight = height - (viewportPadding * 2);
+    const centerX = panelX + (panelWidth / 2);
+    const outerPadding = scalePx(18);
+    const innerWidth = panelWidth - (outerPadding * 2);
+    const sectionGap = scalePx(14);
+    const headerGap = scalePx(12);
+    const cardsGap = scalePx(14);
 
-    // Now use statsY
-    text(`Total Points: ${gameState.score}`, width / 2, statsY);
-    statsY += 30; // Increment statsY for the next line
-    text(`Floor: ${gameState.dungeonFloor}, Zone: ${gameState.dungeonZone}`, width / 2, statsY);
-    statsY += 30;
-    text(`Player Level: ${playerState.level}`, width / 2, statsY);
+    const titleSize = scalePx(76);
+    const titleHeight = scalePx(84);
+    const titleShadowOffset = Math.max(1, Math.round(scalePx(4)));
 
-    // --- Two Columns Below Stats ---
-    // columnStartY uses the final value of statsY from above
-    let columnStartY = statsY + 40;
+    const retryButtonWidth = scalePx(140);
+    const retryButtonHeight = scalePx(46);
+    const retryButtonCorner = scalePx(10);
+    const retryButtonTextSize = scalePx(22);
 
-    // Position left column further to the left to avoid overlap with high score table
-    let leftColumnX = width * 0.2; // Reduced from width/4 (25%) to 20% of screen width
+    const statsTextSize = scalePx(21);
+    const statsLineHeight = scalePx(28);
+    const statsBlockHeight = statsLineHeight * 3;
 
-    // --- Left Column: Items Collected ---
-    let itemY = columnStartY; // Start Y position for this column's content
+    const headerHeight = titleHeight + headerGap + retryButtonHeight + headerGap + statsBlockHeight;
+    const cardsTopY = panelY + outerPadding + headerHeight + sectionGap;
 
-    // Draw Totals FIRST
-    fill(255); // White for totals
-    textSize(20);
-    textAlign(CENTER); // Center align totals
-    text(`Objects Collected: ${gameState.collectedCount}`, leftColumnX, itemY);
-    itemY += 30;
-    text(`Objects Destroyed: ${gameState.destroyedCount}`, leftColumnX, itemY);
-    itemY += 30;
-    text(`Cats rescued: ${gameState.catsRescued} (${gameState.catsRescuedPoints} pts)`, leftColumnX, itemY);
-    itemY += 35; // Add extra space before detailed list
+    const cardPadding = scalePx(12);
+    const cardCorner = scalePx(10);
+    const cardTitleSize = scalePx(20);
+    const cardTitleHeight = scalePx(24);
+    const cardTitleGap = scalePx(8);
 
-    // Draw detailed item list
-    fill(220); // Lighter Grey text for item list
-    textSize(18);
-    textAlign(CENTER); // Keep centered
+    const totalsTextSize = scalePx(16);
+    const totalsLineHeight = scalePx(21);
+    const itemTextSize = scalePx(14);
+    const itemLineHeight = scalePx(19);
+    const hiddenItemRows = Math.max(0, totalItemRows - visibleItemRows);
+    const itemDetailRows = visibleItemRows + (hiddenItemRows > 0 ? 1 : 0);
+    const itemsCardHeight =
+        (cardPadding * 2) +
+        cardTitleHeight + cardTitleGap +
+        (totalsLineHeight * 3) + scalePx(8) +
+        (itemLineHeight * itemDetailRows);
 
-    const itemsToDisplay = getItemsToDisplay();
-    for (let item of itemsToDisplay) {
-        if (item.points !== 0) {
-            text(`${item.name}: ${item.count} (${item.points} pts)`, leftColumnX, itemY);
-            itemY += 25; // Spacing for item list
+    const tableTitleSize = scalePx(20);
+    const tableHeaderSize = scalePx(12);
+    const tableHeaderHeight = scalePx(17);
+    const tableRowSize = scalePx(12);
+    const tableRowHeight = scalePx(19);
+    const tableInnerTopGap = scalePx(8);
+    const tableHeaderGap = scalePx(6);
+    const tableBottomGap = scalePx(8);
+    const resolvedScoreRowCount = Math.max(1, scoreRowCount);
+    const tableCardHeight =
+        (cardPadding * 2) +
+        cardTitleHeight + cardTitleGap +
+        tableInnerTopGap +
+        tableHeaderHeight + tableHeaderGap +
+        (tableRowHeight * resolvedScoreRowCount) +
+        tableBottomGap;
+
+    let stacked = preferStacked || innerWidth < scalePx(860);
+    let itemsCardWidth;
+    let tableCardWidth;
+    let itemsCardX;
+    let tableCardX;
+    let itemsCardY = cardsTopY;
+    let tableCardY = cardsTopY;
+    let cardsSectionHeight;
+
+    if (!stacked) {
+        const minLeftCardWidth = scalePx(280);
+        const minRightCardWidth = scalePx(420);
+        const proposedRightWidth = Math.max(minRightCardWidth, innerWidth * 0.56);
+        const proposedLeftWidth = innerWidth - cardsGap - proposedRightWidth;
+        if (proposedLeftWidth < minLeftCardWidth) {
+            stacked = true;
+        } else {
+            itemsCardWidth = proposedLeftWidth;
+            tableCardWidth = proposedRightWidth;
+            itemsCardX = panelX + outerPadding;
+            tableCardX = itemsCardX + itemsCardWidth + cardsGap;
+            cardsSectionHeight = Math.max(itemsCardHeight, tableCardHeight);
         }
     }
 
-    // --- Right Column: High Scores Table ---
-    // Adjust column widths based on screen width
-    // For smaller screens, reduce column widths and padding
-    const isSmallScreen = width < 800;
-
-    // Define individual column widths with responsive adjustments
-    let dateColWidth = isSmallScreen ? 50 : 75;
-    let nameColWidth = isSmallScreen ?
-        (NAME_INPUT_MAX_LENGTH * 5) + 15 : // Smaller text on small screens
-        (NAME_INPUT_MAX_LENGTH * 8) + 35;  // Original size on larger screens
-    let scoreColWidth = isSmallScreen ? 50 : 75;
-    let gameLvlColWidth = isSmallScreen ? 65 : 95;
-    let playerLvlColWidth = isSmallScreen ? 40 : 65;
-    let timeColWidth = isSmallScreen ? 45 : 70; // Approx. width for "XXm YYs"
-
-    let headerPadding = isSmallScreen ? 10 : 15; // Reduced padding on small screens
-    let rightSidePadding = isSmallScreen ? 5 : 10; // Reduced padding on small screens
-
-    // Calculate total content width
-    let tableContentWidth = dateColWidth + nameColWidth + scoreColWidth + gameLvlColWidth + playerLvlColWidth + timeColWidth + rightSidePadding;
-    // Table border width will be content width + padding on both sides of the content
-    let tableBorderWidth = tableContentWidth + (headerPadding * 2);
-
-    let tableHeight = 290; // Keep adjusted height
-    let borderBoxPadding = 5; // Padding around the table border itself
-
-    // Position Table to ensure it's fully visible and doesn't overlap with left column
-    // Move the table to the right side of the screen, but ensure it doesn't go off-screen
-    let tableX = width * 0.55;
-
-    // Make sure the table doesn't extend beyond the right edge of the screen
-    if (tableX + tableBorderWidth > width - 10) {
-        tableX = width - tableBorderWidth - 10; // Keep 10px margin from right edge
+    if (stacked) {
+        itemsCardWidth = innerWidth;
+        tableCardWidth = innerWidth;
+        itemsCardX = panelX + outerPadding;
+        tableCardX = itemsCardX;
+        tableCardY = itemsCardY + itemsCardHeight + cardsGap;
+        cardsSectionHeight = itemsCardHeight + cardsGap + tableCardHeight;
     }
 
-    // Keep the Y position calculation as before for the table's top
-    let tableTopY = columnStartY - 10; // Renamed tableY to tableTopY for clarity
+    const requiredHeight = (outerPadding * 2) + headerHeight + sectionGap + cardsSectionHeight;
+    const retryButtonX = centerX - (retryButtonWidth / 2);
+    const retryButtonY = panelY + outerPadding + titleHeight + headerGap;
+    const statsStartY = retryButtonY + retryButtonHeight + headerGap;
 
-    let titleOffsetY = 20; // Y offset for the title from tableTopY
-    let headerOffsetY = titleOffsetY + 30; // Y offset for headers from tableTopY (increased from title)
-    let rowStartOffsetY = headerOffsetY + 25; // Y offset for first row from tableTopY
+    const tableContentX = tableCardX + cardPadding;
+    const tableContentY = tableCardY + cardPadding + cardTitleHeight + cardTitleGap + tableInnerTopGap;
+    const tableContentWidth = Math.max(1, tableCardWidth - (cardPadding * 2));
+    const tableCellPadding = scalePx(4);
+    const tableColumnWeights = [0.14, 0.24, 0.14, 0.2, 0.12, 0.16];
+    let runningX = tableContentX;
+    const tableColumns = tableColumnWeights.map((weight) => {
+        const colWidth = tableContentWidth * weight;
+        const column = {x: runningX, w: colWidth};
+        runningX += colWidth;
+        return column;
+    });
 
-    let tableTitleY = tableTopY + titleOffsetY;
-    let tableHeaderY = tableTopY + headerOffsetY;
-    let tableRowStartY = tableTopY + rowStartOffsetY;
+    return {
+        layoutScale,
+        scalePx,
+        panelX,
+        panelY,
+        panelWidth,
+        panelHeight,
+        centerX,
+        outerPadding,
+        sectionGap,
+        titleSize,
+        titleHeight,
+        titleShadowOffset,
+        retryButtonX,
+        retryButtonY,
+        retryButtonWidth,
+        retryButtonHeight,
+        retryButtonCorner,
+        retryButtonTextSize,
+        statsTextSize,
+        statsLineHeight,
+        statsStartY,
+        cardPadding,
+        cardCorner,
+        cardTitleSize,
+        cardTitleHeight,
+        cardTitleGap,
+        totalsTextSize,
+        totalsLineHeight,
+        itemTextSize,
+        itemLineHeight,
+        hiddenItemRows,
+        visibleItemRows,
+        itemsCardX,
+        itemsCardY,
+        itemsCardWidth,
+        itemsCardHeight,
+        tableTitleSize,
+        tableHeaderSize,
+        tableHeaderHeight,
+        tableRowSize,
+        tableRowHeight,
+        tableCardX,
+        tableCardY,
+        tableCardWidth,
+        tableCardHeight,
+        tableContentX,
+        tableContentY,
+        tableContentWidth,
+        tableCellPadding,
+        tableColumns,
+        requiredHeight
+    };
+}
 
-    // Draw Table Border using the new tableX and calculated tableBorderWidth
-    stroke(255);
-    strokeWeight(2);
-    noFill();
-    rect(tableX, tableTopY, tableBorderWidth, tableHeight); // Use tableTopY
+function computeGameOverLayout(totalItemRows, scoreRowCount) {
+    const minScale = 0.62;
+    const maxIterations = 8;
+    const modeOrder = width >= 1000 ? [false, true] : [true];
+    let fallbackLayout = null;
+
+    for (const preferStacked of modeOrder) {
+        let visibleItemRows = totalItemRows;
+        while (visibleItemRows >= 0) {
+            let layoutScale = 1;
+            let layout = buildGameOverLayoutMetrics(layoutScale, preferStacked, totalItemRows, visibleItemRows, scoreRowCount);
+
+            for (let i = 0; i < maxIterations && layout.requiredHeight > layout.panelHeight && layoutScale > minScale; i++) {
+                const fitRatio = layout.panelHeight / Math.max(layout.requiredHeight, 1);
+                layoutScale = Math.max(minScale, layoutScale * fitRatio * 0.98);
+                layout = buildGameOverLayoutMetrics(layoutScale, preferStacked, totalItemRows, visibleItemRows, scoreRowCount);
+            }
+
+            if (!fallbackLayout || layout.requiredHeight < fallbackLayout.requiredHeight) {
+                fallbackLayout = layout;
+            }
+            if (layout.requiredHeight <= layout.panelHeight) {
+                return layout;
+            }
+
+            visibleItemRows--;
+        }
+    }
+
+    return fallbackLayout || buildGameOverLayoutMetrics(minScale, true, totalItemRows, 0, scoreRowCount);
+}
+
+function drawGameOverItemsCard(layout, itemsToDisplay) {
+    stroke(255, 150);
+    strokeWeight(1.5);
+    fill(0, 0, 0, 120);
+    rect(layout.itemsCardX, layout.itemsCardY, layout.itemsCardWidth, layout.itemsCardHeight, layout.cardCorner);
     noStroke();
 
-    // Table Title - Center it within the table's content bounds
+    let textX = layout.itemsCardX + layout.cardPadding;
+    let textY = layout.itemsCardY + layout.cardPadding;
+    const textMaxWidth = layout.itemsCardWidth - (layout.cardPadding * 2);
+
     fill(255);
-    textSize(isSmallScreen ? 16 : 20); // Smaller text on small screens
+    textSize(layout.cardTitleSize);
     textStyle(BOLD);
-    textAlign(CENTER);
-    text("High Scores", tableX + tableBorderWidth / 2, tableTitleY); // Use tableTitleY
+    textAlign(LEFT, TOP);
+    text("Run Breakdown", textX, textY);
+    textY += layout.cardTitleHeight + layout.cardTitleGap;
+
+    const totals = [
+        `Objects Collected: ${gameState.collectedCount}`,
+        `Objects Destroyed: ${gameState.destroyedCount}`,
+        `Cats Rescued: ${gameState.catsRescued} (${gameState.catsRescuedPoints} pts)`
+    ];
+
+    textSize(layout.totalsTextSize);
     textStyle(NORMAL);
+    fill(255);
+    for (const totalLine of totals) {
+        text(fitTextToWidth(totalLine, textMaxWidth), textX, textY);
+        textY += layout.totalsLineHeight;
+    }
+    textY += layout.scalePx(8);
 
-    // Table Headers - Position relative to tableX + headerPadding (content start)
-    fill(200);
-    textSize(isSmallScreen ? 12 : 16); // Smaller text on small screens
-    textAlign(LEFT);
-    textStyle(BOLD);
-    let currentX = tableX + headerPadding; // Start of content drawing
-    text("Date", currentX, tableHeaderY);
-    currentX += dateColWidth;
-    text("Name", currentX, tableHeaderY);
-    currentX += nameColWidth;
-    text("Score", currentX, tableHeaderY);
-    currentX += scoreColWidth;
-    text("Floor/Zone", currentX, tableHeaderY);
-    currentX += gameLvlColWidth;
-    text("Player", currentX, tableHeaderY);
-    currentX += playerLvlColWidth;
-    text("Time", currentX, tableHeaderY);
-    textStyle(NORMAL);
-
-
-    // Table Rows - Position relative to tableX + headerPadding
-    textSize(isSmallScreen ? 10 : 14); // Smaller text on small screens
+    textSize(layout.itemTextSize);
     fill(220);
-    let rowY = tableRowStartY; // Use tableRowStartY
-    for (let i = 0; i < highScores.length && i < HIGH_SCORE_COUNT; i++) {
-        let entry = highScores[i];
-        currentX = tableX + headerPadding; // Reset X for each row
+    const shownItems = itemsToDisplay.slice(0, layout.visibleItemRows);
+    for (const item of shownItems) {
+        const itemLine = `${item.name}: ${item.count} (${item.points} pts)`;
+        text(fitTextToWidth(itemLine, textMaxWidth), textX, textY);
+        textY += layout.itemLineHeight;
+    }
 
-        text(entry.date || '??/??/??', currentX, rowY);
-        currentX += dateColWidth;
-        text(entry.name || 'Unknown', currentX, rowY);
-        currentX += nameColWidth;
-        text(entry.score || 0, currentX, rowY);
-        currentX += scoreColWidth;
-        // Convert game level to floor/zone format if available
-        let floorZoneText = '?';
-        if (entry.gameLevel) {
-            const { floor, zone } = getLevelFloorAndZone(entry.gameLevel);
+    if (layout.hiddenItemRows > 0) {
+        fill(190);
+        textStyle(ITALIC);
+        text(
+            fitTextToWidth(`+${layout.hiddenItemRows} more...`, textMaxWidth),
+            textX,
+            textY
+        );
+        textStyle(NORMAL);
+    }
+}
+
+function drawGameOverHighScoresCard(layout, scoreEntries) {
+    stroke(255, 150);
+    strokeWeight(1.5);
+    fill(0, 0, 0, 120);
+    rect(layout.tableCardX, layout.tableCardY, layout.tableCardWidth, layout.tableCardHeight, layout.cardCorner);
+    noStroke();
+
+    fill(255);
+    textSize(layout.tableTitleSize);
+    textStyle(BOLD);
+    textAlign(CENTER, TOP);
+    text(
+        "High Scores",
+        layout.tableCardX + (layout.tableCardWidth / 2),
+        layout.tableCardY + layout.cardPadding
+    );
+
+    const compactHeaders = layout.tableContentWidth < layout.scalePx(470);
+    const headers = compactHeaders
+        ? ["Date", "Name", "Score", "F/Z", "P", "Time"]
+        : ["Date", "Name", "Score", "Floor/Zone", "Player", "Time"];
+    const headerY = layout.tableContentY;
+
+    fill(200);
+    textSize(layout.tableHeaderSize);
+    textStyle(BOLD);
+    textAlign(LEFT, TOP);
+    for (let i = 0; i < layout.tableColumns.length; i++) {
+        const col = layout.tableColumns[i];
+        const maxCellWidth = col.w - (layout.tableCellPadding * 2);
+        const clippedHeader = fitTextToWidth(headers[i], maxCellWidth);
+        text(clippedHeader, col.x + layout.tableCellPadding, headerY);
+    }
+
+    let rowY = headerY + layout.tableHeaderHeight + layout.scalePx(6);
+    const rows = scoreEntries.length > 0
+        ? scoreEntries
+        : [{
+            date: '--',
+            name: 'No entries yet',
+            score: '--',
+            floorZone: '--',
+            player: '--',
+            time: '--'
+        }];
+
+    fill(220);
+    textSize(layout.tableRowSize);
+    textStyle(NORMAL);
+
+    for (const entry of rows) {
+        let floorZoneText = '--';
+        if (entry.floorZone) {
+            floorZoneText = entry.floorZone;
+        } else if (entry.gameLevel) {
+            const {floor, zone} = getLevelFloorAndZone(entry.gameLevel);
             floorZoneText = `${floor}/${zone}`;
         } else if (entry.dungeonFloor && entry.dungeonZone) {
             floorZoneText = `${entry.dungeonFloor}/${entry.dungeonZone}`;
         }
-        text(floorZoneText, currentX, rowY);
-        currentX += gameLvlColWidth;
-        text(entry.playerLevel || '?', currentX, rowY);
-        currentX += playerLvlColWidth;
-        text(formatPlayTime(entry.playTime || 0), currentX, rowY);
 
-        rowY += 21; // Slightly increased row spacing
+        const parsedScore = Number(entry.score);
+        const parsedPlayerLevel = Number(entry.playerLevel);
+        const rowValues = [
+            entry.date || '??/??/??',
+            entry.name || 'Unknown',
+            String(Number.isFinite(parsedScore) ? parsedScore : (entry.score || 0)),
+            floorZoneText,
+            String(Number.isFinite(parsedPlayerLevel) ? parsedPlayerLevel : (entry.player || '?')),
+            entry.time || formatPlayTime(Number.isFinite(entry.playTime) ? entry.playTime : 0)
+        ];
+
+        for (let i = 0; i < layout.tableColumns.length; i++) {
+            const col = layout.tableColumns[i];
+            const maxCellWidth = col.w - (layout.tableCellPadding * 2);
+            const clippedValue = fitTextToWidth(rowValues[i], maxCellWidth);
+            text(clippedValue, col.x + layout.tableCellPadding, rowY);
+        }
+
+        rowY += layout.tableRowHeight;
     }
+}
+
+function drawGameOverScreen() {
+    fill(0, 0, 0, 190);
+    rect(0, 0, width, height);
+
+    const itemsToDisplay = getItemsToDisplay().filter((item) => item.points !== 0);
+    const scoreEntries = highScores.slice(0, HIGH_SCORE_COUNT);
+    const layout = computeGameOverLayout(itemsToDisplay.length, scoreEntries.length);
+
+    fill(30, 30, 30, 185);
+    noStroke();
+    rect(layout.panelX, layout.panelY, layout.panelWidth, layout.panelHeight, 12);
+
+    retryButton.x = layout.retryButtonX;
+    retryButton.y = layout.retryButtonY;
+    retryButton.w = layout.retryButtonWidth;
+    retryButton.h = layout.retryButtonHeight;
+
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(layout.titleSize);
+    fill(0);
+    text(
+        "Game Over",
+        layout.centerX + layout.titleShadowOffset,
+        layout.panelY + layout.outerPadding + (layout.titleHeight / 2) + layout.titleShadowOffset
+    );
+    fill(255, 0, 0);
+    text(
+        "Game Over",
+        layout.centerX,
+        layout.panelY + layout.outerPadding + (layout.titleHeight / 2)
+    );
+
+    fill(255);
+    rect(retryButton.x, retryButton.y, retryButton.w, retryButton.h, layout.retryButtonCorner);
+    fill(0);
+    textSize(layout.retryButtonTextSize);
+    text("Retry", retryButton.x + (retryButton.w / 2), retryButton.y + (retryButton.h / 2));
+
+    const statsLines = [
+        `Total Points: ${gameState.score}`,
+        `Floor: ${gameState.dungeonFloor}, Zone: ${gameState.dungeonZone}`,
+        `Player Level: ${playerState.level}`
+    ];
+    fill(255);
+    textStyle(NORMAL);
+    textSize(layout.statsTextSize);
+    textAlign(CENTER, TOP);
+    for (let i = 0; i < statsLines.length; i++) {
+        text(statsLines[i], layout.centerX, layout.statsStartY + (i * layout.statsLineHeight));
+    }
+
+    drawGameOverItemsCard(layout, itemsToDisplay);
+    drawGameOverHighScoresCard(layout, scoreEntries);
+
+    textStyle(NORMAL);
+    textAlign(LEFT, BASELINE);
 }
 
 function handleGameOverScreenMousePressed() {

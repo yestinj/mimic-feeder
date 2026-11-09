@@ -1,15 +1,29 @@
+# Cloudflare Pages applies EVERY rule whose path matches and joins same-name
+# headers with commas. Keep exactly one Cache-Control rule per served path, and
+# never put Cache-Control in /* (it would be appended to every other rule).
+
 /app.min.js
+  # Long cache is safe: index.html references it with a ?v= build cache-buster.
   Cache-Control: public, max-age=31536000
 
 /assets/*
-  Cache-Control: public, max-age=31536000
+  # Unversioned media paths: revalidate within a day so deploys refresh sprites/SFX.
+  Cache-Control: public, max-age=86400, must-revalidate
+
+/
+  Cache-Control: public, max-age=3600
+
+/index.html
+  Cache-Control: public, max-age=3600
+
+/styles.css
+  Cache-Control: public, max-age=3600
 
 /*
-   Cache-Control: public, max-age=3600
-   Content-Security-Policy: default-src 'self' https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com https://static.cloudflareinsights.com blob:; worker-src 'self' blob:; object-src 'none'; img-src 'self' data:; style-src 'self'; connect-src 'self' https://cloudflareinsights.com
-   X-Content-Type-Options: nosniff
-   X-Frame-Options: DENY
-   Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'self' https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com https://static.cloudflareinsights.com blob:; worker-src 'self' blob:; object-src 'none'; img-src 'self' data:; style-src 'self'; connect-src 'self' https://cloudflareinsights.com
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
 
 https://*.pages.dev/*
   X-Robots-Tag: noindex

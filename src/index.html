@@ -5,33 +5,40 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta name="referrer" content="strict-origin-when-cross-origin">
 
-    <meta name="description" content="Play Mimic Feeder, a strategic p5.js game where you outsmart opponents with clever tactics.">
+    <meta name="description" content="Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock powers.">
     <meta name="keywords" content="Mimic Feeder, p5.js, strategy game, canvas game">
     <meta name="author" content="Yestin Johnson">
     <link rel="icon" href="assets/favicon.ico">
     <!-- Open Graph for social sharing -->
-    <meta property="og:title" content="Mimic Feeder">
-    <meta property="og:description" content="A fun and strategic p5.js game. Outsmart your opponents in Mimic Feeder!">
-    <!--    TODO -->
-    <meta property="og:image" content="/assets/og-image.png">
-    <meta property="og:url" content="https://mimicfeeder.yest.dev/">
-    <meta property="og:type" content="website">
+    <meta property="og:title" content="Mimic Feeder"/>
+    <meta property="og:description" content="Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock powers."/>
+    <meta property="og:image" content="https://mimicfeeder.yest.dev/assets/og-image.png"/>
+    <meta property="og:url" content="https://mimicfeeder.yest.dev/"/>
+    <meta property="og:type" content="website"/>
+
+    <!-- Twitter Card tags -->
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="Mimic Feeder"/>
+    <meta name="twitter:description" content="Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock powers."/>
+    <meta name="twitter:image" content="https://mimicfeeder.yest.dev/assets/og-image.png"/>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mimic Feeder</title>
 
     <link rel="stylesheet" href="styles.css">
 
-    <!-- Load Libraries with defer -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/addons/p5.sound.min.js" defer></script>
+    <!-- Load explicitly versioned libraries from cdnjs. Browser playtests guard runtime availability. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/p5.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.13/addons/p5.sound.min.js" defer></script>
     <!-- Load Game Scripts with defer -->
+    <!-- BUILD:GAME_SCRIPTS_START -->
     <script src="js/constants.js" defer></script>
     <script src="js/assets.js" defer></script>
     <script src="js/utils.js" defer></script>
     <script src="js/player.js" defer></script>
     <script src="js/objects.js" defer></script>
     <script src="js/abilities.js" defer></script>
+    <script src="js/judgment.js" defer></script>
     <script src="js/ui.js" defer></script>
     <script src="js/introScreen.js" defer></script>
     <script src="js/nameInputScreen.js" defer></script>
@@ -41,6 +48,7 @@
     <script src="js/aboutScreen.js" defer></script>
     <script src="js/achievements.js" defer></script>
     <script src="js/sketch.js" defer></script>
+    <!-- BUILD:GAME_SCRIPTS_END -->
 </head>
 <body>
 <!-- Canvas will be created here by p5.js -->
