@@ -1073,7 +1073,10 @@ function triggerScreenShake(intensity) {
 function restartGame() {
     // Stop all sounds and reset game state
     stopAllSounds(false, false); // Stop all sounds including background music
+    // Mute is a player preference, not run state: keep it across the reset below.
+    const wasMuted = gameState.isMuted;
     initializeStates(); // This resets gameState.lastUsedName to "Player"
+    gameState.isMuted = wasMuted;
     // Spawn anti-clustering history is module state in objects.js — clear across runs.
     recentSpawnXPositions = [];
     loadAchievements(); // Restore persisted achievements after state initialization

@@ -89,6 +89,12 @@ function checkAchievementPersistenceContracts(sketchSource, achievementsSource) 
         /recentSpawnXPositions\s*=\s*\[\s*\]/.test(restartBody),
         'restartGame clears recentSpawnXPositions spawn clustering history'
     );
+    const muteSaveIndex = restartBody.indexOf('const wasMuted = gameState.isMuted;');
+    const muteRestoreIndex = restartBody.indexOf('gameState.isMuted = wasMuted;');
+    assertContract(
+        muteSaveIndex !== -1 && muteSaveIndex < initializeStatesIndex && initializeStatesIndex < muteRestoreIndex,
+        'restartGame keeps the mute preference across state reinitialization'
+    );
 
     const loadAchievementsBody = extractFunctionBody(achievementsSource, 'loadAchievements');
     assertContract(!!loadAchievementsBody, 'loadAchievements function exists');
