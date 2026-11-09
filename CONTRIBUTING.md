@@ -7,20 +7,20 @@ I'm not open to contributions, but if you'd like to fork the project and make yo
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/mimic-feeder.git`
 3. Install dependencies: `npm install`
-4. Start the development server: `npm run dev`
+4. Build and serve the game: `npm run build && npm start` (use `npm run dev` alongside to rebuild on change)
 
 ## Development Workflow
 
 1. Create a new branch for your feature or bugfix: `git checkout -b feature/your-feature-name`
 2. Make your changes
-3. Test your changes by building the project: `npm run build`
+3. Test your changes: `npm test` (syntax lint, build, and smoke checks)
 4. Run the game: `npm start`
 5. Commit your changes with a descriptive commit message
 6. Push to your fork: `git push origin feature/your-feature-name`
 
 ## Code Style Guidelines
 
-- Use consistent indentation (2 spaces)
+- Use consistent indentation (4 spaces, per `.editorconfig`)
 - Use meaningful variable and function names
 - Add comments for complex logic
 - Keep functions small and focused on a single task

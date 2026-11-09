@@ -44,12 +44,13 @@ Mastery tracking includes:
 3. Build the project: `npm run build`
 4. Start the local server: `npm start` (this will open the game in your browser)
 
-Alternatively, after building, you can open `dist/index.html` directly in your browser.
+The game must be served over HTTP. Opening `dist/index.html` directly (`file://`) does not work: the browser blocks asset loading and the game stays on "Loading...".
 
 ### Deploy notes
 - Production is a static Cloudflare Pages site (build output: `dist/`).
 - Deploys are automatic via the Cloudflare Pages GitHub integration.
-- No Pages Functions, D1, or client analytics are used.
+- No Pages Functions or D1 are used, and the game ships no analytics or tracking code.
+- The Content Security Policy in `src/_headers` allows Cloudflare Web Analytics, so it can be turned on from the Cloudflare dashboard without a code change.
 
 ### Common Issues
 - **No Audio**: If audio is muted on first load, click anywhere on the page or press any key to activate the audio context.
@@ -67,8 +68,8 @@ Alternatively, after building, you can open `dist/index.html` directly in your b
 - Stay on p5 **1.x** unless you plan a dedicated 2.x migration (see `AGENTS.md`).
 
 ### Development Workflow
-1. Run `npm run dev` to start the development server with auto-rebuild on file changes
-2. Open `dist/index.html` in your browser
+1. Run `npm run dev` to rebuild `dist/` automatically on file changes (this does not serve the game)
+2. In a second terminal, run `npm start` to serve `dist/` and open it in your browser
 3. Make changes to files in the `src` directory
 4. When you see "Build complete" in the console, refresh your browser to see changes
 

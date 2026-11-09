@@ -47,7 +47,7 @@ playtest-output/      # Playtest screenshots (gitignored)
 Order is enforced in `build.js` and `src/index.html`:
 
 1. `constants.js` → `assets.js` → `utils.js`
-2. `player.js` → `objects.js` → `abilities.js` → `ui.js`
+2. `player.js` → `objects.js` → `abilities.js` → `judgment.js` → `ui.js`
 3. Screens: `introScreen`, `nameInputScreen`, `gameOverScreen`, `helpScreen`, `objectInfoScreen`, `aboutScreen`
 4. `achievements.js` → `sketch.js` (entry / main loop)
 
@@ -144,5 +144,4 @@ Playtest uses **system Brave** by default (`/Applications/Brave Browser.app/...`
 - `README.md` — player-facing controls and setup
 - `CONTRIBUTING.md` — fork workflow (not open contribution)
 - `PRE_MERGE_PLAN.md` — active develop→main decisions (analytics removal, pause/bomb fixes, CF follow-up)
-- `CODE_REVIEW.md` — full-project review (2026-07-09); point-in-time findings, not an auto-updated backlog
-- `archive/plan.md` / `archive/tech-review.md` — historical polish checklist and Feb 2026 tech review (not living todos)
+- `archive/` — historical notes only (not living todos or current assessments): `plan.md` polish checklist, `tech-review.md` Feb 2026 tech review, `code-review-2026-07-09.md` superseded July 2026 review

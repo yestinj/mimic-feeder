@@ -1,5 +1,7 @@
 # Mimic Feeder — Full Project Code Review
 
+> **Historical (archived).** Point-in-time review of `develop` @ `60aee26` (2026-07-09). Not maintained and not a current assessment: later commits changed some items marked "Fixed" (for example, M2's p5 SRI attributes were removed again), and the code added after this date was never covered.
+
 | Field | Value |
 |--------|--------|
 | **Date** | 2026-07-09 |
