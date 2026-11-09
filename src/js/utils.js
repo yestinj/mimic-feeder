@@ -557,6 +557,7 @@ function collectObject(obj, index, isEaten = false) {
             // NOTE: No break statement here is intentional.
             // The human collection logic requires fall-through to the default case
             // to properly handle scoring, counting, and game level progression.
+            // falls through
             default:
                 if (props.xp > 0) {
                     handleScoringAndXP(props.xp);

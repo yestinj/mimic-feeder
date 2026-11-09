@@ -14,6 +14,10 @@
  * - denied localStorage access does not break achievement loading
  * - no /api/track network calls
  * - no unexpected page/console errors
+ * - responses carry the headers from dist/_headers (the build's copy of
+ *   src/_headers) with Cloudflare Pages semantics, so the production CSP is
+ *   enforced: any `securitypolicyviolation` fails the run
+ * - no served path gets Cache-Control from more than one _headers rule
  *
  * Usage:
  *   npm run build && npm run playtest
@@ -26,12 +30,14 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
+const { loadHeadersFile, resolveHeaders, toResponseHeaders } = require('./pages-headers.js');
 
 const PORT = Number(process.env.PLAYTEST_PORT || 4173);
 const HOST = '127.0.0.1';
 const BASE = `http://${HOST}:${PORT}`;
 const DIST = path.join(__dirname, '..', 'dist');
 const OUT_DIR = path.join(__dirname, '..', 'playtest-output');
+const HEADERS_FILE = path.join(DIST, '_headers');
 
 const DEFAULT_BRAVE_PATH = '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
 const BROWSER_PATH = process.env.PLAYTEST_BROWSER_PATH || DEFAULT_BRAVE_PATH;
@@ -56,27 +62,71 @@ function contentType(filePath) {
     })[ext] || 'application/octet-stream';
 }
 
-function startStaticServer() {
-    if (!fs.existsSync(path.join(DIST, 'index.html'))) {
-        throw new Error('dist/index.html missing. Run `npm run build` first.');
+function listDistFiles(dirPath, files = []) {
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (entry.isDirectory()) {
+            listDistFiles(fullPath, files);
+        } else if (entry.isFile()) {
+            files.push(fullPath);
+        }
     }
+    return files;
+}
 
+/**
+ * Every URL path Cloudflare Pages would serve from dist/: `/` (index.html)
+ * plus each file, minus `_headers` itself (Pages consumes it, never serves it).
+ */
+function listServedPaths() {
+    const filePaths = listDistFiles(DIST)
+        .filter((filePath) => filePath !== HEADERS_FILE)
+        .map((filePath) => '/' + path.relative(DIST, filePath).split(path.sep).join('/'));
+    return ['/', ...filePaths.sort()];
+}
+
+/**
+ * Returns `path (rule, rule)` descriptions for resolved headers that got
+ * Cache-Control from more than one _headers rule (Pages would join them).
+ */
+function describeCacheControlConflict(urlPath, resolved) {
+    const cacheControl = resolved.headers.get('cache-control');
+    if (!cacheControl || cacheControl.values.length <= 1) {
+        return null;
+    }
+    return `${urlPath} <- ${cacheControl.rules.join(' + ')} => "${cacheControl.values.join(', ')}"`;
+}
+
+function startStaticServer(headerRules, cacheControlConflicts) {
     const server = http.createServer((req, res) => {
         const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+        // Pages emulation: apply every matching _headers rule to every response.
+        const resolved = resolveHeaders(headerRules, urlPath, BASE);
+        const conflict = describeCacheControlConflict(urlPath, resolved);
+        if (conflict && !cacheControlConflicts.includes(conflict)) {
+            cacheControlConflicts.push(conflict);
+        }
+        const pagesHeaders = toResponseHeaders(resolved.headers);
+
         const safePath = urlPath === '/' ? '/index.html' : urlPath;
         const filePath = path.normalize(path.join(DIST, safePath));
         if (!filePath.startsWith(DIST)) {
-            res.writeHead(403);
+            res.writeHead(403, pagesHeaders);
             res.end('Forbidden');
+            return;
+        }
+        if (filePath === HEADERS_FILE) {
+            res.writeHead(404, pagesHeaders);
+            res.end('Not found');
             return;
         }
         fs.readFile(filePath, (err, data) => {
             if (err) {
-                res.writeHead(404);
+                res.writeHead(404, pagesHeaders);
                 res.end('Not found');
                 return;
             }
-            res.writeHead(200, { 'Content-Type': contentType(filePath) });
+            res.writeHead(200, { ...pagesHeaders, 'Content-Type': contentType(filePath) });
             res.end(data);
         });
     });
@@ -141,7 +191,7 @@ async function waitForGameReady(page, timeoutMs = 15000) {
             if (probe.ready) {
                 return probe;
             }
-        } catch (error) {
+        } catch {
             // Bundle may still be loading; keep polling.
         }
         await page.waitForTimeout(100);
@@ -176,17 +226,37 @@ async function main() {
     let chromium;
     try {
         ({ chromium } = require('playwright'));
-    } catch (error) {
+    } catch {
         console.error('Playwright is not installed. Run: npm install');
         process.exit(1);
     }
 
+    if (!fs.existsSync(path.join(DIST, 'index.html'))) {
+        throw new Error('dist/index.html missing. Run `npm run build` first.');
+    }
+    if (!fs.existsSync(HEADERS_FILE)) {
+        throw new Error('dist/_headers missing. The build should copy src/_headers; run `npm run build`.');
+    }
+
     fs.mkdirSync(OUT_DIR, { recursive: true });
 
-    console.log(`Using browser: ${BROWSER_PATH}`);
-    console.log(`Serving ${DIST} at ${BASE}`);
+    const headerRules = loadHeadersFile(HEADERS_FILE);
+    const servedPaths = listServedPaths();
+    const cacheControlConflicts = servedPaths
+        .map((urlPath) => describeCacheControlConflict(urlPath, resolveHeaders(headerRules, urlPath, BASE)))
+        .filter(Boolean);
+    if (cacheControlConflicts.length) {
+        console.error('Paths with more than one Cache-Control rule:\n  ' + cacheControlConflicts.join('\n  '));
+    }
+    assert(
+        cacheControlConflicts.length === 0,
+        `Every served path (${servedPaths.length}) gets Cache-Control from at most one _headers rule`
+    );
 
-    const server = await startStaticServer();
+    console.log(`Using browser: ${BROWSER_PATH}`);
+    console.log(`Serving ${DIST} at ${BASE} with ${headerRules.length} _headers rules`);
+
+    const server = await startStaticServer(headerRules, cacheControlConflicts);
     const browser = await chromium.launch({
         executablePath: BROWSER_PATH,
         headless: true,
@@ -198,6 +268,7 @@ async function main() {
     const audioPolicyMessages = [];
     const pageErrors = [];
     const trackRequests = [];
+    const cspViolations = [];
 
     page.on('console', (msg) => {
         const messageText = msg.text();
@@ -218,11 +289,31 @@ async function main() {
     });
 
     try {
+        // Report CSP violations to Node. The binding and init script are
+        // injected by the browser driver, so the page's own CSP does not block them.
+        await page.exposeFunction('__playtestReportCspViolation', (violation) => {
+            cspViolations.push(violation);
+        });
+        await page.addInitScript(() => {
+            document.addEventListener('securitypolicyviolation', (event) => {
+                window.__playtestReportCspViolation({
+                    directive: event.effectiveDirective || event.violatedDirective,
+                    blockedURI: event.blockedURI,
+                    source: event.sourceFile ? `${event.sourceFile}:${event.lineNumber}` : '',
+                    sample: event.sample || '',
+                });
+            });
+        });
         await page.addInitScript(() => {
             localStorage.setItem('mimicFeederLastUsedName', 'Returning Playtester');
         });
         // CDN p5 + local assets: domcontentloaded is enough; then wait for canvas/game.
-        await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        const documentResponse = await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        const documentHeaders = documentResponse ? documentResponse.headers() : {};
+        assert(
+            Boolean(documentHeaders['content-security-policy']),
+            'Document is served with the _headers Content-Security-Policy'
+        );
         await page.waitForSelector('canvas', { timeout: 20000 });
         assert(true, 'Page loaded with a canvas element');
 
@@ -383,7 +474,7 @@ async function main() {
         await page.evaluate(() => {
             try {
                 localStorage.removeItem('mimicAchievements');
-            } catch (e) { /* ignore */ }
+            } catch { /* ignore */ }
             gameState.showIntroScreen = true;
             gameState.gameStarted = false;
             gameState.gameOver = false;
@@ -796,6 +887,14 @@ async function main() {
 
         await page.waitForTimeout(300);
         assert(trackRequests.length === 0, 'No /api/track network requests');
+        if (cspViolations.length) {
+            console.error('CSP violations:', cspViolations);
+        }
+        assert(cspViolations.length === 0, 'No Content-Security-Policy violations');
+        if (cacheControlConflicts.length) {
+            console.error('Served paths with more than one Cache-Control rule:', cacheControlConflicts);
+        }
+        assert(cacheControlConflicts.length === 0, 'No served response had more than one Cache-Control rule');
         assert(audioPolicyMessages.length === 0, 'No AudioContext autoplay-policy warnings');
 
         const hardConsoleErrors = consoleErrors.filter((text) => {
@@ -825,6 +924,12 @@ async function main() {
 
         console.log(`\nPlaytest passed.`);
         console.log(`Screenshots: ${pathToFileURL(OUT_DIR).href}`);
+    } catch (error) {
+        // A blocked script usually surfaces later as a timeout; show the cause.
+        if (cspViolations.length) {
+            console.error('CSP violations before failure:', cspViolations);
+        }
+        throw error;
     } finally {
         await browser.close().catch(() => {});
         await new Promise((resolve) => server.close(resolve));

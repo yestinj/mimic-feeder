@@ -5,18 +5,23 @@
   "scripts": {
     "build": "node build.js",
     "lint": "node scripts/lint.js",
+    "lint:p5-globals": "node scripts/generate-p5-globals.js",
     "smoke": "node scripts/smoke.js",
     "playtest": "node scripts/playtest.js",
     "test": "npm run lint && npm run build && npm run smoke",
+    "check": "npm test && npm run playtest",
     "start": "npx http-server dist -o",
     "dev": "nodemon --watch src --ext js,html,css --exec \"npm run build && echo 'Build complete, refresh your browser'\"",
     "docs": "jsdoc -c jsdoc.json",
     "serve-docs": "npx http-server docs -o"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "clean-css": "^5.3.3",
     "docdash": "^2.0.2",
     "esbuild": "^0.28.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
     "html-minifier-terser": "^7.2.0",
     "http-server": "^14.1.1",
     "jsdoc": "^4.0.5",

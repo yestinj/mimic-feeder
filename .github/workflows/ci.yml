@@ -1,0 +1,56 @@
+name: CI
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    test:
+        name: Lint, build, smoke, playtest
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v7
+
+            - uses: actions/setup-node@v7
+              with:
+                  # Current Node LTS ("Lithium"); keep in step with local development.
+                  node-version: 26
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+              env:
+                  # The browser is installed explicitly below (Chromium only).
+                  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+            # ESLint (bundle + tooling) + syntax check, build, static smoke contracts.
+            - name: npm test
+              run: npm test
+
+            - name: Install Playwright Chromium
+              run: |
+                  npx playwright install --with-deps chromium
+                  echo "PLAYTEST_BROWSER_PATH=$(node -p "require('playwright').chromium.executablePath()")" >> "$GITHUB_ENV"
+
+            # Browser playtest against dist/ served with src/_headers (CSP enforced).
+            - name: Playtest
+              run: npm run playtest
+
+            - name: Upload playtest screenshots
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: playtest-output
+                  path: playtest-output/
+                  if-no-files-found: ignore
+                  retention-days: 7
