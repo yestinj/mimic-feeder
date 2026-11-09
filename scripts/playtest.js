@@ -405,6 +405,11 @@ async function main() {
         // Exercise the real draw path without waiting through the entire encounter.
         const judgmentStart = await page.evaluate(() => {
             const objectCountBefore = objects.length;
+            // A notification already showing when the encounter starts must be held, not lost.
+            clearCenterNotifications();
+            queueGameLevelNotification('Held before judgment');
+            // A five-kill warning still queued when the judgment begins is superseded.
+            enqueueCenterNotification({ title: CAT_KILL_WARNING_TITLE, subtitle: 'stale', duration: 240 });
             gameState.isMuted = true;
             gameState.shadowBoltCatsDestroyed = 9;
             gameState.catKillWarningIssued = true;
@@ -424,6 +429,25 @@ async function main() {
             judgmentStarted.suspendedCount === judgmentStart.objectCountBefore,
             'Every ordinary object is retained in suspended judgment state'
         );
+
+        // Notifications are held during the encounter: neither discarded nor advanced.
+        const heldNotifications = await page.evaluate(async () => {
+            queueAchievementNotification('Raised during judgment', 25);
+            const timerBefore = activeCenterNotification ? activeCenterNotification.timer : null;
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            return {
+                activeTitle: activeCenterNotification ? activeCenterNotification.title : null,
+                timerFrozen: !!activeCenterNotification && activeCenterNotification.timer === timerBefore,
+                queuedDuring: hasPendingCenterNotificationTitle('Achievement Unlocked!'),
+                staleWarningDropped: !hasPendingCenterNotificationTitle(CAT_KILL_WARNING_TITLE),
+            };
+        });
+        assert(heldNotifications.staleWarningDropped, 'A still-queued five-kill warning is dropped once the judgment begins');
+        assert(
+            heldNotifications.activeTitle === 'Held before judgment' && heldNotifications.timerFrozen,
+            'A notification showing when the judgment starts is held, not discarded'
+        );
+        assert(heldNotifications.queuedDuring, 'Notifications raised during the judgment stay queued');
         await page.screenshot({ path: path.join(OUT_DIR, '02-ninefold-summoning.png') });
 
         await page.evaluate(() => {
@@ -494,6 +518,14 @@ async function main() {
             judgmentRestored.objectCount === judgmentStart.objectCountBefore,
             'Suspended ordinary objects return after judgment survival'
         );
+        const resumedNotifications = await page.evaluate(async () => {
+            const timerBefore = activeCenterNotification ? activeCenterNotification.timer : null;
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            const resumed = !!activeCenterNotification && activeCenterNotification.timer < timerBefore;
+            clearCenterNotifications(); // keep later checks independent of these test banners
+            return { resumed };
+        });
+        assert(resumedNotifications.resumed, 'Held notifications resume once the judgment ends');
 
         await pressKey(page, 'ArrowRight', 8);
         await page.waitForTimeout(250);

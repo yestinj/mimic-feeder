@@ -364,6 +364,14 @@ function checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, ab
         /updateAndDrawCenterNotifications\(\);/.test(sketchSource),
         'Gameplay draw loop uses queued center notifications'
     );
+    const notificationBody = extractFunctionBody(uiSource, 'updateAndDrawCenterNotifications');
+    const beginJudgmentBody = extractFunctionBody(readRepoFile('src/js/judgment.js'), 'beginNinefoldJudgment');
+    assertContract(
+        !!notificationBody && /^\s*(\/\/[^\n]*\n\s*)*if \(isNinefoldJudgmentActive\(\)\) \{\s*return;\s*\}/.test(notificationBody) &&
+        !!beginJudgmentBody && !/clearCenterNotifications\(\)/.test(beginJudgmentBody) &&
+        /discardCenterNotificationsByTitle\(CAT_KILL_WARNING_TITLE\)/.test(beginJudgmentBody),
+        'Center notifications are held during the Ninefold Judgment; only the superseded five-kill warning is dropped'
+    );
     assertContract(
         /queueBossDefeatedNotification\(\)/.test(abilitiesSource),
         'Boss defeat enqueues queue-managed notification'
@@ -712,7 +720,8 @@ function checkNinefoldJudgmentContracts(
         'Judgment uses the approved fixed dungeon voice for warning, judgment, and survival'
     );
     assertContract(
-        /title: 'FIVE INNOCENT LIVES'/.test(judgmentSource) &&
+        /const CAT_KILL_WARNING_TITLE = 'FIVE INNOCENT LIVES'/.test(judgmentSource) &&
+        /title: CAT_KILL_WARNING_TITLE/.test(judgmentSource) &&
         /subtitle: 'The dungeon is watching'/.test(judgmentSource) &&
         /drawShadowedText\('TEN LIVES TAKEN'/.test(judgmentSource) &&
         /drawShadowedText\('YOU HAVE ANGERED THE DUNGEON'/.test(judgmentSource) &&

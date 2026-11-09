@@ -4,6 +4,8 @@
  * then summons a one-time, nine-wave survival event at ten kills.
  */
 
+const CAT_KILL_WARNING_TITLE = 'FIVE INNOCENT LIVES';
+
 let judgmentFireballs = [];
 let ninefoldJudgmentState = createNinefoldJudgmentState();
 
@@ -51,7 +53,7 @@ function recordShadowBoltCatKill() {
         gameState.catKillWarningIssued = true;
         enqueueCenterNotification({
             style: 'panel',
-            title: 'FIVE INNOCENT LIVES',
+            title: CAT_KILL_WARNING_TITLE,
             subtitle: 'The dungeon is watching',
             duration: 240,
             titleColor: [255, 164, 164],
@@ -113,7 +115,11 @@ function beginNinefoldJudgment() {
     playerState.usingMagnetism = false;
     playerState.usingTentacles = false;
 
-    clearCenterNotifications();
+    // Queued notifications are held during the encounter (see
+    // updateAndDrawCenterNotifications), not discarded, so none are lost.
+    // The five-kill warning is the exception: once the judgment has begun it is
+    // superseded, and showing it afterwards would be out of order.
+    discardCenterNotificationsByTitle(CAT_KILL_WARNING_TITLE);
     stopMusicTracks();
     triggerScreenShake(10);
     playDungeonVoice('dungeon_judgment');

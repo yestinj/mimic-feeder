@@ -91,6 +91,17 @@ function clearCenterNotifications() {
     centerNotificationTransitionTimer = 0;
 }
 
+/**
+ * Removes queued (and active) notifications with the given title, keeping the rest.
+ * @param {string} title
+ */
+function discardCenterNotificationsByTitle(title) {
+    centerNotificationQueue = centerNotificationQueue.filter((entry) => entry.title !== title);
+    if (activeCenterNotification && activeCenterNotification.title === title) {
+        activeCenterNotification = null;
+    }
+}
+
 function hasPendingCenterNotificationTitle(title) {
     const normalizedTitle = String(title || '').trim();
     if (!normalizedTitle) {
@@ -256,6 +267,12 @@ function drawCenterBannerNotification(notification) {
 }
 
 function updateAndDrawCenterNotifications() {
+    // Hold notifications (neither drawn nor timed) while the Ninefold Judgment runs,
+    // so they cannot cover its panels; anything queued shows once it ends.
+    if (isNinefoldJudgmentActive()) {
+        return;
+    }
+
     if (!activeCenterNotification && centerNotificationTransitionTimer > 0) {
         centerNotificationTransitionTimer = max(0, centerNotificationTransitionTimer - getFrameDelta());
         return;
