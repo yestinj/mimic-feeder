@@ -50,6 +50,7 @@ function initializeStates() {
         objectSpawnTimer: 0,                           // Frame-equivalent accumulator for spawn cadence
         dropSpeedScale: INITIAL_DROP_SPEED_SCALE,      // Speed at which objects fall
         lastHealthPotionLevel: 0,                      // Last level a health potion appeared
+        wizardStaffOffers: 0,                          // Staff drops spawned this run (first one is immediate)
         humansForNextMaxLife: HUMANS_PER_MAX_LIFE_INCREASE, // Humans needed for next max life increase
         collectedCounts: {                             // Counts of each object type collected
             human: 0, goblin: 0, elf: 0, wraith: 0, cat: 0,

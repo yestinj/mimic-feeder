@@ -5,6 +5,21 @@ const RECENT_SPAWN_X_POSITIONS_MAX = 3;
 let recentSpawnXPositions = [];
 const MIN_SPAWN_HORIZONTAL_DISTANCE = 50;
 
+/**
+ * Pacing for condition-based special items. The wizard staff is offered on the
+ * first spawn after it unlocks; if that one is missed, later offers are an
+ * occasional bonus rather than every spawn. Progression never depends on
+ * catching it: the boss transition grants a missing staff.
+ * @param {string} type
+ * @returns {boolean}
+ */
+function shouldOfferSpecialItem(type) {
+    if (type !== OBJ_WIZARD_STAFF) {
+        return true;
+    }
+    return gameState.wizardStaffOffers === 0 || random() < WIZARD_STAFF_REOFFER_CHANCE;
+}
+
 function spawnObjects() {
     if (isNinefoldJudgmentActive()) {
         return;
@@ -26,10 +41,13 @@ function spawnObjects() {
         // First, check for special items with conditions (staff, potion, magnet)
         for (const entry of spawnTable) {
             if (entry.condition && !entry.probability) {
-                if (entry.condition(currentState)) {
+                if (entry.condition(currentState) && shouldOfferSpecialItem(entry.type)) {
                     typeToSpawn = entry.type;
                     if (typeToSpawn === OBJ_HEALTH_POTION) { // Updated type check
                         gameState.lastHealthPotionLevel = getCurrentLevel(); // Use getCurrentLevel function
+                    }
+                    if (typeToSpawn === OBJ_WIZARD_STAFF) {
+                        gameState.wizardStaffOffers += 1;
                     }
                     break;
                 }

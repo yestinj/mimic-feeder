@@ -588,12 +588,19 @@ function checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource)
     );
 }
 
-function checkWizardStaffProgressionContracts(constantsSource, utilsSource) {
+function checkWizardStaffProgressionContracts(constantsSource, utilsSource, objectsSource) {
     assertContract(
         /!state\.player\.hasWizardStaff/.test(constantsSource) &&
         /state\.game\.dungeonFloor > DUNGEON_FLOOR_FOR_STAFF_DROP/.test(constantsSource) &&
         /state\.game\.dungeonFloor === DUNGEON_FLOOR_FOR_STAFF_DROP[\s\S]*state\.game\.dungeonZone >= DUNGEON_ZONE_FOR_STAFF_DROP/.test(constantsSource),
         'Wizard staff remains spawn-eligible after its initial dungeon position until collected'
+    );
+    assertContract(
+        /const WIZARD_STAFF_REOFFER_CHANCE = 0\.2/.test(constantsSource) &&
+        /gameState\.wizardStaffOffers === 0 \|\| random\(\) < WIZARD_STAFF_REOFFER_CHANCE/.test(objectsSource) &&
+        /entry\.condition\(currentState\) && shouldOfferSpecialItem\(entry\.type\)/.test(objectsSource) &&
+        /gameState\.wizardStaffOffers \+= 1/.test(objectsSource),
+        'First wizard staff is offered immediately; re-offers after a miss are an occasional bonus'
     );
 
     const levelUpBody = extractFunctionBody(utilsSource, 'checkForGameLevelUp');
@@ -811,7 +818,7 @@ function main() {
     checkControlContracts(playerSource, abilitiesSource, sketchSource);
     checkVersionContracts(constantsSource, packageSource);
     checkBossSpeedCapContracts(constantsSource, objectsSource, utilsSource);
-    checkWizardStaffProgressionContracts(constantsSource, utilsSource);
+    checkWizardStaffProgressionContracts(constantsSource, utilsSource, objectsSource);
     checkCatProgressionContracts(constantsSource);
     checkCatAudioContracts(assetSource, constantsSource, abilitiesSource);
     checkNinefoldJudgmentContracts(

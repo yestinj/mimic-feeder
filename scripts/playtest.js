@@ -628,6 +628,51 @@ async function main() {
         assert(staffEligibility.afterCollection === false, 'Wizard staff stops spawning after collection');
         assert(staffEligibility.whileOnScreen === false, 'Wizard staff does not duplicate while one is on screen');
 
+        // Pacing: first offer is immediate; after misses, re-offers are occasional (seeded, deterministic).
+        const staffPacing = await page.evaluate(() => {
+            const saved = {
+                objects, floor: gameState.dungeonFloor, zone: gameState.dungeonZone,
+                offers: gameState.wizardStaffOffers, timer: gameState.objectSpawnTimer,
+                hasStaff: playerState.hasWizardStaff, recent: recentSpawnXPositions,
+                potionLevel: gameState.lastHealthPotionLevel,
+            };
+            const spawnTick = () => {
+                objects = []; // the previous drop was missed / gone
+                gameState.objectSpawnTimer = Math.round(gameState.objectSpawnRate);
+                spawnObjects();
+                return objects.some((obj) => obj.type === OBJ_WIZARD_STAFF);
+            };
+            try {
+                randomSeed(20261109);
+                gameState.dungeonFloor = 2;
+                gameState.dungeonZone = 1;
+                gameState.wizardStaffOffers = 0;
+                playerState.hasWizardStaff = false;
+                const firstTickIsStaff = spawnTick();
+                let reoffers = 0;
+                const ticks = 300;
+                for (let i = 0; i < ticks; i++) {
+                    if (spawnTick()) reoffers += 1;
+                }
+                return { firstTickIsStaff, reofferRate: reoffers / ticks };
+            } finally {
+                objects = saved.objects;
+                gameState.dungeonFloor = saved.floor;
+                gameState.dungeonZone = saved.zone;
+                gameState.wizardStaffOffers = saved.offers;
+                gameState.objectSpawnTimer = saved.timer;
+                playerState.hasWizardStaff = saved.hasStaff;
+                recentSpawnXPositions = saved.recent;
+                gameState.lastHealthPotionLevel = saved.potionLevel;
+                randomSeed(Date.now()); // do not leave the rest of the run deterministic
+            }
+        });
+        assert(staffPacing.firstTickIsStaff, 'First wizard staff is offered on the first spawn after unlock');
+        assert(
+            staffPacing.reofferRate > 0.1 && staffPacing.reofferRate < 0.3,
+            `Missed wizard staff is re-offered occasionally, not every spawn (rate ${staffPacing.reofferRate.toFixed(2)})`
+        );
+
         const bossStaffGuarantee = await page.evaluate(() => {
             objects = [];
             bossFireballs = [];

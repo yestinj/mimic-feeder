@@ -111,6 +111,11 @@ const BOMB_SPAWN_CHANCE = 0.15;
 const DUNGEON_FLOOR_FOR_STAFF_DROP = 2;
 /** @const {number} DUNGEON_ZONE_FOR_STAFF_DROP - Dungeon zone when wizard staff can drop */
 const DUNGEON_ZONE_FOR_STAFF_DROP = 1;
+/**
+ * @const {number} WIZARD_STAFF_REOFFER_CHANCE - Per-spawn chance of offering the staff again
+ * after a missed one. The first offer is immediate; the boss transition still guarantees it.
+ */
+const WIZARD_STAFF_REOFFER_CHANCE = 0.2;
 /** @const {number} DUNGEON_FLOOR_FOR_MAGNET_DROP - Dungeon floor level when magnet can drop */
 const DUNGEON_FLOOR_FOR_MAGNET_DROP = 3;
 /** @const {number} DUNGEON_ZONE_FOR_MAGNET_DROP - Dungeon zone when magnet can drop */
