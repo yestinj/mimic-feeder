@@ -14,10 +14,6 @@ function collideRectRect(x1, y1, w1, h1, x2, y2, w2, h2) {
     return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
 }
 
-function isOverlayViewportSupported(minWidth = MIN_OVERLAY_VIEWPORT_WIDTH, minHeight = MIN_OVERLAY_VIEWPORT_HEIGHT) {
-    return width >= minWidth && height >= minHeight;
-}
-
 function getResponsiveOverlayBounds(
     widthRatio,
     heightRatio,
@@ -43,7 +39,13 @@ function getResponsiveOverlayBounds(
     };
 }
 
-function drawOverlayViewportWarning(title, navigationLines = [], minWidth = MIN_OVERLAY_VIEWPORT_WIDTH, minHeight = MIN_OVERLAY_VIEWPORT_HEIGHT) {
+/**
+ * Fallback panel for overlays whose content cannot fit the current canvas,
+ * even at the adaptive layout's minimum scale (computeAdaptiveOverlayLayout returned null).
+ * @param {string} title
+ * @param {string[]} [navigationLines]
+ */
+function drawOverlayViewportWarning(title, navigationLines = []) {
     const bounds = getResponsiveOverlayBounds(0.8, 0.45, 320, 220, 760, 360);
     const padding = 18;
     const centerX = bounds.overlayX + bounds.overlayWidth / 2;
@@ -63,7 +65,7 @@ function drawOverlayViewportWarning(title, navigationLines = [], minWidth = MIN_
     textStyle(NORMAL);
     textSize(14);
     textLeading(18);
-    const statusText = `Resize window for full overlay view.\nMinimum canvas: ${minWidth} x ${minHeight}\nCurrent canvas: ${Math.round(width)} x ${Math.round(height)}`;
+    const statusText = `Resize window for full overlay view.\nCurrent canvas: ${Math.round(width)} x ${Math.round(height)}`;
     text(statusText, bounds.overlayX + padding, currentY, bounds.overlayWidth - (padding * 2));
 
     textAlign(CENTER, BOTTOM);

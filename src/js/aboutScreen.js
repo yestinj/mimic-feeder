@@ -3,15 +3,6 @@ function drawAboutScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    if (!isOverlayViewportSupported()) {
-        drawOverlayViewportWarning("About", [
-            "Press Left Arrow to return to Object Info",
-            "Press Right Arrow to return to Help",
-            "Press Escape to close"
-        ]);
-        return;
-    }
-
     const overlayBounds = getResponsiveOverlayBounds(0.7, 0.7, 600, 360, 860, 620);
     const aboutText = "This game was created by Yestin and is currently in playable beta. " +
         "It's a portfolio/learning project with variable maintenance cadence. " +

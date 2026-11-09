@@ -3,15 +3,6 @@ function drawObjectInfoScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    if (!isOverlayViewportSupported()) {
-        drawOverlayViewportWarning("Object Info", [
-            "Press Left Arrow to return to Help",
-            "Press Right Arrow to view About",
-            "Press Escape to close"
-        ]);
-        return;
-    }
-
     const overlayBounds = getResponsiveOverlayBounds(0.76, 0.9, 640, 540, 940, 760);
     const objectDescText = "Consumables are creatures you can eat for points. " +
         "Shinies are valuable objects that give high points. " +

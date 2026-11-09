@@ -13,14 +13,6 @@ function drawIntroScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    if (!isOverlayViewportSupported(760, 560)) {
-        drawOverlayViewportWarning("Mimic Feeder", [
-            "Press any key or click to start",
-            "Resize for the full intro + controls view"
-        ], 760, 560);
-        return;
-    }
-
     const description = "Dungeon mimic-feeding chaos. Eat creatures, nab shinies, dodge bombs, and unlock powers.\n\n" +
         "Control the mimic to collect food and shinies. Avoid or destroy bombs.\n\n" +
         "Don't let perfectly good food perish - it hurts!\n\n" +
@@ -131,7 +123,7 @@ function drawIntroScreen() {
         drawOverlayViewportWarning("Mimic Feeder", [
             "Press any key or click to start",
             "Resize for the full intro + controls view"
-        ], 760, 560);
+        ]);
         return;
     }
     let { overlayWidth, overlayHeight, overlayX, overlayY } = layout;

@@ -453,7 +453,7 @@ function drawAchievementsScreen() {
     if (!layoutState) {
         drawOverlayViewportWarning("Achievements", [
             "Press Escape to close"
-        ], 340, 260);
+        ]);
         return;
     }
     let { overlayWidth, overlayHeight, overlayX, overlayY } = layoutState;

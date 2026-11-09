@@ -3,15 +3,6 @@ function drawHelpScreen() {
     fill(0, 0, 0, 200);
     rect(0, 0, width, height);
 
-    if (!isOverlayViewportSupported()) {
-        drawOverlayViewportWarning("Help", [
-            "Press Right Arrow to view Object Info",
-            "Press Left Arrow to view About",
-            "Press Escape to close"
-        ]);
-        return;
-    }
-
     const howToPlayLines = [
         "Control the dungeon mimic to collect food and shinies, and avoid or destroy bombs.",
         "Letting perfectly good food (creatures) perish or getting hit by a dangerous object will cause damage.",
