@@ -750,6 +750,12 @@ function checkAudioStartupContracts(constantsSource, sketchSource) {
         /if \(typeof audioStarted !== 'undefined' && !audioStarted\)/.test(constantsSource),
         'Sound effects and music are gated until Web Audio is running'
     );
+    const syncAudioBody = extractFunctionBody(sketchSource, 'syncGameAudioState');
+    assertContract(
+        !!syncAudioBody &&
+        /outputVolume\(shouldSilence \? 0 : 1\)/.test(syncAudioBody),
+        'Silencing also drives the p5.sound master gain via outputVolume() (not the removed masterVolume())'
+    );
 }
 
 function checkVersionContracts(constantsSource, packageSource) {

@@ -229,8 +229,10 @@ function syncGameAudioState() {
     }
 
     wasGameAudioSilenced = shouldSilence;
-    if (typeof masterVolume === 'function') {
-        masterVolume(shouldSilence ? 0 : 1);
+    // Master gain backstop: even a sound that bypasses playSound() stays silent.
+    // (p5.sound renamed masterVolume() to outputVolume().)
+    if (typeof outputVolume === 'function') {
+        outputVolume(shouldSilence ? 0 : 1);
     }
 
     if (shouldSilence) {
