@@ -24,16 +24,16 @@ let groundSplatFrames = [];
 
 // Dungeon backgrounds, ordered one per floor through Floor 10.
 const DUNGEON_BACKGROUND_PATHS = [
-    'assets/backgrounds/upper-dungeon.jpg',
-    'assets/backgrounds/ageing-lower-halls.jpg',
-    'assets/backgrounds/lower-undercroft.jpg',
-    'assets/backgrounds/buried-crypts.jpg',
-    'assets/backgrounds/ancient-catacombs.jpg',
-    'assets/backgrounds/root-choked-necropolis.jpg',
-    'assets/backgrounds/underworld-depths.jpg',
-    'assets/backgrounds/infernal-ruins.jpg',
-    'assets/backgrounds/void-threshold.jpg',
-    'assets/backgrounds/abyss.jpg'
+    'assets/backgrounds/upper-dungeon.webp',
+    'assets/backgrounds/ageing-lower-halls.webp',
+    'assets/backgrounds/lower-undercroft.webp',
+    'assets/backgrounds/buried-crypts.webp',
+    'assets/backgrounds/ancient-catacombs.webp',
+    'assets/backgrounds/root-choked-necropolis.webp',
+    'assets/backgrounds/underworld-depths.webp',
+    'assets/backgrounds/infernal-ruins.webp',
+    'assets/backgrounds/void-threshold.webp',
+    'assets/backgrounds/abyss.webp'
 ];
 let dungeonBackgroundImages = [];
 let ninefoldJudgmentImage;
@@ -142,7 +142,7 @@ function loadDeferredAssets() {
         });
     }
     backgroundMusic2 = loadDeferredSound('assets/music/background2.mp3', 0.4);
-    loadDeferredImage('assets/ninefold_judgment.png', (img) => {
+    loadDeferredImage('assets/ninefold_judgment.webp', (img) => {
         ninefoldJudgmentImage = img;
     });
 }

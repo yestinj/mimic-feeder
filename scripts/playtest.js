@@ -44,6 +44,7 @@ function contentType(filePath) {
         '.css': 'text/css; charset=utf-8',
         '.png': 'image/png',
         '.jpg': 'image/jpeg',
+        '.webp': 'image/webp',
         '.jpeg': 'image/jpeg',
         '.gif': 'image/gif',
         '.ico': 'image/x-icon',

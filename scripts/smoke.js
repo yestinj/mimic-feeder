@@ -278,16 +278,16 @@ function checkBuildAndAssetContracts(buildSource, indexSource, assetSource) {
     );
 
     const dungeonBackgroundPaths = [
-        'backgrounds/upper-dungeon.jpg',
-        'backgrounds/ageing-lower-halls.jpg',
-        'backgrounds/lower-undercroft.jpg',
-        'backgrounds/buried-crypts.jpg',
-        'backgrounds/ancient-catacombs.jpg',
-        'backgrounds/root-choked-necropolis.jpg',
-        'backgrounds/underworld-depths.jpg',
-        'backgrounds/infernal-ruins.jpg',
-        'backgrounds/void-threshold.jpg',
-        'backgrounds/abyss.jpg',
+        'backgrounds/upper-dungeon.webp',
+        'backgrounds/ageing-lower-halls.webp',
+        'backgrounds/lower-undercroft.webp',
+        'backgrounds/buried-crypts.webp',
+        'backgrounds/ancient-catacombs.webp',
+        'backgrounds/root-choked-necropolis.webp',
+        'backgrounds/underworld-depths.webp',
+        'backgrounds/infernal-ruins.webp',
+        'backgrounds/void-threshold.webp',
+        'backgrounds/abyss.webp',
     ];
     assertContract(
         dungeonBackgroundPaths.every((assetPath) =>
@@ -317,7 +317,7 @@ function checkDeferredAssetContracts(assetSource, sketchSource) {
     const preloadBody = extractFunctionBody(assetSource, 'preload');
     assertContract(!!preloadBody, 'preload function exists');
     assertContract(
-        !/music\/boss\.mp3|music\/background2\.mp3|ninefold_judgment\.png/.test(preloadBody) &&
+        !/music\/boss\.mp3|music\/background2\.mp3|ninefold_judgment\.webp/.test(preloadBody) &&
         !/DUNGEON_BACKGROUND_PATHS\.map\(loadImageWithErrorHandling\)/.test(preloadBody) &&
         /dungeonBackgroundImages\[0\] = loadImageWithErrorHandling\(DUNGEON_BACKGROUND_PATHS\[0\]\)/.test(preloadBody),
         'preload() blocks only on Floor 1 assets; late-run music, backgrounds and apparition are deferred'
@@ -328,7 +328,7 @@ function checkDeferredAssetContracts(assetSource, sketchSource) {
         !!deferredBody &&
         /bossMusic = loadDeferredSound\('assets\/music\/boss\.mp3'/.test(deferredBody) &&
         /backgroundMusic2 = loadDeferredSound\('assets\/music\/background2\.mp3'/.test(deferredBody) &&
-        /loadDeferredImage\('assets\/ninefold_judgment\.png'/.test(deferredBody) &&
+        /loadDeferredImage\('assets\/ninefold_judgment\.webp'/.test(deferredBody) &&
         /for \(let i = 2; i < DUNGEON_BACKGROUND_PATHS\.length; i\+\+\)/.test(deferredBody),
         'loadDeferredAssets() loads every late-run asset in the background'
     );
@@ -643,8 +643,8 @@ function checkNinefoldJudgmentContracts(
         'Ninefold Judgment uses the agreed five-kill warning, ten-kill trigger, and nine waves'
     );
     assertContract(
-        fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'ninefold_judgment.png')) &&
-        /loadDeferredImage\('assets\/ninefold_judgment\.png', \(img\) => \{\s*ninefoldJudgmentImage = img;/.test(assetSource),
+        fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'ninefold_judgment.webp')) &&
+        /loadDeferredImage\('assets\/ninefold_judgment\.webp', \(img\) => \{\s*ninefoldJudgmentImage = img;/.test(assetSource),
         'Ninefold Judgment apparition exists and is loaded'
     );
 
