@@ -313,6 +313,42 @@ function checkDungeonBackgroundContracts(sketchSource) {
     );
 }
 
+function checkDeferredAssetContracts(assetSource, sketchSource) {
+    const preloadBody = extractFunctionBody(assetSource, 'preload');
+    assertContract(!!preloadBody, 'preload function exists');
+    assertContract(
+        !/music\/boss\.mp3|music\/background2\.mp3|ninefold_judgment\.png/.test(preloadBody) &&
+        !/DUNGEON_BACKGROUND_PATHS\.map\(loadImageWithErrorHandling\)/.test(preloadBody) &&
+        /dungeonBackgroundImages\[0\] = loadImageWithErrorHandling\(DUNGEON_BACKGROUND_PATHS\[0\]\)/.test(preloadBody),
+        'preload() blocks only on Floor 1 assets; late-run music, backgrounds and apparition are deferred'
+    );
+
+    const deferredBody = extractFunctionBody(assetSource, 'loadDeferredAssets');
+    assertContract(
+        !!deferredBody &&
+        /bossMusic = loadDeferredSound\('assets\/music\/boss\.mp3'/.test(deferredBody) &&
+        /backgroundMusic2 = loadDeferredSound\('assets\/music\/background2\.mp3'/.test(deferredBody) &&
+        /loadDeferredImage\('assets\/ninefold_judgment\.png'/.test(deferredBody) &&
+        /for \(let i = 2; i < DUNGEON_BACKGROUND_PATHS\.length; i\+\+\)/.test(deferredBody),
+        'loadDeferredAssets() loads every late-run asset in the background'
+    );
+
+    const setupBody = extractFunctionBody(sketchSource, 'setup');
+    const deferredCallIndex = setupBody ? setupBody.indexOf('loadDeferredAssets();') : -1;
+    const soundMapIndex = setupBody ? setupBody.indexOf('setupSoundMap();') : -1;
+    assertContract(
+        deferredCallIndex !== -1 && soundMapIndex !== -1 && deferredCallIndex < soundMapIndex,
+        'setup() starts deferred loading before setupSoundMap() captures the sound references'
+    );
+
+    const drawBackgroundBody = extractFunctionBody(sketchSource, 'drawDungeonBackground');
+    assertContract(
+        !!drawBackgroundBody &&
+        /for \(let i = backgroundIndex; i >= 0 && !dungeonBackground; i--\)/.test(drawBackgroundBody),
+        'Dungeon background falls back to the closest earlier loaded floor while later floors load'
+    );
+}
+
 function checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource) {
     assertContract(
         /function updateAndDrawCenterNotifications\(\)/.test(uiSource),
@@ -608,7 +644,7 @@ function checkNinefoldJudgmentContracts(
     );
     assertContract(
         fs.existsSync(path.join(__dirname, '..', 'src', 'assets', 'ninefold_judgment.png')) &&
-        /ninefoldJudgmentImage = loadImageWithErrorHandling\('assets\/ninefold_judgment\.png'\)/.test(assetSource),
+        /loadDeferredImage\('assets\/ninefold_judgment\.png', \(img\) => \{\s*ninefoldJudgmentImage = img;/.test(assetSource),
         'Ninefold Judgment apparition exists and is loaded'
     );
 
@@ -782,6 +818,7 @@ function main() {
     checkScreenNavigationContracts(sketchSource, helpSource, objectInfoSource, aboutSource, achievementsSource);
     checkBuildAndAssetContracts(buildSource, indexSource, assetSource);
     checkDungeonBackgroundContracts(sketchSource);
+    checkDeferredAssetContracts(assetSource, sketchSource);
     checkP5CdnContracts(indexSource);
     checkNotificationQueueContracts(uiSource, sketchSource, utilsSource, abilitiesSource, objectsSource, achievementsSource);
     checkPlayTimeContracts(sketchSource);

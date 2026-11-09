@@ -259,6 +259,12 @@ async function main() {
             'First user gesture starts the returning player audio context'
         );
 
+        // Late-run backgrounds, music and the apparition load after setup(); wait for them.
+        await page.waitForFunction(() =>
+            deferredAssetsRequested && deferredAssetsPending === 0, null, {timeout: 30000}
+        );
+        assert(true, 'Deferred late-run assets finished loading in the background');
+
         const dungeonBackgroundResult = await page.evaluate(() => ({
             imageCount: dungeonBackgroundImages.length,
             loaded: dungeonBackgroundImages.every((backgroundImage) =>

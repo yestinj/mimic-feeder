@@ -67,6 +67,86 @@ let backgroundMusic1;
 let backgroundMusic2;
 let bossMusic;
 
+/**
+ * Late-run assets load in the background after setup() instead of in preload(),
+ * so the first screen does not wait for several MB that are only needed later.
+ * Consumers already tolerate these being absent until they arrive:
+ * - drawDungeonBackground() reuses the closest earlier floor's background
+ * - playExclusiveMusic() skips a track until it has loaded
+ * - drawNinefoldApparition() draws a simple fallback without the image
+ */
+let deferredAssetsRequested = false;
+/** Deferred assets still loading (successes and failures both settle). */
+let deferredAssetsPending = 0;
+
+/**
+ * Starts background loading of late-run assets. Call from setup(), before
+ * setupSoundMap(), so the sound map captures the deferred SoundFile objects.
+ * @function
+ */
+function loadDeferredAssets() {
+    if (deferredAssetsRequested) {
+        return;
+    }
+    deferredAssetsRequested = true;
+
+    const settle = () => {
+        deferredAssetsPending = Math.max(0, deferredAssetsPending - 1);
+    };
+
+    // Store images only once loaded: an in-flight p5.Image is a 1x1 placeholder
+    // that would otherwise be drawn in place of the real background.
+    const loadDeferredImage = (path, onLoaded) => {
+        deferredAssetsPending += 1;
+        try {
+            loadImage(path, (img) => {
+                onLoaded(img);
+                settle();
+            }, (error) => {
+                console.error(`Failed to load image: ${path}`, error);
+                settle();
+            });
+        } catch (error) {
+            console.error(`Error loading image ${path}:`, error);
+            settle();
+        }
+    };
+
+    // SoundFile objects exist immediately; isLoaded() stays false until decoded.
+    const loadDeferredSound = (path, volume) => {
+        deferredAssetsPending += 1;
+        try {
+            const sound = loadSound(path, settle, (error) => {
+                console.error(`Failed to load sound: ${path}`, error);
+                settle();
+            });
+            if (sound) {
+                sound.setVolume(volume);
+            }
+            return sound;
+        } catch (error) {
+            console.error(`Error loading sound ${path}:`, error);
+            settle();
+            return null;
+        }
+    };
+
+    // Requested roughly in the order a run first needs them.
+    loadDeferredImage(DUNGEON_BACKGROUND_PATHS[1], (img) => {
+        dungeonBackgroundImages[1] = img;
+    });
+    bossMusic = loadDeferredSound('assets/music/boss.mp3', 0.4);
+    for (let i = 2; i < DUNGEON_BACKGROUND_PATHS.length; i++) {
+        loadDeferredImage(DUNGEON_BACKGROUND_PATHS[i], (img) => {
+            dungeonBackgroundImages[i] = img;
+        });
+    }
+    backgroundMusic2 = loadDeferredSound('assets/music/background2.mp3', 0.4);
+    loadDeferredImage('assets/ninefold_judgment.png', (img) => {
+        ninefoldJudgmentImage = img;
+    });
+}
+
 function preload() {
     // Helper function to load an image with error handling
     function loadImageWithErrorHandling(path) {
@@ -116,9 +196,10 @@ function preload() {
     objectImages[OBJ_DIAMOND] = loadImageWithErrorHandling('assets/diamond.png');
     objectImages[OBJ_WIZARD_STAFF] = loadImageWithErrorHandling('assets/staff.png');
 
-    // Load dungeon backgrounds in progression order.
-    dungeonBackgroundImages = DUNGEON_BACKGROUND_PATHS.map(loadImageWithErrorHandling);
-    ninefoldJudgmentImage = loadImageWithErrorHandling('assets/ninefold_judgment.png');
+    // Only Floor 1's background is needed to start; later floors and the
+    // Ninefold Judgment apparition load in the background (loadDeferredAssets).
+    dungeonBackgroundImages = DUNGEON_BACKGROUND_PATHS.map(() => null);
+    dungeonBackgroundImages[0] = loadImageWithErrorHandling(DUNGEON_BACKGROUND_PATHS[0]);
 
     // Load ability and effect images
     for (let i = 0; i <= 3; i++) {
@@ -217,8 +298,6 @@ function preload() {
     dungeonJudgmentSound = loadSoundWithVolume('assets/dungeon_judgment.mp3', DUNGEON_VOICE_VOLUME);
     dungeonRelentsSound = loadSoundWithVolume('assets/dungeon_relents.mp3', DUNGEON_VOICE_VOLUME);
 
-    // Load background music
+    // Floor 1 music only; Floor 3+ and boss music load in the background (loadDeferredAssets).
     backgroundMusic1 = loadSoundWithVolume('assets/music/background1.mp3', 0.4);
-    backgroundMusic2 = loadSoundWithVolume('assets/music/background2.mp3', 0.4);
-    bossMusic = loadSoundWithVolume('assets/music/boss.mp3', 0.4);
 }

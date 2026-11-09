@@ -263,6 +263,9 @@ function setup() {
     canvas.elt.setAttribute('role', 'application');
     canvas.elt.setAttribute('aria-label', 'Interactive game canvas');
 
+    // Start background loading of late-run assets before setupSoundMap() captures them.
+    loadDeferredAssets();
+
     // Initialize game state and components
     initializeStates();
     setupPlayer();
@@ -351,7 +354,12 @@ function getDungeonBackgroundIndex(dungeonFloor) {
  */
 function drawDungeonBackground() {
     const backgroundIndex = getDungeonBackgroundIndex(gameState.dungeonFloor);
-    const dungeonBackground = dungeonBackgroundImages[backgroundIndex];
+    // Later floors load in the background (loadDeferredAssets); until a floor's
+    // image arrives, reuse the closest earlier floor that has loaded.
+    let dungeonBackground = null;
+    for (let i = backgroundIndex; i >= 0 && !dungeonBackground; i--) {
+        dungeonBackground = dungeonBackgroundImages[i];
+    }
 
     if (dungeonBackground) {
         image(dungeonBackground, 0, 0, width, height);
