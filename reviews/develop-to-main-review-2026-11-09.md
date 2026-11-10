@@ -245,12 +245,12 @@ All results are at head `a0bb76d` unless noted. Browser runs used headless syste
 - Only Chromium-family browsers were tested; Safari and Firefox audio behaviour was not checked.
 - Audio was verified only by `isPlaying()` state, not by listening.
 - Long-run progression past the first boss was exercised only through state injection.
-- The Cloudflare production-environment settings (D1 binding, `PRE_MERGE_PLAN.md` §7) could not be inspected. The preview deploy succeeding is indirect evidence that the static config builds.
+- The Cloudflare production-environment settings (D1 binding, `archive/pre-merge-plan.md` §7) could not be inspected. The preview deploy succeeding is indirect evidence that the static config builds.
 - The repository has no CI; all gates are local.
 
 ## Remaining risks
 
-- **Production Pages settings:** if the production environment still has the old D1 binding, the first production deploy after merge could behave differently from the passing preview. Check it in the dashboard as `PRE_MERGE_PLAN.md` §7 describes. The zone's Browser Cache TTL setting currently overrides `_headers` on the custom domain (`max-age=14400` observed).
+- **Production Pages settings:** if the production environment still has the old D1 binding, the first production deploy after merge could behave differently from the passing preview. Check it in the dashboard as `archive/pre-merge-plan.md` §7 describes. The zone's Browser Cache TTL setting currently overrides `_headers` on the custom domain (`max-age=14400` observed).
 - **Test coverage gaps:**
   - The fixes added smoke contracts for mute across retry, deferred loading, staff pacing, the master-gain mute and notification holding. They added playtest checks for deferred assets, staff pacing and notification holding.
   - Still not automated:
@@ -272,10 +272,11 @@ All results are at head `a0bb76d` unless noted. Browser runs used headless syste
    - Optionally, a local Cloudflare Pages emulator (`wrangler pages dev`).
    - **Done in yestinj/mimic-feeder#3.** CI, ESLint over the bundle (recommended rules), and a header-aware playtest server. Instead of Wrangler, `npm start` now serves `dist/` with the same `_headers` emulation.
 2. **Analytics:** check why Cloudflare Web Analytics is allowed by the CSP but not active on production.
+   - **Resolved 2026-11-10:** it is active. Web Analytics is enabled for the domain through automatic setup and records `mimicfeeder.yest.dev` page views. Cloudflare adds the script at the edge for real browsers, which is why fetches made outside a browser didn't show it.
 3. **p5 self-hosting (P-3):** low-priority investigation. It must keep p5 updates easy.
 4. **Housekeeping:**
    - `npm audit fix` for the dev-only tooling advisories. **Addressed in yestinj/mimic-feeder#3** by removing JSDoc, nodemon and http-server. The only remaining advisory is `minimatch` through ESLint, and its fix (minimatch 11) is not yet accepted by ESLint.
-   - Archive `PRE_MERGE_PLAN.md` once its Cloudflare follow-up is done.
+   - Archive `PRE_MERGE_PLAN.md` once its Cloudflare follow-up is done. **Done 2026-11-10:** moved to `archive/pre-merge-plan.md`. Production has no D1 binding. A stale Preview binding and the unused database are tracked in issue #10. The Browser Cache TTL override (4 hours) was reviewed and left as is: it only delays CSS updates for returning visitors, which doesn't matter for this project.
 
 ## Merge-readiness recommendation
 
@@ -285,4 +286,4 @@ All results are at head `a0bb76d` unless noted. Browser runs used headless syste
 - **Before merge:**
   - Owner playtest of the PR preview. Cover small-window overlays, first load, mute across retry, staff re-offers, and banners around the Judgment.
   - Confirm the P-1 headers on the preview with `curl -sI`.
-- **Before or right after merge:** confirm the Cloudflare production settings (`PRE_MERGE_PLAN.md` §7).
+- **Before or right after merge:** confirm the Cloudflare production settings (`archive/pre-merge-plan.md` §7).

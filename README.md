@@ -51,8 +51,8 @@ The game must be served over HTTP. Opening `dist/index.html` directly (`file://`
 ### Deploy notes
 - Production is a static Cloudflare Pages site (build output: `dist/`).
 - Deploys are automatic via the Cloudflare Pages GitHub integration.
-- No Pages Functions or D1 are used, and the game ships no analytics or tracking code.
-- The Content Security Policy in `src/_headers` allows Cloudflare Web Analytics, so it can be turned on from the Cloudflare dashboard without a code change.
+- No Pages Functions or D1 are used, and the game's code contains no analytics or tracking.
+- Cloudflare Web Analytics is enabled for the domain. Cloudflare adds its script at the edge, and the Content Security Policy in `src/_headers` allows it.
 
 ### Common Issues
 - **No Audio**: If audio is muted on first load, click anywhere on the page or press any key to activate the audio context.

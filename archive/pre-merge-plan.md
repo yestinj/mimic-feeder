@@ -1,8 +1,8 @@
 # Pre-merge plan: `develop` → `main`
 
-> **Status (2026-07-09):** Active pre-merge checklist for `develop` → `main`.  
-> Code items in sections 1–6 are **Done**. Remaining: **§7 Cloudflare dashboard follow-up** (D1 unbind if still bound) and optional **§8 manual playtest**.  
-> Historical polish/review notes live under `archive/plan.md` and `archive/tech-review.md`. Agent orientation: `AGENTS.md`.
+> **Archived 2026-11-10.** `develop` was merged to `main` (PR #2) and later retired. The §7 Cloudflare follow-up was checked: Production has no bindings. A stale Preview D1 binding and the unused database are tracked in issue #10.  
+> **Original status (2026-07-09):** Code items in sections 1–6 are **Done**. Remaining: **§7 Cloudflare dashboard follow-up** (D1 unbind if still bound) and optional **§8 manual playtest**.  
+> Other historical notes are in this `archive/` folder. Agent orientation: `AGENTS.md`.
 
 Based on the branch review of `develop` vs `origin/main` (2026-07-09).  
 Implementation status updated while applying the agreed fixes.
@@ -102,7 +102,7 @@ Removed:
 3. Optional cleanup: delete the unused D1 database `mimic-feeder-metrics` if you no longer want the data.
 4. Confirm a successful Pages deploy of pure static `dist/` with no Functions errors.
 
-Keep this section until the dashboard cleanup is done, then delete or archive this file.
+Keep this section until the dashboard cleanup is done, then delete or archive this file. **(Archived 2026-11-10; Production is clean, and the Preview remainder is issue #10.)**
 
 ---
 
