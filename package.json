@@ -17,11 +17,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "clean-css": "^5.3.3",
     "esbuild": "^0.28.2",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
-    "html-minifier-terser": "^7.2.0",
     "playwright": "^1.65.0"
   },
   "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",

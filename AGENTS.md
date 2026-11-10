@@ -17,7 +17,7 @@ Guidance for coding agents working in this repository.
 |--------|--------|
 | Runtime | Vanilla JS (global scripts, **not** ES modules) |
 | Rendering / audio | p5.js **1.11.13** + p5.sound (CDN) |
-| Build | Custom `build.js` (esbuild JS, clean-css CSS, html-minifier-terser HTML) |
+| Build | Custom `build.js` (esbuild minifies the JS bundle and CSS; HTML is copied unminified) |
 | Deploy | Static **Cloudflare Pages** from `dist/` (GitHub integration) |
 | Backend | **None** — no Pages Functions or D1. **Cloudflare Web Analytics** is on through the domain's automatic setup (no code; the CSP allows it) |
 

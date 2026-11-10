@@ -77,7 +77,8 @@ The game must be served over HTTP. Opening `dist/index.html` directly (`file://`
 
 The project uses a simple build process that:
 - Concatenates and minifies JavaScript files
-- Minifies HTML and CSS
+- Minifies CSS
+- Swaps the game's script tags in the HTML for the bundle (the HTML is not minified)
 - Copies assets to the dist directory
 
 ### Quality gates
