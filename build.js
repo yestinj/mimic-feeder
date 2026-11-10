@@ -1,7 +1,5 @@
 const fs = require('fs').promises;
 const path = require('path');
-const { minify: minifyHtml } = require('html-minifier-terser');
-const CleanCSS = require('clean-css');
 const esbuild = require('esbuild');
 
 const OUTPUT_DIR = 'dist';
@@ -60,8 +58,10 @@ function replaceGameScriptsWithBundle(content, bundleScriptTag) {
     return `${withoutGameScripts}\n${bundleScriptTag}`;
 }
 
-// Minify HTML and update script references
-async function minifyHTML(inputDir, outputDir) {
+// Copy HTML, replacing the game's script tags with the bundle. The HTML is not
+// minified: it is about 3 KB, and minifying saved only ~200 bytes after
+// Cloudflare's compression.
+async function buildHTML(inputDir, outputDir) {
     const files = await fs.readdir(inputDir);
     for (const file of files) {
         if (file.endsWith('.html')) {
@@ -73,31 +73,23 @@ async function minifyHTML(inputDir, outputDir) {
             const bundleScriptTag = `<script src="app.min.js?v=${BUILD_CACHE_BUSTER}" defer></script>`;
             content = replaceGameScriptsWithBundle(content, bundleScriptTag);
 
-            const minified = await minifyHtml(content, {
-                collapseWhitespace: true,
-                removeComments: true,
-                minifyCSS: true,
-                minifyJS: true
-            });
-
             await fs.mkdir(outputDir, { recursive: true });
-            await fs.writeFile(outputPath, minified);
+            await fs.writeFile(outputPath, content);
         }
     }
 }
 
-// Minify CSS
+// Minify CSS with esbuild (the same tool that minifies the JS bundle)
 async function minifyCSS(inputDir, outputDir) {
     const files = await fs.readdir(inputDir);
-    const cssMinifier = new CleanCSS({ level: 2 });
     for (const file of files) {
         if (file.endsWith('.css')) {
             const inputPath = path.join(inputDir, file);
             const outputPath = path.join(outputDir, file);
             const content = await fs.readFile(inputPath, 'utf8');
-            const minified = cssMinifier.minify(content).styles;
+            const { code } = await esbuild.transform(content, { loader: 'css', minify: true });
             await fs.mkdir(outputDir, { recursive: true });
-            await fs.writeFile(outputPath, minified);
+            await fs.writeFile(outputPath, code);
         }
     }
 }
@@ -240,7 +232,7 @@ async function main() {
 
         // Process files
         await Promise.all([
-            minifyHTML('src', OUTPUT_DIR),
+            buildHTML('src', OUTPUT_DIR),
             minifyCSS('src', OUTPUT_DIR),
             bundleJS(JS_DIR, OUTPUT_DIR),
             copyAssets(ASSET_DIR, `${OUTPUT_DIR}/assets`),
