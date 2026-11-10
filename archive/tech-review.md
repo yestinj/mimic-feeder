@@ -3,7 +3,7 @@
 > **Archive status (2026-07-09):** Historical technical review and phased remediation plan (Feb 2026).  
 > Phases 1–5 code work is **done** in the tree; a few **manual** feel/regression passes were never formally closed.  
 > **Do not treat unchecked boxes or “open” findings below as current blockers** without re-checking the code.  
-> Superseded for pre-merge work by `archive/pre-merge-plan.md` (now archived too); agent orientation is in `AGENTS.md`.  
+> Superseded for pre-merge work by `PRE_MERGE_PLAN.md` (since archived as `archive/pre-merge-plan.md`); agent orientation is in `AGENTS.md`.  
 > **Post–this-doc work (2026-07, not listed in original findings):** analytics/Functions/D1 removal, pause freeze (`lastGameplayFrame`) + paused input guards, bomb count single-owner (shadow-bolt path), Playwright Brave playtest, real OG card, safe tooling / html-minifier-terser.
 
 Date: 2026-02-12  

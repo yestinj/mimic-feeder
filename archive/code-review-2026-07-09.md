@@ -177,7 +177,7 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 
 - `soundMap['bling']` alias → `castSpellSound` is opaque but works for crown/diamond spawn cue.
 - Smoke is regex-heavy (good regression net; brittle on pure formatting refactors).
-- `archive/pre-merge-plan.md` is correctly “active” for CF dashboard follow-up; code items Done.
+- `PRE_MERGE_PLAN.md` (since archived as `archive/pre-merge-plan.md`) is correctly “active” for CF dashboard follow-up; code items Done.
 
 ---
 
