@@ -60,6 +60,11 @@ export class Notifications {
         this.enqueue(this.toasts, this.toastShowing, { title: STRINGS.abilities[ability].name, ability }, () => this.nextToast());
     }
 
+    /** True while a banner is showing or waiting to. */
+    get bannersBusy(): boolean {
+        return this.bannerShowing !== null || this.banners.length > 0;
+    }
+
     /** Moves later toasts down out of the boss bar's way, or back. */
     makeRoomForBossBar(room: boolean): void {
         this.toastY = room ? TOAST_Y_UNDER_BOSS_BAR : TOAST_Y;

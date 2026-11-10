@@ -4,11 +4,12 @@ import type { Ability } from './rules/abilities';
 
 const introduced = new Set<Ability>();
 
-/** True the first time an ability is introduced, which it then remembers. */
-export function firstIntroduction(ability: Ability): boolean {
-    if (introduced.has(ability)) {
-        return false;
-    }
+/** True once an ability's new-ability card has been shown. */
+export function wasIntroduced(ability: Ability): boolean {
+    return introduced.has(ability);
+}
+
+/** Records that an ability's card has been shown. */
+export function markIntroduced(ability: Ability): void {
     introduced.add(ability);
-    return true;
 }

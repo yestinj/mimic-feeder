@@ -107,6 +107,11 @@ export class HudScene extends Phaser.Scene {
         markReady('hud');
     }
 
+    /** True while a banner (a new floor, a boss) is showing or queued. */
+    get bannersBusy(): boolean {
+        return this.notifications?.bannersBusy ?? false;
+    }
+
     override update(): void {
         // Cooldowns change every frame; everything else waits for the game's events.
         this.abilityBar.sync(this.playfield.abilityStates(), true);

@@ -19,10 +19,11 @@ import { dropSpeed, musicForFloor, spawnInterval } from '../rules/progression';
 import { Run, type RunEvent } from '../rules/run';
 import { SpawnHistory, keepClearOf, pickObject, pickSpawnX, rollHazard } from '../rules/spawner';
 import { MIMIC, SPAWNING } from '../rules/tuning';
-import { firstIntroduction } from '../session';
+import { markIntroduced, wasIntroduced } from '../session';
 import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
 import { onKeyDown } from '../ui/keys';
 import { COLOURS, MOTION } from '../theme';
+import type { HudScene } from './HudScene';
 import { GAME_EVENTS } from './SystemScene';
 
 /** Events the game scene emits on its own `events`, for the HUD. */
@@ -52,6 +53,8 @@ const MAGNET_PULL = 5;
 /** How long the lid stays open after the tentacles lash out, and ajar after a cast (ms). */
 const TENTACLE_LID_MS = 1000;
 const CAST_LID_MS = 250;
+/** After a boss, new-ability cards wait at least this long into the next floor, and for its banners to finish. */
+const CARDS_AFTER_BOSS_MS = 1000;
 const POWER_UP_SOUNDS = { staff: 'wizardStaff', magnet: 'magnetism', potion: 'healthPotion' } as const satisfies Record<PowerUpKind, string>;
 
 export interface AbilityState {
@@ -91,6 +94,8 @@ export class GameScene extends Phaser.Scene {
     private pauseBlur: Phaser.Filters.Blur | null = null;
     /** Abilities unlocked for the first time, waiting to be introduced on a card. */
     private pendingCards: Ability[] = [];
+    /** After a boss: cards wait until this scene time and for the HUD's banners to finish. */
+    private cardsAfterBoss: number | null = null;
     /** Points scored at the mouth this frame, shown as one pop-up at the end of it. */
     private mouthPoints = { points: 0, treasure: false };
     private readonly random = Math.random;
@@ -136,6 +141,7 @@ export class GameScene extends Phaser.Scene {
         this.ending = false;
         this.pauseBlur = null;
         this.pendingCards = [];
+        this.cardsAfterBoss = null;
         this.mouthPoints = { points: 0, treasure: false };
         this.boss = null;
         this.musicHeld = false;
@@ -266,9 +272,12 @@ export class GameScene extends Phaser.Scene {
             this.mouthPoints = { points: 0, treasure: false };
         }
 
-        // New abilities are introduced at the end of the frame, with the game paused.
-        if (this.pendingCards.length > 0 && !this.ending) {
-            this.openOverlay('unlock', { abilities: this.pendingCards.splice(0) });
+        // New abilities are introduced at the end of the frame, with the game paused,
+        // except from a boss's defeat until the next floor is under way.
+        if (this.pendingCards.length > 0 && !this.ending && this.cardsCanOpen()) {
+            const abilities = this.pendingCards.splice(0);
+            abilities.forEach(markIntroduced);
+            this.openOverlay('unlock', { abilities });
         }
     }
 
@@ -672,12 +681,33 @@ export class GameScene extends Phaser.Scene {
         this.emitBossHealth();
     }
 
-    /** The boss's death animation is over: on to the next floor. */
+    /** The boss's death animation is over: on to the next floor. Any new ability waits until it's under way. */
     private bossGone(): void {
         this.boss?.destroy();
         this.boss = null;
         this.emitBossHealth();
+        this.cardsAfterBoss = this.time.now + CARDS_AFTER_BOSS_MS;
         this.apply(this.run.finishBossFloor(), false);
+    }
+
+    /**
+     * Whether a new-ability card may open now. Not while a beaten boss dies,
+     * and after one, not until the next floor has begun and the "Boss
+     * Defeated!" and new-floor banners have played.
+     */
+    private cardsCanOpen(): boolean {
+        if (this.boss !== null && !this.boss.alive) {
+            return false;
+        }
+        if (this.cardsAfterBoss === null) {
+            return true;
+        }
+        const hud = this.scene.get('hud') as HudScene;
+        if (this.time.now < this.cardsAfterBoss || hud.bannersBusy) {
+            return false;
+        }
+        this.cardsAfterBoss = null;
+        return true;
     }
 
     private emitBossHealth(): void {
@@ -765,8 +795,10 @@ export class GameScene extends Phaser.Scene {
                     break;
                 case 'unlock':
                     // The first time: a card that pauses the game. After that: a toast.
-                    if (firstIntroduction(event.ability)) {
-                        this.pendingCards.push(event.ability);
+                    if (!wasIntroduced(event.ability)) {
+                        if (!this.pendingCards.includes(event.ability)) {
+                            this.pendingCards.push(event.ability);
+                        }
                     } else {
                         this.events.emit(RUN_EVENTS.abilityNotice, event.ability);
                     }
