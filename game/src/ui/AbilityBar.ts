@@ -25,6 +25,8 @@ interface Slot {
     readonly sweep: Phaser.GameObjects.Graphics;
     readonly keycap: Keycap;
     cooling: boolean;
+    /** Where the slot is heading, so a slide starts once rather than every frame. */
+    targetX: number;
 }
 
 /**
@@ -78,7 +80,7 @@ export class AbilityBar extends Phaser.GameObjects.Container {
         const keycap = new Keycap(this.scene, 0, SLOT / 2 + 2, STRINGS.abilities[ability].key, 34);
         const container = this.scene.add.container(this.slots.size * (SLOT + GAP) + SLOT / 2, 0, [frame, icon, sweep, keycap]);
         this.add(container);
-        this.slots.set(ability, { container, icon, sweep, keycap, cooling: false });
+        this.slots.set(ability, { container, icon, sweep, keycap, cooling: false, targetX: container.x });
 
         if (announce) {
             const glow = this.scene.add.image(0, 0, UI.glow).setTint(COLOURS.goldBright).setDisplaySize(SLOT * 2.2, SLOT * 2.2).setAlpha(0);
@@ -99,7 +101,8 @@ export class AbilityBar extends Phaser.GameObjects.Container {
                 continue;
             }
             const x = index * (SLOT + GAP) + SLOT / 2;
-            if (slot.container.x !== x) {
+            if (slot.targetX !== x) {
+                slot.targetX = x;
                 if (animate) {
                     this.scene.tweens.add({ targets: slot.container, x, duration: MOTION.normal, ease: MOTION.ease });
                 } else {
