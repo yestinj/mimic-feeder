@@ -81,7 +81,7 @@ The project uses a simple build process that:
 - Copies assets to the dist directory
 
 ### Quality gates
-Use the Node version in `.nvmrc` (26). Run `npm run check` before opening a PR; GitHub Actions (`.github/workflows/ci.yml`) runs the same gates on every PR and on pushes to `main` / `develop`.
+Use the Node version in `.nvmrc` (26). Run `npm run check` before opening a PR; GitHub Actions (`.github/workflows/ci.yml`) runs the same gates on every PR and on pushes to `main`.
 
 - `npm run lint`: `node --check` on every file, then ESLint with its recommended rules. The game is linted as the same concatenation the build ships (`JS_FILE_ORDER`), with browser and p5/p5.sound globals allowed, so it catches undeclared names, implicit globals, cross-file redeclarations, names that shadow p5 functions, unintended `switch` fall-through and similar bugs. Tooling (`build.js`, `scripts/`) is linted with Node globals.
 - `npm run lint:p5-globals`: regenerates `scripts/p5-globals.json` (the allowed p5 names) from the CDN URLs in `src/index.html`. Run it after changing the p5 version; lint fails until you do.
