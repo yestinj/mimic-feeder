@@ -270,10 +270,11 @@ All results are at head `a0bb76d` unless noted. Browser runs used headless syste
    - ESLint with `no-undef`/`no-redeclare` in `npm test`.
    - The playtest server applying `_headers`.
    - Optionally, a local Cloudflare Pages emulator (`wrangler pages dev`).
+   - **Done in yestinj/mimic-feeder#3.** CI, ESLint over the bundle (recommended rules), and a header-aware playtest server. Instead of Wrangler, `npm start` now serves `dist/` with the same `_headers` emulation.
 2. **Analytics:** check why Cloudflare Web Analytics is allowed by the CSP but not active on production.
 3. **p5 self-hosting (P-3):** low-priority investigation. It must keep p5 updates easy.
 4. **Housekeeping:**
-   - `npm audit fix` for the dev-only tooling advisories.
+   - `npm audit fix` for the dev-only tooling advisories. **Addressed in yestinj/mimic-feeder#3** by removing JSDoc, nodemon and http-server. The only remaining advisory is `minimatch` through ESLint, and its fix (minimatch 11) is not yet accepted by ESLint.
    - Archive `PRE_MERGE_PLAN.md` once its Cloudflare follow-up is done.
 
 ## Merge-readiness recommendation

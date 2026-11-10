@@ -18,7 +18,6 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const INDEX_HTML = path.join(REPO_ROOT, 'src', 'index.html');
@@ -42,7 +41,9 @@ function readP5ScriptUrls(html) {
 }
 
 async function collectGlobals(scriptUrls) {
-    // Full Chromium build in new headless mode, same as the playtest.
+    // Required here, not at the top: scripts/lint.js imports readP5ScriptUrls
+    // and should not load Playwright. Full Chromium build, same as the playtest.
+    const { chromium } = require('playwright');
     const browser = await chromium.launch({ channel: 'chromium' });
     try {
         const page = await browser.newPage();

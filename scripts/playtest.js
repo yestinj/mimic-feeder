@@ -139,8 +139,6 @@ async function main() {
         `Every served path (${servedPaths.length}) gets Cache-Control from at most one _headers rule`
     );
 
-    console.log(`Serving ${DIST} at ${BASE} with ${headerRules.length} _headers rules`);
-
     // Launch first so a missing browser fails before the server is listening.
     const browser = await chromium.launch({
         channel: 'chromium',
@@ -149,6 +147,7 @@ async function main() {
     console.log(`Using browser: Playwright Chromium ${browser.version()}`);
     // Exact production headers here (no Cache-Control override).
     const server = await startStaticServer({ headerRules, host: HOST, port: PORT, cacheControlConflicts });
+    console.log(`Serving ${DIST} at ${BASE} with ${headerRules.length} _headers rules`);
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
     const consoleErrors = [];
