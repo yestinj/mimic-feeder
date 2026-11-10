@@ -8,6 +8,7 @@
     "lint:p5-globals": "node scripts/generate-p5-globals.js",
     "smoke": "node scripts/smoke.js",
     "playtest": "node scripts/playtest.js",
+    "playtest:install": "playwright install --no-shell chromium",
     "test": "npm run lint && npm run build && npm run smoke",
     "check": "npm test && npm run playtest",
     "start": "npx http-server dist -o",

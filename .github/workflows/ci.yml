@@ -37,10 +37,9 @@ jobs:
             - name: npm test
               run: npm test
 
+            # Same browser as local runs (npm run playtest:install), plus OS packages.
             - name: Install Playwright Chromium
-              run: |
-                  npx playwright install --with-deps chromium
-                  echo "PLAYTEST_BROWSER_PATH=$(node -p "require('playwright').chromium.executablePath()")" >> "$GITHUB_ENV"
+              run: npx playwright install --with-deps --no-shell chromium
 
             # Browser playtest against dist/ served with src/_headers (CSP enforced).
             - name: Playtest

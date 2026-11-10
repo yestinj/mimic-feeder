@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Lightweight Playwright playtest for Mimic Feeder (system Brave).
+ * Lightweight Playwright playtest for Mimic Feeder (Playwright's Chromium).
  *
  * Checks:
  * - page loads with a canvas
@@ -23,14 +23,15 @@
  *   npm run build && npm run playtest
  *
  * Browser:
- *   Uses system Brave by default (no Playwright Chromium download).
- *   Override with PLAYTEST_BROWSER_PATH=/path/to/browser
+ *   Playwright's own Chromium, the same build CI uses (scripts/launch-chromium.js).
+ *   Install it once, and again after a Playwright upgrade: npm run playtest:install
  */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { loadHeadersFile, resolveHeaders, toResponseHeaders } = require('./pages-headers.js');
+const { launchChromium } = require('./launch-chromium.js');
 
 const PORT = Number(process.env.PLAYTEST_PORT || 4173);
 const HOST = '127.0.0.1';
@@ -38,9 +39,6 @@ const BASE = `http://${HOST}:${PORT}`;
 const DIST = path.join(__dirname, '..', 'dist');
 const OUT_DIR = path.join(__dirname, '..', 'playtest-output');
 const HEADERS_FILE = path.join(DIST, '_headers');
-
-const DEFAULT_BRAVE_PATH = '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
-const BROWSER_PATH = process.env.PLAYTEST_BROWSER_PATH || DEFAULT_BRAVE_PATH;
 
 function contentType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -216,21 +214,6 @@ async function waitForGameplay(page, timeoutMs = 12000) {
 }
 
 async function main() {
-    if (!fs.existsSync(BROWSER_PATH)) {
-        throw new Error(
-            `Browser not found at: ${BROWSER_PATH}\n` +
-            'Install Brave or set PLAYTEST_BROWSER_PATH to a Chromium-based browser binary.'
-        );
-    }
-
-    let chromium;
-    try {
-        ({ chromium } = require('playwright'));
-    } catch {
-        console.error('Playwright is not installed. Run: npm install');
-        process.exit(1);
-    }
-
     if (!fs.existsSync(path.join(DIST, 'index.html'))) {
         throw new Error('dist/index.html missing. Run `npm run build` first.');
     }
@@ -253,15 +236,14 @@ async function main() {
         `Every served path (${servedPaths.length}) gets Cache-Control from at most one _headers rule`
     );
 
-    console.log(`Using browser: ${BROWSER_PATH}`);
     console.log(`Serving ${DIST} at ${BASE} with ${headerRules.length} _headers rules`);
 
-    const server = await startStaticServer(headerRules, cacheControlConflicts);
-    const browser = await chromium.launch({
-        executablePath: BROWSER_PATH,
-        headless: true,
+    // Launch first so a missing browser fails before the server is listening.
+    const browser = await launchChromium({
         args: ['--autoplay-policy=user-gesture-required'],
     });
+    console.log(`Using browser: Playwright Chromium ${browser.version()}`);
+    const server = await startStaticServer(headerRules, cacheControlConflicts);
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
     const consoleErrors = [];
@@ -905,7 +887,7 @@ async function main() {
             if (t.includes('the play() request was interrupted')) {
                 return false;
             }
-            // Brave/headless sometimes logs font or media noise; keep signal high.
+            // Headless Chromium sometimes logs font or media noise; keep signal high.
             if (t.includes('net::err_')) {
                 return true;
             }

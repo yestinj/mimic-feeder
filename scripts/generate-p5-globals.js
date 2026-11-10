@@ -13,17 +13,16 @@
  * Run after changing the p5 CDN pins (scripts/lint.js fails until you do):
  *   npm run lint:p5-globals
  *
- * Needs network access to cdnjs and a Chromium-based browser: system Brave by
- * default, or PLAYTEST_BROWSER_PATH=/path/to/browser (same as the playtest).
+ * Needs network access to cdnjs and Playwright's Chromium (same browser as the
+ * playtest; install once with `npm run playtest:install`).
  */
 const fs = require('fs');
 const path = require('path');
+const { launchChromium } = require('./launch-chromium.js');
 
 const REPO_ROOT = path.join(__dirname, '..');
 const INDEX_HTML = path.join(REPO_ROOT, 'src', 'index.html');
 const OUTPUT_FILE = path.join(__dirname, 'p5-globals.json');
-const DEFAULT_BRAVE_PATH = '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
-const BROWSER_PATH = process.env.PLAYTEST_BROWSER_PATH || DEFAULT_BRAVE_PATH;
 const PROBE_URL = 'http://127.0.0.1/p5-globals-probe.html';
 
 /**
@@ -43,8 +42,7 @@ function readP5ScriptUrls(html) {
 }
 
 async function collectGlobals(scriptUrls) {
-    const { chromium } = require('playwright');
-    const browser = await chromium.launch({ executablePath: BROWSER_PATH, headless: true });
+    const browser = await launchChromium();
     try {
         const page = await browser.newPage();
         const scriptTags = scriptUrls
@@ -90,13 +88,6 @@ ${scriptTags}
 }
 
 async function main() {
-    if (!fs.existsSync(BROWSER_PATH)) {
-        throw new Error(
-            `Browser not found at: ${BROWSER_PATH}\n` +
-            'Install Brave or set PLAYTEST_BROWSER_PATH to a Chromium-based browser binary.'
-        );
-    }
-
     const scriptUrls = readP5ScriptUrls(fs.readFileSync(INDEX_HTML, 'utf8'));
     if (scriptUrls.length === 0) {
         throw new Error('No p5.js <script src> found in src/index.html');
