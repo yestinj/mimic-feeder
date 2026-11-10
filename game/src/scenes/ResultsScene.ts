@@ -5,7 +5,8 @@ import { floorTitle } from '../rules/floors';
 import { formatPlayTime, formatScore } from '../rules/format';
 import type { RunSummary } from '../rules/run';
 import { STRINGS } from '../strings';
-import { markReady } from '../testHook';
+import type { DeathCause } from '../rules/run';
+import { markReady, setResultsView } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from '../ui/Button';
 import { Menu } from '../ui/Menu';
@@ -35,7 +36,13 @@ export class ResultsScene extends Phaser.Scene {
         const cx = DESIGN_WIDTH / 2;
         const title = addText(this, cx, 170, STRINGS.gameOver.title, TYPE.hero, { role: 'display', bold: true, colour: '#ffffff', letterSpacing: 2 }).setOrigin(0.5);
         title.setTint(COLOURS.goldBright, COLOURS.goldBright, COLOURS.gold, COLOURS.gold);
-        addText(this, cx, 270, STRINGS.gameOver.endedOn(floorTitle(summary.floor)), TYPE.body, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
+        const cause = describeCause(summary.causeOfDeath);
+        if (cause) {
+            addText(this, cx, 262, cause, TYPE.body, { colour: TEXT_COLOURS.primary }).setOrigin(0.5);
+        }
+        addText(this, cx, cause ? 304 : 270, STRINGS.gameOver.endedOn(floorTitle(summary.floor)), TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
+        setResultsView({ cause });
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => setResultsView(null));
 
         const panelY = 530;
         addPanel(this, cx, panelY, PANEL_WIDTH, PANEL_HEIGHT);
@@ -84,5 +91,24 @@ export class ResultsScene extends Phaser.Scene {
         this.sound.stopAll();
         this.cameras.main.fadeOut(MOTION.normal, 0, 0, 0);
         this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(scene));
+    }
+}
+
+/** What cost the last life, in words (draft lines, reviewed in M4). */
+function describeCause(cause: DeathCause | null): string | null {
+    if (!cause) {
+        return null;
+    }
+    switch (cause.type) {
+        case 'wasted':
+            return STRINGS.causes.wasted(STRINGS.creatureNames[cause.creature]);
+        case 'bomb':
+            return STRINGS.causes.bomb;
+        case 'fireball':
+            return STRINGS.causes.fireball;
+        case 'boss':
+            return STRINGS.causes.boss;
+        case 'judgment':
+            return STRINGS.causes.judgment;
     }
 }

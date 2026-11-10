@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <!-- Nine-slice panel for the Ninefold Judgment: 32 px corners; dark violet with crimson trim. -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a0a1e"/>
+      <stop offset="1" stop-color="#12030b"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1.5" width="93" height="93" rx="14" fill="url(#body)" fill-opacity="0.92" stroke="#3a1028" stroke-width="3"/>
+  <rect x="6.5" y="6.5" width="83" height="83" rx="10" fill="none" stroke="#de527a" stroke-opacity="0.9" stroke-width="1.5"/>
+  <g fill="#9a5bd6">
+    <path d="M10 6.5 L13.5 10 L10 13.5 L6.5 10 Z"/>
+    <path d="M86 6.5 L89.5 10 L86 13.5 L82.5 10 Z"/>
+    <path d="M10 82.5 L13.5 86 L10 89.5 L6.5 86 Z"/>
+    <path d="M86 82.5 L89.5 86 L86 89.5 L82.5 86 Z"/>
+  </g>
+</svg>

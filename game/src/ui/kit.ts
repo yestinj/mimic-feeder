@@ -19,11 +19,13 @@ import iconDashUrl from './kit/icon-dash.svg?url';
 import iconMagnetUrl from './kit/icon-magnet.svg?url';
 import iconTentaclesUrl from './kit/icon-tentacles.svg?url';
 import keycapUrl from './kit/keycap.svg?url';
+import panelJudgmentUrl from './kit/panel-judgment.svg?url';
 import panelUrl from './kit/panel.svg?url';
 import soundOffUrl from './kit/sound-off.svg?url';
 
 const KIT = {
     panel: ['ui-panel', panelUrl],
+    panelJudgment: ['ui-panel-judgment', panelJudgmentUrl],
     buttonNormal: ['ui-button-normal', buttonNormalUrl],
     buttonFocus: ['ui-button-focus', buttonFocusUrl],
     buttonPressed: ['ui-button-pressed', buttonPressedUrl],
@@ -66,7 +68,8 @@ export function preloadUiKit(scene: Phaser.Scene): void {
     }
 }
 
-/** A panel of any size, centred on (x, y). */
-export function addPanel(scene: Phaser.Scene, x: number, y: number, width: number, height: number): Phaser.GameObjects.NineSlice {
-    return scene.add.nineslice(x, y, UI.panel, undefined, width, height, SLICE.panel, SLICE.panel, SLICE.panel, SLICE.panel);
+/** A panel of any size, centred on (x, y); the judgment style is the Ninefold Judgment's violet and crimson. */
+export function addPanel(scene: Phaser.Scene, x: number, y: number, width: number, height: number, style: 'normal' | 'judgment' = 'normal'): Phaser.GameObjects.NineSlice {
+    const texture = style === 'judgment' ? UI.panelJudgment : UI.panel;
+    return scene.add.nineslice(x, y, texture, undefined, width, height, SLICE.panel, SLICE.panel, SLICE.panel, SLICE.panel);
 }

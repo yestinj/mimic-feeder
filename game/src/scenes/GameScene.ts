@@ -4,6 +4,7 @@ import { MusicPlayer, playSound } from '../audio';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y, RUN_SCALE, SIZE_SCALE } from '../config';
 import { Boss } from '../game/Boss';
 import { FallingObject, objectWidth } from '../game/FallingObject';
+import { Judgment } from '../game/Judgment';
 import { Mimic } from '../game/Mimic';
 import { ShadowBolts } from '../game/ShadowBolts';
 import { Tentacles } from '../game/Tentacles';
@@ -38,6 +39,8 @@ export const RUN_EVENTS = {
     abilityNotice: 'ability-notice',
     /** The boss's health changed (payload: { health, max }), or the boss is gone (payload: null). */
     boss: 'boss',
+    /** The Ninefold Judgment's phase or wave changed (payload: JudgmentView), or it's over (payload: null). */
+    judgment: 'judgment',
 } as const;
 
 export interface BossHealth {
@@ -45,7 +48,7 @@ export interface BossHealth {
     readonly max: number;
 }
 
-const DEPTH = { background: -10, ground: -9, glow: -1, objects: 0, boss: 0.25, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
+const DEPTH = { background: -10, ground: -9, shade: -6, apparition: -5, glow: -1, objects: 0, boss: 0.25, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
 /** Dash distance from the p5 game (100 px), across the wider screen. */
 const DASH_DISTANCE = 100 * RUN_SCALE;
 /** Magnetised objects fly at the mimic at 5× their fall speed. */
@@ -62,6 +65,8 @@ export interface AbilityState {
     readonly unlocked: boolean;
     /** Cooldown left, 1 (just used) to 0 (ready). */
     readonly cooldown: number;
+    /** Attack abilities can't be used during the Ninefold Judgment. */
+    readonly blocked: boolean;
 }
 /** How long the playfield lingers after the last life before the results. */
 const GAME_OVER_HOLD_MS = 1800;
@@ -79,6 +84,13 @@ export class GameScene extends Phaser.Scene {
     private bossFireballs!: Phaser.Physics.Arcade.Group;
     /** Normal music waits while the boss's death cue plays. */
     private musicHeld = false;
+    private judgment: Judgment | null = null;
+    /** The tenth cat was shot: the judgment begins at the start of the next frame (after any boss fight). */
+    private judgmentPending = false;
+    /** Everything on screen when the judgment began, set aside until it ends. */
+    private suspended: FallingObject[] = [];
+    /** The dungeon's current voice line, so a new one cuts it off. */
+    private voice: Phaser.Sound.BaseSound | null = null;
     private cooldowns!: Cooldowns;
     private doubleTap!: DoubleTap;
     private history!: SpawnHistory;
@@ -115,6 +127,7 @@ export class GameScene extends Phaser.Scene {
             ability,
             unlocked: this.run.hasAbility(ability),
             cooldown: this.cooldowns.fraction(ability),
+            blocked: this.judgment !== null && ability !== 'dash',
         }));
     }
 
@@ -145,6 +158,10 @@ export class GameScene extends Phaser.Scene {
         this.mouthPoints = { points: 0, treasure: false };
         this.boss = null;
         this.musicHeld = false;
+        this.judgment = null;
+        this.judgmentPending = false;
+        this.suspended = [];
+        this.voice = null;
         this.shownBackground = '';
 
         this.physics.world.setBounds(0, 0, DESIGN_WIDTH, GROUND_Y);
@@ -186,6 +203,11 @@ export class GameScene extends Phaser.Scene {
                 }
             },
             startBoss: () => this.debugStartBoss(),
+            shootCats: (count) => {
+                for (let i = 0; i < count; i++) {
+                    this.apply(this.run.shootCat(), false);
+                }
+            },
             damageBoss: (hits) => {
                 for (let i = 0; i < hits && this.boss?.alive; i++) {
                     this.hitBoss(this.boss.x, this.boss.y);
@@ -209,6 +231,8 @@ export class GameScene extends Phaser.Scene {
             catsRescued: this.run.catsRescued,
             flyingDragons: this.activeObjects().filter((object) => object.flightEndsAt !== null).length,
             boss: this.boss ? { health: this.boss.health, max: this.boss.maxHealth, phase: this.boss.phase } : null,
+            judgment: this.judgment ? { phase: this.judgment.phase, gap: this.judgment.gap } : null,
+            boltsCast: this.run.uses.shadowBolt,
             food: this.activeObjects()
                 .filter((object) => isEdible(object.kind) && object.landedAt === null)
                 .map((object) => ({ x: Math.round(object.x), y: Math.round(object.y) }))
@@ -229,13 +253,18 @@ export class GameScene extends Phaser.Scene {
         // delta as the physics: on a slow machine nothing falls faster than
         // things spawn.
         this.run.tick(delta);
+        if (this.judgmentPending && !this.run.inBossFight) {
+            this.judgmentPending = false;
+            this.beginJudgment();
+        }
+        this.judgment?.update(delta);
 
         this.spawnElapsed += delta;
         const interval = spawnInterval(this.run.gameLevel);
         if (this.spawnElapsed >= interval) {
             this.spawnElapsed -= interval;
-            // Nothing falls during a boss fight but its fireballs.
-            if (this.spawning && !this.run.inBossFight) {
+            // Nothing falls during a boss fight but its fireballs, or during the judgment but its fire.
+            if (this.spawning && !this.run.inBossFight && !this.judgment) {
                 this.spawn();
             }
         }
@@ -317,9 +346,12 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    /** Uses an ability if it's unlocked and off cooldown; returns whether it did. */
+    /** Uses an ability if it's unlocked and off cooldown (and, during the judgment, only Dash); returns whether it did. */
     private useAbility(ability: Ability): boolean {
         if (this.ending || !this.run.hasAbility(ability) || !this.cooldowns.ready(ability)) {
+            return false;
+        }
+        if (this.judgment && ability !== 'dash') {
             return false;
         }
         this.cooldowns.start(ability);
@@ -356,7 +388,7 @@ export class GameScene extends Phaser.Scene {
 
     /** Grabs the nearest creatures. Nothing happens (and no cooldown) with none in sight. */
     private lashTentacles(): void {
-        if (!this.run.hasAbility('tentacles') || !this.cooldowns.ready('tentacles')) {
+        if (!this.run.hasAbility('tentacles') || !this.cooldowns.ready('tentacles') || this.judgment) {
             return;
         }
         const creatures = this.activeObjects().filter((object) => isEdible(object.kind) && !object.grabbed && !object.rescued);
@@ -492,8 +524,8 @@ export class GameScene extends Phaser.Scene {
                 // A cat touched any way but through the mouth dies: no life lost, but it cries out.
                 if (kind === 'cat') {
                     this.run.killCat();
-                } else {
-                    events = this.run.sideHit();
+                } else if (isCreature(kind)) {
+                    events = this.run.sideHit(kind);
                 }
                 splat(this, object.x, object.y, object.displayWidth).setDepth(DEPTH.effects);
                 playSound(this, kind === 'cat' ? 'catHurt' : 'splat');
@@ -521,7 +553,7 @@ export class GameScene extends Phaser.Scene {
         }
         let events: RunEvent[] = [];
         if (isCreature(kind)) {
-            events = this.run.miss();
+            events = this.run.miss(kind);
             splat(this, object.x, GROUND_Y, object.displayWidth).setDepth(DEPTH.effects);
             playSound(this, 'splat');
         } else if (isShiny(kind) || isPowerUp(kind)) {
@@ -729,6 +761,65 @@ export class GameScene extends Phaser.Scene {
         this.apply(this.run.eat('goblin'), false);
     }
 
+    /** The dungeon speaks, cutting off anything it was saying. */
+    private speak(name: 'dungeonWarning' | 'dungeonJudgment' | 'dungeonRelents'): void {
+        this.voice?.stop();
+        this.voice = playSound(this, name);
+    }
+
+    /**
+     * The Ninefold Judgment begins. Everything on screen is set aside (not
+     * destroyed, so nothing is lost), bolts, chains and boss fireballs go, and
+     * the music stops while the dungeon speaks.
+     */
+    private beginJudgment(): void {
+        for (const object of this.activeObjects()) {
+            object.grabbed = false;
+            object.magnetSpeed = null;
+            object.setActive(false).setVisible(false);
+            object.body.enable = false;
+            this.suspended.push(object);
+        }
+        this.tentacles.clear();
+        this.bolts.group.clear(true, true);
+        this.bossFireballs.clear(true, true);
+        this.music.stop();
+        this.speak('dungeonJudgment');
+        this.judgment = new Judgment(this, {
+            mimic: () => ({
+                rect: this.mimic.rect(),
+                centreX: this.mimic.centerX,
+                width: this.mimic.rect().width,
+                // How far it runs in 35 of the p5 game's frames.
+                reach: MIMIC.runSpeed * RUN_SCALE * this.run.growth.speed * (35 / 60),
+            }),
+            hit: () => this.apply(this.run.judge(), false),
+            changed: (view) => {
+                if (view.phase === 'ending' && this.judgment?.phase !== 'ending') {
+                    this.speak('dungeonRelents');
+                }
+                this.events.emit(RUN_EVENTS.judgment, view);
+            },
+            done: () => this.endJudgment(),
+        }, this.random, { shade: DEPTH.shade, apparition: DEPTH.apparition, fireballs: DEPTH.objects });
+    }
+
+    /** The dungeon relents: everything set aside comes back, and the music resumes. */
+    private endJudgment(): void {
+        this.judgment?.destroy();
+        this.judgment = null;
+        for (const object of this.suspended) {
+            if (object.scene) {
+                object.setActive(true).setVisible(true);
+                object.body.enable = true;
+                object.setDropSpeed(this.dropSpeed());
+            }
+        }
+        this.suspended = [];
+        this.music.play(this.boss?.alive ? 'boss' : musicForFloor(this.run.floor));
+        this.events.emit(RUN_EVENTS.judgment, null);
+    }
+
     /** A Shadow Bolt hit something: bombs go off (for points), everything else is destroyed. */
     private boltHit(bolt: Phaser.Physics.Arcade.Sprite, object: FallingObject): void {
         if (this.ending || !bolt.active || !object.active) {
@@ -743,7 +834,7 @@ export class GameScene extends Phaser.Scene {
             playSound(this, 'explode');
             shake(this.cameras.main, 5);
         } else if (kind === 'cat') {
-            this.run.shootCat();
+            events = this.run.shootCat();
             boltHit(this, object.x, object.y).setDepth(DEPTH.effects);
             playSound(this, 'catHurt');
         } else {
@@ -802,6 +893,12 @@ export class GameScene extends Phaser.Scene {
                     } else {
                         this.events.emit(RUN_EVENTS.abilityNotice, event.ability);
                     }
+                    break;
+                case 'catWarning':
+                    this.speak('dungeonWarning');
+                    break;
+                case 'judgment':
+                    this.judgmentPending = true;
                     break;
                 case 'gameOver':
                     this.endRun();

@@ -326,6 +326,18 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.running.includes('game') && s.game && s.game.lives === 3 && s.game.playTimeMs > 0);
         assert(true, '/next/ Play Again starts a new run');
 
+        // The Ninefold Judgment: ten cats shot bring it on. Standing still, its fire ends the run.
+        await debug('setSpawning', false);
+        await debug('grant', 'shadowBolt');
+        await debug('shootCats', 10);
+        const judged = await waitForSnapshot((s) => s.game && s.game.judgment !== null);
+        assert(judged.game.objects === 0, '/next/ ten cats shot bring the Ninefold Judgment, setting everything else aside');
+        await page.keyboard.press('Space');
+        await page.waitForTimeout(300);
+        assert((await snapshot()).game.boltsCast === judged.game.boltsCast, '/next/ Shadow Bolts are blocked during the Judgment');
+        await waitForSnapshot((s) => s.results !== null, 120000);
+        assert((await snapshot()).results.cause === 'Judged by the dungeon', '/next/ dying to the Judgment shows as the cause of death');
+
         if (cspViolations.length) {
             console.error('/next/ CSP violations:', cspViolations);
         }
