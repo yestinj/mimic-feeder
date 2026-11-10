@@ -160,8 +160,12 @@ async function checkNextBuild(browser) {
     });
 
     const snapshot = () => page.evaluate(() => window.__mimicFeeder.snapshot());
-    /** Polls the game's snapshot until `predicate` holds. */
-    const waitForSnapshot = async (predicate, timeout = 10000) => {
+    /**
+     * Polls the game's snapshot until `predicate` holds. CI renders WebGL in
+     * software at a few frames per second, so checks wait for the game's state
+     * rather than for fixed times.
+     */
+    const waitForSnapshot = async (predicate, timeout = 30000) => {
         const deadline = Date.now() + timeout;
         let last = null;
         while (Date.now() < deadline) {
@@ -200,9 +204,11 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.audio === 'running', 5000);
         assert(true, '/next/ audio is running after the first key press');
 
-        await holdKey('ArrowLeft', 400);
-        const moved = await snapshot();
-        assert(moved.game.mimicX < start.game.mimicX - 50, '/next/ the mimic moves with the arrow keys');
+        // Held until it has moved: at a few frames per second a short tap can start and end within one frame.
+        await page.keyboard.down('ArrowLeft');
+        await waitForSnapshot((s) => s.game.mimicX < start.game.mimicX - 50);
+        await page.keyboard.up('ArrowLeft');
+        assert(true, '/next/ the mimic moves with the arrow keys');
 
         await page.keyboard.press('KeyP');
         await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game') && s.paused.includes('hud'));
@@ -223,9 +229,8 @@ async function checkNextBuild(browser) {
         assert(true, '/next/ M mutes and unmutes, also while paused');
 
         await page.keyboard.press('Escape');
-        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause'));
-        await page.waitForTimeout(300);
-        assert((await snapshot()).game.playTimeMs > paused.game.playTimeMs, '/next/ Esc resumes the run');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && s.game.playTimeMs > paused.game.playTimeMs);
+        assert(true, '/next/ Esc resumes the run');
 
         // Pause menu: Restart (fifth item) asks first; Cancel is the default.
         await page.keyboard.press('Escape');
@@ -248,7 +253,7 @@ async function checkNextBuild(browser) {
 
         // Wait in a corner until enough food hits the floor to end the run.
         await page.keyboard.down('ArrowLeft');
-        await waitForSnapshot((s) => s.running.includes('results'), 90000);
+        await waitForSnapshot((s) => s.running.includes('results'), 180000);
         await page.keyboard.up('ArrowLeft');
         assert(true, '/next/ losing the last life ends the run and shows the results');
         await page.waitForTimeout(800);

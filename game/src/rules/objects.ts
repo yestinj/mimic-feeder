@@ -7,8 +7,8 @@ export type HazardKind = 'bomb' | 'fireball';
 export type ObjectKind = CreatureKind | ShinyKind | HazardKind;
 
 /**
- * - creature: eaten from above for points; bumped off the sides; costs a life
- *   if it hits the floor.
+ * - creature: eaten from above for points; costs a life if it hits the side
+ *   of the chest or the floor.
  * - shiny: collected on any contact; breaks harmlessly on the floor.
  * - hazard: costs a life on contact; explodes harmlessly on the floor.
  */

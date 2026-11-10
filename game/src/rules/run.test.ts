@@ -88,10 +88,10 @@ describe('Run', () => {
         expect(run.lives).toBe(0);
     });
 
-    it('bumping costs nothing', () => {
+    it('a side hit destroys the creature and costs a life, like a miss', () => {
         const run = new Run();
-        expect(run.bump()).toEqual([]);
-        expect([run.lives, run.score, run.bumped]).toEqual([3, 0, 1]);
+        expect(run.sideHit()).toEqual([{ type: 'lifeLost' }]);
+        expect([run.lives, run.score, run.sideHits, run.creaturesEaten]).toEqual([2, 0, 1, 0]);
     });
 
     it('counts play time only while the run is going', () => {

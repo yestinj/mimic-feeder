@@ -216,7 +216,7 @@ export class GameScene extends Phaser.Scene {
         return this.activeObjects().some((object) => !isHazard(object.kind) && overlaps(reach, object.rect()));
     }
 
-    /** Something touched the mimic: eaten, bumped, collected or set off. */
+    /** Something touched the mimic: eaten, hit side-on, collected or set off. */
     private touch(object: FallingObject): void {
         if (this.ending || !object.active) {
             return;
@@ -237,8 +237,8 @@ export class GameScene extends Phaser.Scene {
                 playSound(this, 'collect');
                 shake(this.cameras.main, 4);
                 break;
-            case 'bump':
-                events = this.run.bump();
+            case 'sideHit':
+                events = this.run.sideHit();
                 splat(this, object.x, object.y, object.displayWidth).setDepth(DEPTH.effects);
                 playSound(this, 'splat');
                 break;

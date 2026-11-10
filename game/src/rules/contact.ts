@@ -21,23 +21,29 @@ export function expand(rect: Rect, by: number): Rect {
 }
 
 /**
- * True when falling food meets the mouth: it's over the chest and reaches into
- * its top 30%. Anything else touching the chest has hit its side.
+ * True when falling food comes in over the rim: it's over the chest and its
+ * bottom edge is inside the mouth (the top 30%), as when it drops in from
+ * above or the mimic jumps up into it. Food that meets the chest lower down
+ * has hit its side.
+ *
+ * (The p5 game ate anything reaching into the mouth band, so running into
+ * tall food from the side often counted as eating; plan §3.9.)
  */
 export function isBite(food: Rect, mimic: Rect, falling: boolean): boolean {
     const mouthBottom = mimic.y + mimic.height * MOUTH_DEPTH;
+    const foodBottom = food.y + food.height;
     const over = food.x + food.width > mimic.x && food.x < mimic.x + mimic.width;
-    const inMouth = food.y + food.height > mimic.y && food.y < mouthBottom;
-    return falling && over && inMouth;
+    const overRim = foodBottom > mimic.y && foodBottom <= mouthBottom;
+    return falling && over && overRim;
 }
 
 /**
  * - eat: a creature went into the mouth.
- * - bump: a creature hit the side and is knocked away (no points, no penalty).
+ * - sideHit: a creature hit the side of the chest and was destroyed (costs a life).
  * - collect: a shiny, on any contact.
  * - detonate: a hazard, on any contact.
  */
-export type ContactResult = 'eat' | 'bump' | 'collect' | 'detonate';
+export type ContactResult = 'eat' | 'sideHit' | 'collect' | 'detonate';
 
 export function resolveContact(category: ObjectCategory, object: Rect, mimic: Rect, falling: boolean): ContactResult {
     switch (category) {
@@ -46,6 +52,6 @@ export function resolveContact(category: ObjectCategory, object: Rect, mimic: Re
         case 'shiny':
             return 'collect';
         case 'creature':
-            return isBite(object, mimic, falling) ? 'eat' : 'bump';
+            return isBite(object, mimic, falling) ? 'eat' : 'sideHit';
     }
 }

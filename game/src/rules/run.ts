@@ -62,8 +62,8 @@ export class Run {
 
     readonly eaten: Record<CreatureKind, number> = zeroCounts(CREATURE_KINDS);
     readonly collected: Record<ShinyKind, number> = zeroCounts(SHINY_KINDS);
-    /** Creatures knocked away by the side of the chest. */
-    bumped = 0;
+    /** Creatures destroyed by hitting the side of the chest. */
+    sideHits = 0;
     /** Creatures that hit the floor. */
     missed = 0;
     /** Hazards set off by touching them. Hazards that hit the floor don't count. */
@@ -145,10 +145,10 @@ export class Run {
         return this.gain(OBJECTS[kind].points);
     }
 
-    /** A creature hit the side of the chest and was knocked away. */
-    bump(): RunEvent[] {
-        this.bumped += 1;
-        return [];
+    /** A creature hit the side of the chest: it's destroyed and, like a miss, costs a life. */
+    sideHit(): RunEvent[] {
+        this.sideHits += 1;
+        return this.loseLife();
     }
 
     /** A creature hit the floor. */

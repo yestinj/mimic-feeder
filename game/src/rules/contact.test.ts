@@ -5,22 +5,27 @@ import { formatPlayTime, formatScore } from './format';
 const mimic = { x: 100, y: 200, width: 100, height: 80 };
 
 describe('contact', () => {
-    it('eats food falling into the top 30% of the chest', () => {
-        const food = { x: 120, y: 180, width: 30, height: 30 };
+    // The mouth is the top 24 px of this 80 px chest: y 200 to 224.
+    it('eats food coming in over the rim', () => {
+        const food = { x: 120, y: 175, width: 30, height: 30 };
         expect(isBite(food, mimic, true)).toBe(true);
         expect(resolveContact('creature', food, mimic, true)).toBe('eat');
+        // Just over the edge of the chest still counts.
+        expect(isBite({ x: 75, y: 190, width: 30, height: 30 }, mimic, true)).toBe(true);
     });
 
-    it('bumps food that meets the side below the mouth', () => {
-        // The mouth ends 24 px down (30% of 80); this food's top is lower.
-        const food = { x: 80, y: 230, width: 30, height: 30 };
-        expect(overlaps(food, mimic)).toBe(true);
-        expect(resolveContact('creature', food, mimic, true)).toBe('bump');
+    it('treats food meeting the chest below the rim as a side hit, even if it reaches the mouth band', () => {
+        // Tall food: its top is in the mouth band, but its bottom is well below the rim.
+        const tall = { x: 80, y: 205, width: 30, height: 60 };
+        expect(overlaps(tall, mimic)).toBe(true);
+        expect(resolveContact('creature', tall, mimic, true)).toBe('sideHit');
+        const low = { x: 80, y: 240, width: 30, height: 30 };
+        expect(resolveContact('creature', low, mimic, true)).toBe('sideHit');
     });
 
     it('only eats falling food', () => {
-        const food = { x: 120, y: 180, width: 30, height: 30 };
-        expect(resolveContact('creature', food, mimic, false)).toBe('bump');
+        const food = { x: 120, y: 175, width: 30, height: 30 };
+        expect(resolveContact('creature', food, mimic, false)).toBe('sideHit');
     });
 
     it('collects shinies and sets off hazards on any contact', () => {
