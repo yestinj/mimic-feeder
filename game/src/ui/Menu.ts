@@ -1,56 +1,72 @@
-import * as Phaser from 'phaser';
+import type * as Phaser from 'phaser';
 import type { Button } from './Button';
+import { onKeyDown } from './keys';
+
+export interface MenuOptions {
+    /** Focused at the start (default: the first enabled button). */
+    readonly initialIndex?: number;
+    /** A row of buttons, moved through with ←/→ or A/D instead of ↑/↓ or W/S. */
+    readonly horizontal?: boolean;
+}
 
 /**
- * Keyboard and mouse navigation for a vertical list of buttons: ↑/↓ or W/S move
- * the focus (wrapping round, skipping disabled buttons), Enter or Space selects,
- * and hovering with the mouse moves the focus too.
+ * Keyboard and mouse navigation for a list of buttons: ↑/↓ or W/S (←/→ or A/D
+ * for a row) move the focus, wrapping round and skipping disabled buttons;
+ * Enter or Space selects; hovering with the mouse moves the focus too. A menu
+ * can be switched off while something sits on top of it (a dialog).
  */
 export class Menu {
-    private index: number;
+    private index = 0;
+    private enabled = true;
+    private readonly stopListening: (() => void)[];
 
     constructor(
-        private readonly scene: Phaser.Scene,
+        scene: Phaser.Scene,
         private readonly buttons: readonly Button[],
-        initialIndex = 0,
+        options: MenuOptions = {},
     ) {
-        this.index = this.nextEnabled(initialIndex, 0);
+        this.index = this.nextEnabled(options.initialIndex ?? 0, 0);
         buttons.forEach((button, i) => {
             button.onHover = () => {
-                if (button.isEnabled()) {
+                if (this.enabled && button.isEnabled()) {
                     this.focus(i);
                 }
             };
         });
 
-        const keyboard = scene.input.keyboard;
-        if (keyboard) {
-            const handlers: Record<string, () => void> = {
-                'keydown-UP': () => this.move(-1),
-                'keydown-W': () => this.move(-1),
-                'keydown-DOWN': () => this.move(1),
-                'keydown-S': () => this.move(1),
-                'keydown-ENTER': () => this.current()?.select(),
-                'keydown-SPACE': () => this.current()?.select(),
-            };
-            for (const [event, handler] of Object.entries(handlers)) {
-                keyboard.on(event, handler);
-            }
-            scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-                for (const [event, handler] of Object.entries(handlers)) {
-                    keyboard.off(event, handler);
-                }
-            });
-        }
+        const [back, forward] = options.horizontal ? [['LEFT', 'A'], ['RIGHT', 'D']] : [['UP', 'W'], ['DOWN', 'S']];
+        this.stopListening = [
+            onKeyDown(scene, ['ENTER', 'SPACE'], () => this.select()),
+            onKeyDown(scene, back ?? [], () => this.move(-1), { repeat: true }),
+            onKeyDown(scene, forward ?? [], () => this.move(1), { repeat: true }),
+        ];
         this.focus(this.index);
+    }
+
+    /** Stops listening to the keyboard (for a menu removed before its scene ends). */
+    destroy(): void {
+        this.stopListening.forEach((stop) => stop());
     }
 
     current(): Button | undefined {
         return this.buttons[this.index];
     }
 
+    /** Switches keyboard and hover handling off (for example, under a dialog) or back on. */
+    setEnabled(enabled: boolean): void {
+        this.enabled = enabled;
+    }
+
+    private select(): void {
+        if (this.enabled) {
+            this.current()?.select();
+        }
+    }
+
     private move(step: 1 | -1): void {
-        this.focus(this.nextEnabled(this.index + step, step));
+        if (this.enabled) {
+            this.focus(this.nextEnabled(this.index + step, step));
+        }
     }
 
     private focus(index: number): void {

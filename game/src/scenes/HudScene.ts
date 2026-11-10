@@ -1,0 +1,195 @@
+import * as Phaser from 'phaser';
+import { isMuted } from '../audio';
+import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
+import { floorTitle } from '../rules/floors';
+import { formatScore } from '../rules/format';
+import type { Run, RunEvent } from '../rules/run';
+import { STRINGS } from '../strings';
+import { markReady } from '../testHook';
+import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
+import { Hearts } from '../ui/Hearts';
+import { Notifications } from '../ui/Notifications';
+import { ProgressBar } from '../ui/ProgressBar';
+import { UI } from '../ui/kit';
+import { addText } from '../ui/text';
+import { RUN_EVENTS, type GameScene } from './GameScene';
+import { GAME_EVENTS } from './SystemScene';
+
+const MARGIN = 48;
+const XP_BAR_WIDTH = 300;
+
+/**
+ * The heads-up display over the playfield: score, floor and zone (top left),
+ * hearts, level and XP (top right), the mute icon, and notifications. It only
+ * redraws when the game scene reports a change.
+ */
+export class HudScene extends Phaser.Scene {
+    private run!: Run;
+    private scoreText!: Phaser.GameObjects.Text;
+    private floorText!: Phaser.GameObjects.Text;
+    private hearts!: Hearts;
+    private xpBar!: ProgressBar;
+    private badge!: Phaser.GameObjects.Container;
+    private levelText!: Phaser.GameObjects.Text;
+    private muteIcon!: Phaser.GameObjects.Image;
+    private edgeGlow!: Phaser.GameObjects.Image;
+    private notifications!: Notifications;
+    private shownScore = 0;
+    private shownLevel = 1;
+    private scoreTween: Phaser.Tweens.Tween | null = null;
+
+    constructor() {
+        super('hud');
+    }
+
+    create(): void {
+        const game = this.scene.get('game') as GameScene;
+        this.run = game.currentRun;
+        this.shownScore = 0;
+        this.shownLevel = this.run.level;
+        this.scoreTween = null;
+
+        this.addTopShade();
+        this.addLowHealthGlow();
+        this.addScore();
+        this.addVitals();
+        this.muteIcon = this.add.image(MARGIN + 22, 196, UI.soundOff).setVisible(isMuted());
+        this.notifications = new Notifications(this);
+
+        const onEvent = (event: RunEvent): void => this.onRunEvent(event);
+        const onChanged = (): void => this.refresh(true);
+        const onOver = (): void => this.showGameOver();
+        const onMute = (muted: boolean): void => {
+            this.muteIcon.setVisible(muted);
+        };
+        game.events.on(RUN_EVENTS.event, onEvent);
+        game.events.on(RUN_EVENTS.changed, onChanged);
+        game.events.on(RUN_EVENTS.over, onOver);
+        this.game.events.on(GAME_EVENTS.muteChanged, onMute);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            game.events.off(RUN_EVENTS.event, onEvent);
+            game.events.off(RUN_EVENTS.changed, onChanged);
+            game.events.off(RUN_EVENTS.over, onOver);
+            this.game.events.off(GAME_EVENTS.muteChanged, onMute);
+        });
+
+        this.refresh(false);
+        this.notifications.banner(floorTitle(this.run.floor));
+        markReady('hud');
+    }
+
+    /** Darkens the top of the screen a little so the HUD reads on any background. */
+    private addTopShade(): void {
+        const shade = this.add.graphics();
+        shade.fillGradientStyle(COLOURS.ink, COLOURS.ink, COLOURS.ink, COLOURS.ink, 0.6, 0.6, 0, 0);
+        shade.fillRect(0, 0, DESIGN_WIDTH, 240);
+    }
+
+    private addLowHealthGlow(): void {
+        this.edgeGlow = this.add.image(0, 0, UI.edgeGlow).setOrigin(0).setDisplaySize(DESIGN_WIDTH, DESIGN_HEIGHT).setAlpha(0);
+        this.tweens.add({ targets: this.edgeGlow, alpha: { from: 0.25, to: 0.5 }, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut', paused: true });
+    }
+
+    private addScore(): void {
+        addText(this, MARGIN, 34, 'SCORE', TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true });
+        this.scoreText = addText(this, MARGIN, 56, '0', TYPE.title, { colour: TEXT_COLOURS.gold, bold: true });
+        this.floorText = addText(this, MARGIN, 136, '', TYPE.small, { colour: TEXT_COLOURS.primary });
+    }
+
+    private addVitals(): void {
+        const right = DESIGN_WIDTH - MARGIN;
+        this.hearts = new Hearts(this, right - 26, 66);
+
+        const badgeX = right - 44;
+        const badgeY = 162;
+        // Numbers use the text font (Barlow), whose digits sit centred in their box.
+        this.levelText = addText(this, 0, 0, '1', TYPE.heading, { bold: true, colour: TEXT_COLOURS.gold, shadow: false }).setOrigin(0.5);
+        this.badge = this.add.container(badgeX, badgeY, [this.add.image(0, 0, UI.badge), this.levelText]);
+        this.xpBar = new ProgressBar(this, badgeX - 44 - SPACE.s - XP_BAR_WIDTH / 2, badgeY, XP_BAR_WIDTH, COLOURS.xp);
+        addText(this, badgeX - 44 - SPACE.s - XP_BAR_WIDTH, badgeY - 44, 'LEVEL', TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true });
+    }
+
+    /** Brings every number up to date with the run. */
+    private refresh(animate: boolean): void {
+        const run = this.run;
+        this.floorText.setText(STRINGS.hud.floorZone(run.floor, run.zone));
+        this.hearts.set(run.lives, run.maxLives, animate);
+        this.updateLowHealth();
+
+        const levelledUp = run.level > this.shownLevel;
+        this.shownLevel = run.level;
+        this.levelText.setText(String(run.level));
+        this.xpBar.setProgress(run.xp / run.xpToNext, animate, levelledUp);
+        if (animate && levelledUp) {
+            this.tweens.add({ targets: this.badge, scale: { from: 1.3, to: 1 }, duration: MOTION.slow, ease: 'Back.Out' });
+        }
+
+        this.countScoreTo(run.score, animate);
+    }
+
+    private countScoreTo(score: number, animate: boolean): void {
+        if (score === this.shownScore) {
+            return;
+        }
+        this.scoreTween?.stop();
+        if (!animate) {
+            this.shownScore = score;
+            this.scoreText.setText(formatScore(score));
+            return;
+        }
+        this.scoreTween = this.tweens.addCounter({
+            from: this.shownScore,
+            to: score,
+            duration: 420,
+            ease: 'Cubic.Out',
+            onUpdate: (tween) => {
+                this.shownScore = Math.round(tween.getValue() ?? score);
+                this.scoreText.setText(formatScore(this.shownScore));
+            },
+        });
+        this.tweens.add({ targets: this.scoreText, scale: { from: 1.08, to: 1 }, duration: MOTION.normal, ease: 'Cubic.Out' });
+    }
+
+    private updateLowHealth(): void {
+        const low = this.run.lives === 1;
+        const pulse = this.tweens.getTweensOf(this.edgeGlow)[0];
+        if (low && pulse?.paused) {
+            pulse.resume();
+        } else if (!low && pulse && !pulse.paused) {
+            pulse.pause();
+            this.edgeGlow.setAlpha(0);
+        }
+    }
+
+    private onRunEvent(event: RunEvent): void {
+        switch (event.type) {
+            case 'zone':
+                if (event.newFloor) {
+                    this.notifications.banner(floorTitle(event.floor));
+                } else {
+                    this.notifications.toast(STRINGS.notices.zone(event.zone));
+                }
+                break;
+            case 'levelUp':
+                this.notifications.toast(STRINGS.notices.levelUp(event.level), STRINGS.notices.levelUpDetail);
+                break;
+            case 'extraLife':
+                this.notifications.toast(STRINGS.notices.extraLife, STRINGS.notices.extraLifeDetail);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private showGameOver(): void {
+        this.notifications.clear();
+        const title = addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2 - 40, STRINGS.gameOver.title, TYPE.hero, {
+            role: 'display',
+            bold: true,
+            colour: '#ffffff',
+            letterSpacing: 2,
+        }).setOrigin(0.5).setAlpha(0).setScale(1.15);
+        title.setTint(COLOURS.goldBright, COLOURS.goldBright, COLOURS.gold, COLOURS.gold);
+        this.tweens.add({ targets: title, alpha: 1, scale: 1, duration: 700, ease: 'Cubic.Out' });
+    }
+}

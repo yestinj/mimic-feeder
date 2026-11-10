@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="52" height="48" viewBox="0 0 52 48">
+  <!-- A full heart: red with a dark outline and a soft highlight. -->
+  <defs>
+    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f06a55"/>
+      <stop offset="1" stop-color="#b52f22"/>
+    </linearGradient>
+  </defs>
+  <path d="M26 44 C10 32 3 24 3 15.5 C3 8.5 8.5 3.5 15 3.5 C19.5 3.5 23.5 6 26 10 C28.5 6 32.5 3.5 37 3.5 C43.5 3.5 49 8.5 49 15.5 C49 24 42 32 26 44 Z"
+        fill="url(#fill)" stroke="#2a0d08" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M12 11 C14 8.5 17.5 8 20 9.5" fill="none" stroke="#ffd0c4" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round"/>
+</svg>

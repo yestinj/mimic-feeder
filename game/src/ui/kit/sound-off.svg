@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <!-- Muted speaker. -->
+  <path d="M7 18 L15 18 L25 9 L25 39 L15 30 L7 30 Z" fill="#f3e6c8" stroke="#0b0806" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M31 18 L42 30 M42 18 L31 30" stroke="#0b0806" stroke-width="7" stroke-linecap="round"/>
+  <path d="M31 18 L42 30 M42 18 L31 30" stroke="#ff8f80" stroke-width="3.5" stroke-linecap="round"/>
+</svg>

@@ -151,11 +151,14 @@ Settings are reachable from the title and pause menus, and save automatically.
 
 ### 3.9 Gameplay changes
 
-These are fixes to oversights; everything else is ported unchanged.
+These are fixes to oversights and changes agreed while playing the rewrite; everything else is ported unchanged.
 
 - **The Magnet** behaves like the Wizard Staff: offered as soon as it unlocks (Floor 3 Zone 1), then occasionally after a miss, until collected.
 - **Spawn positions** use the full width correctly; drops currently lean left.
 - **Dash** gets its own whoosh sound instead of reusing the Shadow Bolt cast sound.
+- **Eating and side hits** (agreed in M1):
+  - Food is eaten only when it comes in over the rim: its bottom edge reaches the mouth (the top 30% of the chest), as when it drops in or the mimic jumps up into it. The p5 game also ate food that merely reached the mouth band, so running into tall creatures from the side usually counted as eating.
+  - Anything that meets the chest lower down is a side hit: the creature is destroyed and, like food hitting the floor, it costs a life. The p5 game destroyed it for free.
 - **Deliberately unchanged:**
   - Shadow Bolt still destroys shinies and power-ups (shoot carefully).
   - Touching a cat waiting on the floor still kills it.
@@ -234,4 +237,3 @@ The p5 game stays live and unchanged until M5. `AGENTS.md` gets a short note abo
 - **Final wording** for cause-of-death lines, banners, cards and secret achievements: reviewed with the owner in M4.
 - **The new secret achievements:** which ones exactly, decided in M3.
 - **The resume countdown:** kept or removed after trying it in M4.
-- **The Phaser spike** (draft PR #13): closed once M0 lands. It stays as a reference until then.

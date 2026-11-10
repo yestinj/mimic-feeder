@@ -42,6 +42,8 @@ export const FONTS = {
 /** Type scale in design pixels. */
 export const TYPE = {
     hero: 120,
+    /** Floor and boss banners. */
+    banner: 84,
     title: 64,
     heading: 44,
     button: 34,

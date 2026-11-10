@@ -36,9 +36,13 @@ src/
   assets/             # Images, SFX, music (copied to dist; _unused/ skipped)
 game/                 # Phaser + TypeScript rewrite, built to dist/next/ (served at /next/)
   vite.config.mts     # Vite build (base /next/, hashed output in /next/bundle/) + Vitest config
-  src/scenes/         # One Phaser scene per screen
+  src/scenes/         # One Phaser scene per screen (game, HUD, pause and results run as separate scenes)
   src/rules/          # Game rules in plain TypeScript, no Phaser imports; unit-tested (*.test.ts)
-  src/ui/             # UI kit (generated SVGs in kit/), buttons, menus, keycaps, text
+  src/game/           # Playfield objects: the mimic, falling objects, effects
+  src/ui/             # UI kit (generated SVGs in kit/), buttons, menus, HUD pieces, text; keys.ts for key input
+  src/assets.ts       # Asset keys and files (shared src/assets, served at /assets/), animations
+  src/audio.ts        # Sound effects, music and mute
+  src/testHook.ts     # window.__mimicFeeder: ready scenes and a state snapshot for the playtest
   src/theme.ts        # Colours, fonts, type scale, spacing, timings
   src/strings.ts      # All player-facing text
 docs/phaser-migration/  # Migration inventory and plan
@@ -113,7 +117,7 @@ npm install
 npm run playtest:install # once (and after Playwright upgrades): Playwright's Chromium
 npm run build          # src → dist
 npm run dev            # watch src, rebuild on change (node --watch-path)
-npm run dev:next       # Vite dev server for the game/ rewrite (reloads on save; serves src/assets at /assets/)
+npm run dev:next       # Vite dev server for the game/ rewrite (reloads on save; serves src/assets at /assets/; add ?debug to outline physics bodies)
 npm run typecheck      # tsc on game/ (strict)
 npm run test:unit      # Vitest unit tests for game/src/rules
 npm start              # serve dist with _headers (CSP etc.; Cache-Control: no-store)

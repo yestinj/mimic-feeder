@@ -1,19 +1,12 @@
 import * as Phaser from 'phaser';
-import { ASSET_BASE, DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
-import { floorInfo } from '../rules/floors';
+import { createAnimations, loadCoreAssets } from '../assets';
+import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { STRINGS } from '../strings';
 import { COLOURS, TEXT_COLOURS, TYPE } from '../theme';
 import { addPanel } from '../ui/kit';
 import { addText } from '../ui/text';
 
-export const TEXTURES = {
-    titleBackground: 'bg-floor-1',
-    chestClosed: 'chest-closed',
-    chestAjar: 'chest-ajar',
-    chestOpen: 'chest-open',
-} as const;
-
-/** The loading screen: a themed progress bar while the game's assets load. */
+/** The loading screen: a themed progress bar while Floor 1's assets load. */
 export class PreloadScene extends Phaser.Scene {
     constructor() {
         super('preload');
@@ -38,14 +31,13 @@ export class PreloadScene extends Phaser.Scene {
         drawBar(0);
         this.load.on(Phaser.Loader.Events.PROGRESS, drawBar);
 
-        this.load.setPath(ASSET_BASE);
-        this.load.image(TEXTURES.titleBackground, `backgrounds/${floorInfo(1).background}`);
-        this.load.image(TEXTURES.chestClosed, 'chest_closed.png');
-        this.load.image(TEXTURES.chestAjar, 'chest_ajar.png');
-        this.load.image(TEXTURES.chestOpen, 'chest_open.png');
+        loadCoreAssets(this.load);
     }
 
     create(): void {
+        createAnimations(this.anims);
+        // Later floors load in the background from here on.
+        this.scene.launch('system');
         this.scene.start('title');
     }
 }

@@ -1,28 +1,28 @@
 import * as Phaser from 'phaser';
-import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
+import { TEXTURES, backgroundKey } from '../assets';
+import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y } from '../config';
 import { STRINGS } from '../strings';
+import { markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from '../ui/Button';
-import { addPanel } from '../ui/kit';
 import { Menu } from '../ui/Menu';
+import { addPanel } from '../ui/kit';
 import { addText } from '../ui/text';
-import { markReady } from '../testHook';
-import { TEXTURES } from './PreloadScene';
-
-const GROUND_Y = DESIGN_HEIGHT - 20;
+import { showToast } from '../ui/toast';
 
 /**
- * Title screen (M0 placeholder). The menu is navigable but its screens arrive in
- * later milestones; selecting an item shows a "coming soon" note.
+ * Title screen. Play starts a run; the other screens arrive in later
+ * milestones, and selecting them shows a "coming later" note for now.
  */
 export class TitleScene extends Phaser.Scene {
-    private toast: Phaser.GameObjects.Container | null = null;
+    private leaving = false;
 
     constructor() {
         super('title');
     }
 
     create(): void {
+        this.leaving = false;
         this.cameras.main.fadeIn(MOTION.slow, 0, 0, 0);
         this.addBackdrop();
         this.addTitle();
@@ -34,7 +34,7 @@ export class TitleScene extends Phaser.Scene {
 
     /** Floor 1's 4:3 background, cropped to fill 16:9 and anchored to the floor. */
     private addBackdrop(): void {
-        const background = this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT, TEXTURES.titleBackground).setOrigin(0.5, 1);
+        const background = this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT, backgroundKey(0)).setOrigin(0.5, 1);
         background.setScale(Math.max(DESIGN_WIDTH / background.width, DESIGN_HEIGHT / background.height));
         // Darken and vignette the backdrop only, so the UI on top stays bright.
         background.enableFilters();
@@ -73,7 +73,7 @@ export class TitleScene extends Phaser.Scene {
         const step = 84;
         addPanel(this, DESIGN_WIDTH / 2, top + ((items.length - 1) * step) / 2, 540, items.length * step + SPACE.xl);
         const buttons = items.map((label, i) => new Button(this, DESIGN_WIDTH / 2, top + i * step, label, {
-            onSelect: () => this.showToast(`${label}: coming in a later milestone`),
+            onSelect: label === STRINGS.menu.play ? () => this.play() : () => showToast(this, STRINGS.comingLater(label)),
         }));
         new Menu(this, buttons);
     }
@@ -83,24 +83,12 @@ export class TitleScene extends Phaser.Scene {
         addText(this, SPACE.l, SPACE.l, STRINGS.previewNotice, TYPE.small, { colour: TEXT_COLOURS.muted });
     }
 
-    private showToast(message: string): void {
-        this.toast?.destroy();
-        const text = addText(this, 0, 0, message, TYPE.small, { colour: TEXT_COLOURS.primary }).setOrigin(0.5);
-        const panel = addPanel(this, 0, 0, text.width + SPACE.xl * 1.5, 72);
-        const toast = this.add.container(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 150, [panel, text]).setAlpha(0).setDepth(10);
-        this.toast = toast;
-        this.tweens.add({ targets: toast, alpha: 1, y: toast.y - 12, duration: MOTION.normal, ease: MOTION.ease });
-        this.tweens.add({
-            targets: toast,
-            alpha: 0,
-            delay: 1800,
-            duration: MOTION.slow,
-            onComplete: () => {
-                toast.destroy();
-                if (this.toast === toast) {
-                    this.toast = null;
-                }
-            },
-        });
+    private play(): void {
+        if (this.leaving) {
+            return;
+        }
+        this.leaving = true;
+        this.cameras.main.fadeOut(MOTION.normal, 0, 0, 0);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('game'));
     }
 }
