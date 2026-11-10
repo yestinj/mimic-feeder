@@ -1,6 +1,6 @@
 > **Archive status (2026-07-09):** Historical polish / release-readiness checklist.  
 > Almost all items were completed before mid-2026. **Do not use as an active todo list.**  
-> Superseded for current pre-merge work by `PRE_MERGE_PLAN.md` (repo root) and for agent orientation by `AGENTS.md`.  
+> Superseded for pre-merge work by `PRE_MERGE_PLAN.md` (since archived as `archive/pre-merge-plan.md`) and for agent orientation by `AGENTS.md`.  
 > Later work not covered here: analytics/D1 removal, pause freeze + input guards, bomb double-count fix, lint/smoke/playtest, real OG image, tooling deps.
 
 ### TL;DR
@@ -169,4 +169,4 @@ bossFireballs.length = 0;
 - Early-game pacing feel pass (#9) if a first-20-seconds run still feels too harsh.
 - Manual QA checklist above remains useful before a public share; it is not a code backlog.
 
-For current develop→main decisions and dashboard follow-ups, see `PRE_MERGE_PLAN.md` at the repo root.
+For the later develop→main decisions and dashboard follow-ups, see `archive/pre-merge-plan.md` (also archived).

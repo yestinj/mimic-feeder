@@ -177,7 +177,7 @@ Severity: **High** / **Medium** / **Low** / **Nit**. Status all **open** unless 
 
 - `soundMap['bling']` alias → `castSpellSound` is opaque but works for crown/diamond spawn cue.
 - Smoke is regex-heavy (good regression net; brittle on pure formatting refactors).
-- `PRE_MERGE_PLAN.md` is correctly “active” for CF dashboard follow-up; code items Done.
+- `PRE_MERGE_PLAN.md` (since archived as `archive/pre-merge-plan.md`) is correctly “active” for CF dashboard follow-up; code items Done.
 
 ---
 
@@ -227,7 +227,7 @@ Original engineering order (H1 → H3 → M4 → deploy hygiene → polish) was 
 
 ## Residual follow-ups (not blocking automated review work)
 
-- Manual Cloudflare D1 unbind if still bound (`PRE_MERGE_PLAN.md` §7).
+- Manual Cloudflare D1 unbind if still bound (`archive/pre-merge-plan.md` §7).
 - Human playtest: mute, magnetism, late-floor boss feel (4× cap), general fun.
 - Merge `develop` → `main` when ready.
 

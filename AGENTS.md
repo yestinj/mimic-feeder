@@ -19,9 +19,9 @@ Guidance for coding agents working in this repository.
 | Rendering / audio | p5.js **1.11.13** + p5.sound (CDN) |
 | Build | Custom `build.js` (esbuild JS, clean-css CSS, html-minifier-terser HTML) |
 | Deploy | Static **Cloudflare Pages** from `dist/` (GitHub integration) |
-| Backend | **None** — no Pages Functions or D1; optional **Cloudflare Web Analytics** via dashboard/CSP only |
+| Backend | **None** — no Pages Functions or D1. **Cloudflare Web Analytics** is on through the domain's automatic setup (no code; the CSP allows it) |
 
-Do **not** reintroduce in-app track beacons, Pages Functions, or D1. Production is static-only: Cloudflare Pages builds `dist/` using the project's dashboard settings (build command, output directory `dist`, Node from `.nvmrc`). There is deliberately no `wrangler.toml`; adding one makes it the source of truth for the project's settings and bindings and locks them in the dashboard. Cloudflare Web Analytics (Insights) is allowed in CSP on purpose — not the removed client/D1 metrics pipeline.
+Do **not** reintroduce in-app track beacons, Pages Functions, or D1. Production is static-only: Cloudflare Pages builds `dist/` using the project's dashboard settings (build command, output directory `dist`, Node from `.nvmrc`). There is deliberately no `wrangler.toml`; adding one makes it the source of truth for the project's settings and bindings and locks them in the dashboard. Cloudflare Web Analytics is enabled through the yest.dev zone's automatic setup: Cloudflare adds its script to HTML responses for real browsers, so the repo has no analytics code, and the CSP allows `static.cloudflareinsights.com` and `cloudflareinsights.com` on purpose. Keep those CSP entries; this is not the removed client/D1 metrics pipeline.
 
 ## Layout
 
@@ -177,11 +177,12 @@ Handle them explicitly and narrowly, never by turning a rule off for the bundle:
 
 - Cloudflare Pages builds from the repo; output directory is `dist/`
 - No Wrangler publish step is required for normal deploys
-- After any historical D1/Functions cleanup in Cloudflare dashboard, confirm bindings stay empty (see `PRE_MERGE_PLAN.md` follow-ups if present)
+- The Pages project should have no bindings in either environment (there are no Functions). Open Cloudflare clean-up is tracked in GitHub issues.
 
 ## Related docs
 
 - `README.md` — player-facing controls and setup
 - `CONTRIBUTING.md` — fork workflow (not open contribution)
-- `PRE_MERGE_PLAN.md` — active develop→main decisions (analytics removal, pause/bomb fixes, CF follow-up)
-- `archive/` — historical notes only (not living todos or current assessments): `plan.md` polish checklist, `tech-review.md` Feb 2026 tech review, `code-review-2026-07-09.md` superseded July 2026 review
+- `reviews/` — dated code reviews (`develop-to-main-review-2026-11-09.md`; its follow-ups section records what is done and what is still open)
+- `archive/` — historical notes only (not living todos or current assessments): `plan.md` polish checklist, `tech-review.md` Feb 2026 tech review, `code-review-2026-07-09.md` superseded July 2026 review, `pre-merge-plan.md` the July 2026 develop→main checklist
+- GitHub issues — open follow-ups
