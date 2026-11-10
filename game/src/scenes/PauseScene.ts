@@ -12,6 +12,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Menu } from '../ui/Menu';
 import { addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
+import { openScreen } from '../ui/screens';
 import { addText } from '../ui/text';
 import { showToast } from '../ui/toast';
 import type { GameScene } from './GameScene';
@@ -64,7 +65,7 @@ export class PauseScene extends Phaser.Scene {
             { label: STRINGS.pause.resume, action: () => this.resumeGame() },
             { label: STRINGS.menu.howToPlay, action: () => showToast(this, STRINGS.comingLater(STRINGS.menu.howToPlay)) },
             { label: STRINGS.menu.achievements, action: () => showToast(this, STRINGS.comingLater(STRINGS.menu.achievements)) },
-            { label: STRINGS.menu.settings, action: () => showToast(this, STRINGS.comingLater(STRINGS.menu.settings)) },
+            { label: STRINGS.menu.settings, action: () => openScreen(this, 'settings', { from: 'pause' }) },
             { label: STRINGS.pause.restart, action: () => this.confirmAbandon(STRINGS.confirm.restart, () => this.restart()) },
             { label: STRINGS.pause.quit, action: () => this.confirmAbandon(STRINGS.confirm.quit, () => this.quit()) },
         ];
@@ -128,6 +129,7 @@ export class PauseScene extends Phaser.Scene {
 
     private restart(): void {
         this.leaving = true;
+        (this.scene.get('game') as GameScene).abandonRun();
         this.sound.stopAll();
         this.scene.stop('hud');
         this.scene.start('game');
@@ -135,6 +137,7 @@ export class PauseScene extends Phaser.Scene {
 
     private quit(): void {
         this.leaving = true;
+        (this.scene.get('game') as GameScene).abandonRun();
         this.sound.stopAll();
         this.scene.stop('hud');
         this.scene.stop('game');

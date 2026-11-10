@@ -1,5 +1,16 @@
 import * as Phaser from 'phaser';
 
+let typing = false;
+
+/** True while a text field takes typed keys, so global shortcuts (M, F) stand down. */
+export function isTyping(): boolean {
+    return typing;
+}
+
+export function setTyping(on: boolean): void {
+    typing = on;
+}
+
 export interface KeyOptions {
     /** Also act on the keyboard's auto-repeat while the key is held (menus: yes; actions: no). */
     readonly repeat?: boolean;

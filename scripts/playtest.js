@@ -129,7 +129,8 @@ async function waitForGameplay(page, timeoutMs = 12000) {
  * starts a game, audio unlocks on the first key press, the mimic moves, pause
  * freezes everything and blocks gameplay keys, M mutes, Restart asks first,
  * the run ends in game over and the results, and Play Again starts afresh.
- * Nothing errors, violates the CSP or trips the autoplay policy. Uses its own
+ * The save works: scores reach the high scores under the name given, settings
+ * survive a reload, and erasing clears everything. Nothing errors, violates the CSP or trips the autoplay policy. Uses its own
  * page so its errors are reported separately; reads state through the game's
  * test hook (window.__mimicFeeder).
  */
@@ -229,6 +230,17 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.muted === false, 2000);
         assert(true, '/next/ M mutes and unmutes, also while paused');
 
+        // Settings (fourth item) opens over the pause menu, and Esc goes back to it. The ↑ pressed
+        // above moved the focus from Resume round to Quit (the last item), so Settings is four down.
+        for (let i = 0; i < 4; i++) {
+            await page.keyboard.press('ArrowDown');
+        }
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('settings') && !s.running.includes('pause') && s.paused.includes('game'));
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('settings'));
+        assert((await snapshot()).paused.includes('game'), '/next/ Settings opens from the pause menu and Esc returns to it');
+
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && s.game.playTimeMs > paused.game.playTimeMs);
         assert(true, '/next/ Esc resumes the run');
@@ -312,14 +324,28 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('Enter');
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && s.game && s.game.playTimeMs > 0);
         assert((await snapshot()).game.playTimeMs < beforeRestart, '/next/ confirming Restart starts a new run');
+        const afterRestart = await snapshot();
+        assert(afterRestart.save.runs === 1 && afterRestart.save.scores.length === 0 && afterRestart.save.bestScore > 0,
+            '/next/ a restarted run counts towards lifetime totals and bests, but not the high scores');
+        // Enough points to make the board.
+        await debug('bonus', 500);
 
         // Wait in a corner until enough food hits the floor to end the run.
         await page.keyboard.down('ArrowLeft');
         await waitForSnapshot((s) => s.running.includes('results'), 180000);
         await page.keyboard.up('ArrowLeft');
         assert(true, '/next/ losing the last life ends the run and shows the results');
+
+        // The first score on the board asks for the mimic's name, and saves it under that name.
+        const naming = await waitForSnapshot((s) => s.results && s.results.naming);
+        assert(naming.results.rank === 1, '/next/ the first score makes the board and asks for a name');
         await page.waitForTimeout(800);
         await page.screenshot({ path: path.join(OUT_DIR, 'next-results.png') });
+        await page.keyboard.type('Chomper!');
+        await page.keyboard.press('Enter');
+        const named = await waitForSnapshot((s) => s.results && !s.results.naming);
+        assert(named.save.name === 'Chomper' && named.save.named && named.save.scores.length === 1 && named.save.scores[0].name === 'Chomper',
+            '/next/ the name typed is saved, with the score');
 
         // Play Again is focused on the results.
         await page.keyboard.press('Enter');
@@ -337,6 +363,59 @@ async function checkNextBuild(browser) {
         assert((await snapshot()).game.boltsCast === judged.game.boltsCast, '/next/ Shadow Bolts are blocked during the Judgment');
         await waitForSnapshot((s) => s.results !== null, 120000);
         assert((await snapshot()).results.cause === 'Judged by the dungeon', '/next/ dying to the Judgment shows as the cause of death');
+        assert(!(await snapshot()).results.naming, '/next/ the name is only asked for once');
+
+        // High Scores (second button) opens over the results, and Esc goes back to them.
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('highScores') && !s.running.includes('results'));
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-high-scores.png') });
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('results') && !s.running.includes('highScores'));
+        assert(true, '/next/ High Scores opens from the results and Esc returns to them');
+
+        // Settings (fifth on the title menu) save as they change and survive a reload.
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('results'));
+        for (let i = 0; i < 4; i++) {
+            await page.keyboard.press('ArrowDown');
+        }
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('settings'));
+        for (let i = 0; i < 3; i++) {
+            await page.keyboard.press('ArrowLeft');
+        }
+        // Down to Screen shake (the fifth row), then switch it off.
+        for (let i = 0; i < 4; i++) {
+            await page.keyboard.press('ArrowDown');
+        }
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.save.settings.musicVolume === 0.7 && s.save.settings.screenShake === false);
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-settings.png') });
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 20000 });
+        const reloaded = await snapshot();
+        assert(reloaded.save.settings.musicVolume === 0.7 && reloaded.save.settings.screenShake === false
+            && reloaded.save.name === 'Chomper' && reloaded.save.scores.length >= 1,
+        '/next/ settings, the name and the high scores survive a reload');
+
+        // Erase save data (ninth row) asks first, then starts over.
+        for (let i = 0; i < 4; i++) {
+            await page.keyboard.press('ArrowDown');
+        }
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('settings'));
+        for (let i = 0; i < 8; i++) {
+            await page.keyboard.press('ArrowDown');
+        }
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.dialog);
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('Enter');
+        const erased = await waitForSnapshot((s) => !s.dialog && s.save.scores.length === 0);
+        assert(erased.save.name === 'Mimic' && !erased.save.named && erased.save.runs === 0 && erased.save.settings.musicVolume === 1,
+            '/next/ Erase save data asks first, then clears everything');
 
         if (cspViolations.length) {
             console.error('/next/ CSP violations:', cspViolations);

@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { setDialogOpen } from '../testHook';
-import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
+import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from './Button';
 import { Menu } from './Menu';
 import { addPanel } from './kit';
@@ -11,6 +11,8 @@ export interface ConfirmOptions {
     readonly message: string;
     readonly cancelLabel: string;
     readonly confirmLabel: string;
+    /** The confirm button in red, for something that can't be undone. */
+    readonly danger?: boolean;
     readonly onConfirm: () => void;
     readonly onCancel: () => void;
 }
@@ -35,9 +37,15 @@ export class ConfirmDialog {
         // A solid backing: the panel art is slightly see-through, which a modal shouldn't be.
         const backing = scene.add.graphics().fillStyle(COLOURS.stone, 1).fillRoundedRect(cx - WIDTH / 2 + 3, cy - HEIGHT / 2 + 3, WIDTH - 6, HEIGHT - 6, 14);
         const panel = addPanel(scene, cx, cy, WIDTH, HEIGHT);
-        const message = addText(scene, cx, cy - 56, options.message, TYPE.heading, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
+        const message = addText(scene, cx, cy - 56, options.message, TYPE.heading, {
+            role: 'display',
+            bold: true,
+            colour: TEXT_COLOURS.gold,
+            align: 'center',
+            wrapWidth: WIDTH - 2 * SPACE.xl,
+        }).setOrigin(0.5);
         const cancel = new Button(scene, cx - 170, cy + 64, options.cancelLabel, { width: 300, onSelect: () => this.cancel() });
-        const confirm = new Button(scene, cx + 170, cy + 64, options.confirmLabel, { width: 300, onSelect: () => this.confirm() });
+        const confirm = new Button(scene, cx + 170, cy + 64, options.confirmLabel, { width: 300, danger: options.danger ?? false, onSelect: () => this.confirm() });
         this.menu = new Menu(scene, [cancel, confirm], { horizontal: true });
         this.container = scene.add.container(0, 0, [blocker, backing, panel, message, cancel, confirm]).setDepth(100).setAlpha(0);
         scene.tweens.add({ targets: this.container, alpha: 1, duration: MOTION.fast });

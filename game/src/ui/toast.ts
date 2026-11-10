@@ -6,12 +6,12 @@ import { addText } from './text';
 
 const toasts = new WeakMap<Phaser.Scene, Phaser.GameObjects.Container>();
 
-/** A short note near the bottom of a menu screen, replacing any note already showing. */
-export function showToast(scene: Phaser.Scene, message: string): void {
+/** A short note near the bottom of a menu screen (or at `at`), replacing any note already showing. */
+export function showToast(scene: Phaser.Scene, message: string, at: { x: number; y: number } = { x: DESIGN_WIDTH / 2, y: DESIGN_HEIGHT - 150 }): void {
     toasts.get(scene)?.destroy();
     const text = addText(scene, 0, 0, message, TYPE.small, { colour: TEXT_COLOURS.primary }).setOrigin(0.5);
     const panel = addPanel(scene, 0, 0, text.width + SPACE.xl * 1.5, 72);
-    const toast = scene.add.container(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 150, [panel, text]).setAlpha(0).setDepth(50);
+    const toast = scene.add.container(at.x, at.y, [panel, text]).setAlpha(0).setDepth(50);
     toasts.set(scene, toast);
     scene.tweens.add({ targets: toast, alpha: 1, y: toast.y - 12, duration: MOTION.normal, ease: MOTION.ease });
     scene.tweens.add({

@@ -3,7 +3,7 @@
 import * as Phaser from 'phaser';
 import { ANIMATIONS, firstFrame, type AnimationName } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, SIZE_SCALE } from '../config';
-import { prefersReducedMotion } from '../motion';
+import { screenShakeEnabled } from '../motion';
 import { COLOURS, TEXT_COLOURS, TYPE } from '../theme';
 import { UI } from '../ui/kit';
 import { addText } from '../ui/text';
@@ -11,10 +11,11 @@ import { addText } from '../ui/text';
 /**
  * Shakes the camera. `strength` is the p5 game's shake amount in reference
  * pixels; it decayed by 10% per frame, which this approximates with a steady
- * shake at about half the strength for the same time. Skipped for reduced motion.
+ * shake at about half the strength for the same time. Skipped when screen
+ * shake is off in Settings.
  */
 export function shake(camera: Phaser.Cameras.Scene2D.Camera, strength: number): void {
-    if (prefersReducedMotion()) {
+    if (!screenShakeEnabled()) {
         return;
     }
     const frames = Math.log(0.5 / strength) / Math.log(0.9);

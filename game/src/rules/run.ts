@@ -5,9 +5,10 @@ import { TENTACLES_FROM_LEVEL, tentacleReach, type Ability } from './abilities';
 import { BOSS, isBossZone } from './boss';
 import { CAT_RESCUE_POINTS } from './cats';
 import { JUDGMENT } from './judgment';
-import { EDIBLE_KINDS, HAZARD_KINDS, OBJECTS, SHINY_KINDS, type CreatureKind, type EdibleKind, type HazardKind, type ObjectKind, type PowerUpKind, type ShinyKind } from './objects';
+import { EDIBLE_KINDS, HAZARD_KINDS, OBJECTS, POWER_UP_KINDS, SHINY_KINDS, type CreatureKind, type EdibleKind, type HazardKind, type ObjectKind, type PowerUpKind, type ShinyKind } from './objects';
 import { pickPowerUp } from './offers';
 import { CREATURES_PER_ZONE, gameLevel, nextZone } from './progression';
+import type { RunRecord } from './save';
 import type { Rng } from './spawner';
 
 export const START_LIVES = 3;
@@ -91,6 +92,7 @@ export class Run {
 
     readonly eaten: Record<EdibleKind, number> = zeroCounts(EDIBLE_KINDS);
     readonly collected: Record<ShinyKind, number> = zeroCounts(SHINY_KINDS);
+    readonly powerUps: Record<PowerUpKind, number> = zeroCounts(POWER_UP_KINDS);
     /** Creatures destroyed by hitting the side of the chest. */
     sideHits = 0;
     /** Creatures that hit the floor. */
@@ -109,6 +111,7 @@ export class Run {
     /** The dungeon has warned about shot cats, and has judged (each happens once per run). */
     catWarningGiven = false;
     judged = false;
+    judgmentsSurvived = 0;
     /** What cost the most recent life. */
     lastLoss: DeathCause | null = null;
 
@@ -286,6 +289,7 @@ export class Run {
 
     /** A power-up was picked up: the Staff and Magnet unlock abilities, a potion fills a heart. */
     collectPowerUp(kind: PowerUpKind): RunEvent[] {
+        this.powerUps[kind] += 1;
         switch (kind) {
             case 'staff':
                 this.hasStaff = true;
@@ -317,6 +321,36 @@ export class Run {
     /** Bonus score and XP (cat rescues and bosses, from M2b). */
     bonus(points: number): RunEvent[] {
         return this.gain(points);
+    }
+
+    /** The Ninefold Judgment ended with the mimic still alive. */
+    surviveJudgment(): void {
+        this.judgmentsSurvived += 1;
+    }
+
+    /** What this run adds to the save: its result and its own counts. */
+    record(): RunRecord {
+        return {
+            score: this.score,
+            floor: this.floor,
+            zone: this.zone,
+            level: this.level,
+            playTimeMs: this.playTimeMs,
+            totals: {
+                runs: 1,
+                playTimeMs: this.playTimeMs,
+                eaten: { ...this.eaten },
+                collected: { ...this.collected, ...this.powerUps },
+                catsRescued: this.catsRescued,
+                catsKilled: this.catsKilled,
+                catsShot: this.catsShot,
+                hazardsDetonated: this.hazardsDetonated,
+                destroyed: this.sideHits + this.catsKilled + this.shotDown,
+                bossesDefeated: this.bossesDefeated,
+                judgmentsSurvived: this.judgmentsSurvived,
+                uses: { ...this.uses },
+            },
+        };
     }
 
     /** A boss fireball hit the mimic. */

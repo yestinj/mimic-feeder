@@ -3,21 +3,39 @@
 // gesture, and nothing here plays before then (inventory §9).
 import * as Phaser from 'phaser';
 import { MUSIC, MUSIC_VOLUME, SOUNDS, soundKey, type SoundName, type Track } from './assets';
+import { onProfileChange, profile, updateProfile } from './profile';
 
-// Phaser's `mute` getter reads the master gain node's value, which only
-// updates while audio is rendering, so it can report the old state (for
-// example while paused). The game keeps its own flag.
-let muted = false;
+// Mute and volumes live in the save's settings. (Phaser's own `mute` getter
+// reads the master gain node, which only updates while audio is rendering,
+// so the game reads the setting instead.)
 
 export function isMuted(): boolean {
-    return muted;
+    return profile().settings.muted;
 }
 
-/** Toggles mute for the whole game (M, anywhere) and returns the new state. */
-export function toggleMute(game: Phaser.Game): boolean {
-    muted = !muted;
+/** Sets mute for the whole game (M anywhere, or Settings) and saves it. */
+export function setMuted(game: Phaser.Game, muted: boolean): void {
+    updateProfile((save) => ({ ...save, settings: { ...save.settings, muted } }));
     game.sound.mute = muted;
-    return muted;
+}
+
+/** Toggles mute and returns the new state. */
+export function toggleMute(game: Phaser.Game): boolean {
+    setMuted(game, !isMuted());
+    return isMuted();
+}
+
+/** Applies the saved mute at boot. */
+export function applySavedMute(game: Phaser.Game): void {
+    game.sound.mute = isMuted();
+}
+
+function effectsVolume(): number {
+    return profile().settings.effectsVolume;
+}
+
+function musicVolume(): number {
+    return MUSIC_VOLUME * profile().settings.musicVolume;
 }
 
 /** Plays a sound effect; returns it, or null if audio is still locked. */
@@ -25,7 +43,7 @@ export function playSound(scene: Phaser.Scene, name: SoundName): Phaser.Sound.Ba
     if (scene.sound.locked) {
         return null;
     }
-    const sound = scene.sound.add(soundKey(name), { volume: SOUNDS[name].volume });
+    const sound = scene.sound.add(soundKey(name), { volume: SOUNDS[name].volume * effectsVolume() });
     sound.once(Phaser.Sound.Events.COMPLETE, () => sound.destroy());
     sound.once(Phaser.Sound.Events.STOP, () => sound.destroy());
     sound.play();
@@ -49,10 +67,19 @@ export class MusicPlayer {
 
     constructor(private readonly scene: Phaser.Scene) {
         scene.sound.on(Phaser.Sound.Events.UNLOCKED, this.onUnlock);
+        // The music volume can change in Settings while a track plays.
+        const stopListening = onProfileChange(() => this.applyVolume());
         scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             scene.sound.off(Phaser.Sound.Events.UNLOCKED, this.onUnlock);
+            stopListening();
             this.stop();
         });
+    }
+
+    private applyVolume(): void {
+        if (this.sound && 'setVolume' in this.sound) {
+            (this.sound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(musicVolume());
+        }
     }
 
     play(track: Track): void {
@@ -69,7 +96,7 @@ export class MusicPlayer {
             return;
         }
         this.stopSound();
-        this.sound = manager.add(key, { loop: true, volume: MUSIC_VOLUME });
+        this.sound = manager.add(key, { loop: true, volume: musicVolume() });
         this.sound.play();
         this.playing = track;
     }

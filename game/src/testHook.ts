@@ -4,6 +4,8 @@
 // read a snapshot of the game.
 import type * as Phaser from 'phaser';
 import { isMuted } from './audio';
+import { profile } from './profile';
+import type { Settings } from './rules/save';
 
 /** What the game scene reports about the run in progress. */
 export interface GameView {
@@ -46,8 +48,18 @@ export interface GameSnapshot {
     readonly dialog: boolean;
     /** The new-ability card on screen, and whether it accepts its key yet. */
     readonly card: { readonly ability: string; readonly ready: boolean } | null;
-    /** The results screen, while it's showing: the cause of death it gives. */
-    readonly results: { readonly cause: string | null } | null;
+    /** The results screen, while it's showing: the cause of death, the place on the board, and whether it's asking for a name. */
+    readonly results: { readonly cause: string | null; readonly rank: number | null; readonly naming: boolean } | null;
+    /** What the save holds. */
+    readonly save: {
+        readonly name: string;
+        readonly named: boolean;
+        readonly scores: readonly { readonly name: string; readonly score: number }[];
+        readonly bestScore: number;
+        readonly runs: number;
+        readonly discoveries: readonly string[];
+        readonly settings: Settings;
+    };
 }
 
 /** Shortcuts for the playtest, present only with ?test in the URL. */
@@ -64,6 +76,8 @@ export interface DebugApi {
     damageBoss(hits: number): void;
     /** Counts cats as shot, as if by Shadow Bolts (the fifth warns, the tenth brings the judgment). */
     shootCats(count: number): void;
+    /** Adds points (and XP), so a test run can make the high scores. */
+    bonus(points: number): void;
 }
 
 export interface MimicFeederTestHook {
@@ -131,6 +145,19 @@ export function setGameView(view: (() => GameView) | null): void {
     gameView = view;
 }
 
+function saveView(): GameSnapshot['save'] {
+    const save = profile();
+    return {
+        name: save.name,
+        named: save.named,
+        scores: save.highScores.map(({ name, score }) => ({ name, score })),
+        bestScore: save.bests.score,
+        runs: save.totals.runs,
+        discoveries: save.discoveries,
+        settings: save.settings,
+    };
+}
+
 export function installTestHook(game: Phaser.Game): void {
     hook().snapshot = () => {
         const scenes = game.scene.getScenes(false);
@@ -144,6 +171,7 @@ export function installTestHook(game: Phaser.Game): void {
             dialog: dialogOpen,
             card: card ? card() : null,
             results,
+            save: saveView(),
         };
     };
 }
