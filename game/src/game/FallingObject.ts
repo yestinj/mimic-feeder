@@ -17,7 +17,7 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
     private readonly variation: number;
     /** Set by Magnetism: the speed it flies at the mimic (5× its fall speed when pulled). */
     magnetSpeed: number | null = null;
-    /** Held by a tentacle and being pulled into the mouth: no contact or floor checks. */
+    /** Held by a tentacle until it's pulled into the mouth: no contact or floor checks. */
     grabbed = false;
     declare body: Phaser.Physics.Arcade.Body;
 
@@ -70,7 +70,7 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    /** A tentacle has it: it stops falling and is moved by the tentacle. */
+    /** A tentacle has it: it stops where it is, and the tentacle moves it from now on. */
     grab(): void {
         this.grabbed = true;
         this.setVelocity(0, 0);

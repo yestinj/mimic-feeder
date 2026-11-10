@@ -75,6 +75,8 @@ export class GameScene extends Phaser.Scene {
     private pauseBlur: Phaser.Filters.Blur | null = null;
     /** Abilities unlocked for the first time, waiting to be introduced on a card. */
     private pendingCards: Ability[] = [];
+    /** Points scored at the mouth this frame, shown as one pop-up at the end of it. */
+    private mouthPoints = { points: 0, treasure: false };
     private readonly random = Math.random;
 
     constructor() {
@@ -112,6 +114,7 @@ export class GameScene extends Phaser.Scene {
         this.ending = false;
         this.pauseBlur = null;
         this.pendingCards = [];
+        this.mouthPoints = { points: 0, treasure: false };
         this.shownBackground = '';
 
         this.physics.world.setBounds(0, 0, DESIGN_WIDTH, GROUND_Y);
@@ -212,6 +215,12 @@ export class GameScene extends Phaser.Scene {
             if (!object.grabbed && object.body.bottom >= GROUND_Y) {
                 this.land(object);
             }
+        }
+
+        // Creatures reaching the mouth together (say, two on tentacles) get one "+N" rather than overlapping ones.
+        if (this.mouthPoints.points > 0) {
+            pointsPopup(this, this.mimic.centerX, this.mimic.top - 8, this.mouthPoints.points, this.mouthPoints.treasure).setDepth(DEPTH.popups);
+            this.mouthPoints = { points: 0, treasure: false };
         }
 
         // New abilities are introduced at the end of the frame, with the game paused.
@@ -486,12 +495,15 @@ export class GameScene extends Phaser.Scene {
     private apply(events: readonly RunEvent[], treasure: boolean, at?: { x: number; y: number }): void {
         for (const event of events) {
             switch (event.type) {
-                case 'points': {
-                    const x = at?.x ?? this.mimic.centerX;
-                    const y = at?.y ?? this.mimic.top - 8;
-                    pointsPopup(this, x, y, event.points, treasure).setDepth(DEPTH.popups);
+                case 'points':
+                    if (at) {
+                        pointsPopup(this, at.x, at.y, event.points, treasure).setDepth(DEPTH.popups);
+                    } else {
+                        // Shown at the end of the frame, added to anything else eaten in the same frame.
+                        this.mouthPoints.points += event.points;
+                        this.mouthPoints.treasure ||= treasure;
+                    }
                     break;
-                }
                 case 'levelUp':
                     playSound(this, 'playerLevelUp');
                     this.mimic.applyGrowth(this.run.growth);

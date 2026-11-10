@@ -3,7 +3,12 @@ import { TEXTURES } from '../assets';
 import { SIZE_SCALE } from '../config';
 import type { FallingObject } from './FallingObject';
 
-/** Chains reach their targets in 0.5 s, then pull them into the mouth over 1 s (inventory §6). */
+/**
+ * Chains reach their targets in 0.5 s, then pull them into the mouth over 1 s
+ * (inventory §6). Targets are held from the moment the chain is sent, so
+ * using the tentacles can't cost a life (in the p5 game a target kept falling
+ * until the chain arrived, and could land or hit the side of the chest).
+ */
 const REACH_MS = 500;
 const PULL_MS = 1000;
 /** The chain art drawn at a quarter of its width, as in the p5 game. */
@@ -31,6 +36,7 @@ export class Tentacles {
 
     lash(targets: readonly FallingObject[]): void {
         for (const target of targets) {
+            target.grab();
             const chain = this.scene.add.tileSprite(target.x, target.y, this.chainWidth(), 1, TEXTURES.chain)
                 .setOrigin(0.5, 0)
                 .setScale(CHAIN_SCALE)
@@ -57,7 +63,6 @@ export class Tentacles {
                 length = grab.reach;
                 if (grab.reach >= 1) {
                     grab.pullFrom = { x: target.x, y: target.y };
-                    target.grab();
                 }
             } else {
                 grab.pulled += delta;
