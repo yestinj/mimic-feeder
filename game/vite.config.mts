@@ -69,10 +69,6 @@ export default defineConfig({
         assetsDir: 'bundle',
         target: 'es2022',
         rolldownOptions: {
-            input: {
-                main: resolve(GAME_DIR, 'index.html'),
-                fonts: resolve(GAME_DIR, 'fonts.html'),
-            },
             output: {
                 // Phaser in its own chunk: it changes rarely, so returning
                 // players keep it cached across game updates.

@@ -34,9 +34,9 @@ export const TEXT_COLOURS = {
 
 export const FONTS = {
     /** Titles and headings. */
-    display: 'Cinzel',
+    display: 'Grenze Gotisch',
     /** Everything else, including numbers. */
-    body: 'Alegreya Sans',
+    body: 'Barlow',
 } as const;
 
 /** Type scale in design pixels. */

@@ -1,6 +1,6 @@
-import '@fontsource/cinzel/latin-700.css';
-import '@fontsource/alegreya-sans/latin-400.css';
-import '@fontsource/alegreya-sans/latin-700.css';
+import '@fontsource/grenze-gotisch/latin-700.css';
+import '@fontsource/barlow/latin-400.css';
+import '@fontsource/barlow/latin-700.css';
 import './style.css';
 import * as Phaser from 'phaser';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from './config';
