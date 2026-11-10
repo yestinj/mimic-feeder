@@ -552,7 +552,7 @@ function playSound(soundName) {
     if (sound && typeof sound.isLoaded === 'function' && sound.isLoaded()) {
         sound.play();
     } else {
-        if (soundMap.hasOwnProperty(soundName)) {
+        if (Object.prototype.hasOwnProperty.call(soundMap, soundName)) {
             console.warn(`Sound "${soundName}" is in soundMap but not loaded or playable.`);
         } else {
             console.warn(`Sound name "${soundName}" not found in soundMap.`);

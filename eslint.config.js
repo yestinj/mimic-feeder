@@ -41,45 +41,26 @@ const p5Globals = Object.fromEntries(
 );
 
 /**
- * Correctness rules for the game bundle: likely bugs, not style. Kept as an
- * explicit list (rather than all of js.configs.recommended) so new upstream
- * recommended rules do not churn game source.
+ * The game bundle uses ESLint's recommended rules (js.configs.recommended,
+ * which only changes on ESLint major versions) with these adjustments for a
+ * p5 global-mode game made of concatenated scripts.
  */
-const gameCorrectnessRules = {
-    'no-undef': 'error',
+const gameRuleOverrides = {
     // builtinGlobals: also report a top-level declaration that shadows a
     // browser or p5 global (e.g. `function random()` replacing p5's).
     'no-redeclare': ['error', { builtinGlobals: true }],
     'no-unused-vars': ['error', {
+        // Top-level functions/variables must be used somewhere in the bundle,
+        // except p5 callbacks, which p5 calls.
         vars: 'all',
+        varsIgnorePattern: `^(${P5_CALLBACKS.join('|')})$`,
+        // Unused parameters and catch bindings are common and harmless here
+        // (p5-style signatures, best-effort localStorage/audio try/catch).
         args: 'none',
         caughtErrors: 'none',
-        varsIgnorePattern: `^(${P5_CALLBACKS.join('|')})$`,
     }],
-    'no-global-assign': 'error',
-    'no-const-assign': 'error',
-    'no-func-assign': 'error',
-    'no-class-assign': 'error',
-    'no-dupe-keys': 'error',
-    'no-dupe-args': 'error',
-    'no-dupe-class-members': 'error',
-    'no-dupe-else-if': 'error',
-    'no-duplicate-case': 'error',
-    'no-fallthrough': 'error',
-    'no-unreachable': 'error',
-    'no-self-assign': 'error',
+    // Not in recommended: `x === x` / `x !== x` is almost always a typo here.
     'no-self-compare': 'error',
-    'no-cond-assign': 'error',
-    'no-constant-binary-expression': 'error',
-    'no-unsafe-negation': 'error',
-    'no-unsafe-finally': 'error',
-    'no-sparse-arrays': 'error',
-    'no-loss-of-precision': 'error',
-    'no-shadow-restricted-names': 'error',
-    'no-use-before-define': ['error', { functions: false, classes: false, variables: false }],
-    'use-isnan': 'error',
-    'valid-typeof': 'error',
-    'getter-return': 'error',
 };
 
 module.exports = [
@@ -126,7 +107,10 @@ module.exports = [
         linterOptions: {
             reportUnusedDisableDirectives: 'error',
         },
-        rules: gameCorrectnessRules,
+        rules: {
+            ...js.configs.recommended.rules,
+            ...gameRuleOverrides,
+        },
     },
 ];
 

@@ -34,15 +34,16 @@ src/
   assets/             # Images, SFX, music (copied to dist; _unused/ skipped)
 build.js              # Full build pipeline (exports JS_FILE_ORDER for lint)
 eslint.config.js      # ESLint flat config: Node tooling + concatenated game bundle
-.github/workflows/
-  ci.yml              # GitHub Actions: npm test + playtest (Playwright Chromium)
+.nvmrc                # Node major for local dev and CI (26, current LTS)
+.github/
+  workflows/ci.yml    # GitHub Actions: npm test + playtest (Playwright Chromium)
+  dependabot.yml      # Weekly grouped npm + GitHub Actions update PRs
 scripts/
   lint.js             # node --check + ESLint (tooling and the JS_FILE_ORDER bundle)
   generate-p5-globals.js  # Regenerates p5-globals.json from the index.html p5 pins
   p5-globals.json     # Generated p5 + p5.sound global-mode names (commit it)
   smoke.js            # Static source contracts (no browser)
   playtest.js         # Playwright against dist/ served with _headers
-  launch-chromium.js  # Launches Playwright's Chromium (playtest + p5 globals)
   pages-headers.js    # Cloudflare Pages _headers matching used by playtest.js
 dist/                 # Build output (gitignored)
 docs/                 # JSDoc output (gitignored)
@@ -68,7 +69,7 @@ Files share state via top-level `let` / `const` / `function` declarations. They 
 
 - In-browser playtests must evaluate bare names (e.g. `gameState`), not `window.gameState`.
 - esbuild runs with `bundle: false` after concatenation — treat the bundle as one global script.
-- ESLint checks that same concatenation (`npm run lint`), so a name used in one file and declared in another is fine, but an undeclared name, an implicit global (assignment without a declaration), a duplicate top-level declaration across files, or a declaration that shadows a browser/p5 global (e.g. `function random()`) fails. Findings are reported against the original `src/js` file and line.
+- ESLint checks that same concatenation (`npm run lint`) with ESLint's recommended rules plus a few game-specific settings (`eslint.config.js`), so a name used in one file and declared in another is fine, but an undeclared name, an implicit global (assignment without a declaration), a duplicate top-level declaration across files, or a declaration that shadows a browser/p5 global (e.g. `function random()`) fails. Findings are reported against the original `src/js` file and line.
 
 ### Game loop ownership
 
@@ -126,11 +127,13 @@ npm run build && npm run playtest
 
 For `src/_headers`, CSP, or new external resources (scripts, fonts, workers, fetches), also run the playtest: it serves `dist/` with `dist/_headers` applied using Cloudflare Pages semantics (every matching rule applies; same-name headers are joined with commas), fails on any `securitypolicyviolation`, and fails if any served path would get `Cache-Control` from more than one rule.
 
-The playtest and `npm run lint:p5-globals` always use **Playwright's own Chromium** (`scripts/launch-chromium.js`), locally and in CI, so a local pass means the same engine passed. There is deliberately no option to use another browser. If it is missing, or Playwright was upgraded, run `npm run playtest:install`.
+The playtest and `npm run lint:p5-globals` always use **Playwright's own Chromium** (`channel: 'chromium'`), locally and in CI, so a local pass means the same engine passed. There is deliberately no option to use another browser. If it is missing, or Playwright was upgraded, run `npm run playtest:install`.
 
 ### CI
 
-`.github/workflows/ci.yml` runs on pushes to `main` / `develop` and on every PR: `npm ci`, `npm test`, then `npm run playtest` with the same Playwright Chromium as local runs (Node 26 LTS). Screenshots are uploaded as an artifact when it fails. Keep it green; a red check means a gate above failed.
+`.github/workflows/ci.yml` runs on pushes to `main` / `develop` and on every PR: `npm ci`, `npm test`, then `npm run playtest` with the same Playwright Chromium as local runs, on the Node version in `.nvmrc`. Screenshots are uploaded as an artifact when it fails. Keep it green; a red check means a gate above failed.
+
+Dependabot (`.github/dependabot.yml`) opens weekly PRs: one grouped PR for minor/patch npm updates, separate PRs for npm majors, and one for GitHub Actions. CI tests each; after merging a Playwright bump locally, run `npm run playtest:install`.
 
 ### Lint false positives
 
