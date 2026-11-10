@@ -86,6 +86,7 @@ Use the Node version in `.nvmrc` (26). Run `npm run check` before opening a PR; 
 - `npm run lint`: `node --check` on every file, then ESLint with its recommended rules. The game is linted as the same concatenation the build ships (`JS_FILE_ORDER`), with browser and p5/p5.sound globals allowed, so it catches undeclared names, implicit globals, cross-file redeclarations, names that shadow p5 functions, unintended `switch` fall-through and similar bugs. Tooling (`build.js`, `scripts/`) is linted with Node globals.
 - `npm run lint:p5-globals`: regenerates `scripts/p5-globals.json` (the allowed p5 names) from the CDN URLs in `src/index.html`. Run it after changing the p5 version; lint fails until you do.
 - `npm test`: lint, build, and static smoke contracts.
+- `npm run check:live`: smoke-tests the deployed site (https://mimicfeeder.yest.dev/, or `LIVE_URL`) in headless Chromium. It is read-only. GitHub Actions runs it after every deploy of `main` (`.github/workflows/deploy-check.yml`), once Cloudflare reports that the deploy succeeded.
 - `npm run playtest`: drives the built game in Playwright's headless Chromium, the same browser CI uses. Run `npm run playtest:install` once to download it (and again after upgrading Playwright). The local server applies `src/_headers` like Cloudflare Pages, so the run fails on any Content-Security-Policy violation or if a path would get more than one `Cache-Control` value.
 
 ## Technologies Used

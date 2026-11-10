@@ -85,10 +85,10 @@ module.exports = [
         },
     },
     {
-        // scripts/playtest.js runs page.evaluate() callbacks inside the game
-        // page, where game globals (gameState, player, ...) and browser APIs
-        // are bare names. Those callbacks are not checked against the bundle.
-        files: ['scripts/playtest.js', 'scripts/generate-p5-globals.js'],
+        // These scripts run page.evaluate() callbacks inside the game page,
+        // where game globals (gameState, player, ...) and browser APIs are
+        // bare names. Those callbacks are not checked against the bundle.
+        files: ['scripts/playtest.js', 'scripts/live-check.js', 'scripts/generate-p5-globals.js'],
         rules: {
             'no-undef': 'off',
         },

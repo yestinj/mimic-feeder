@@ -11,6 +11,7 @@
     "playtest:install": "playwright install --no-shell chromium",
     "test": "npm run lint && npm run build && npm run smoke",
     "check": "npm test && npm run playtest",
+    "check:live": "node scripts/live-check.js",
     "start": "node scripts/serve.js",
     "dev": "node --watch-path=src build.js"
   },
