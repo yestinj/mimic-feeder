@@ -1,0 +1,75 @@
+name: Deploy check
+
+# After each push to main, wait for Cloudflare Pages to report the deploy of
+# that commit, then smoke-test the live site. A failed or missing deploy, or a
+# broken live site, turns this run red (GitHub emails the pusher).
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    checks: read
+
+concurrency:
+    # A newer push to main supersedes an older check still waiting.
+    group: deploy-check-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    live:
+        name: Live deploy check
+        runs-on: ubuntu-latest
+        timeout-minutes: 25
+        steps:
+            # Cloudflare's GitHub integration reports a "Cloudflare Pages" check
+            # on each commit and marks it successful once that deploy is live.
+            - name: Wait for the Cloudflare Pages deploy
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  deadline=$((SECONDS + 900))
+                  while :; do
+                      run=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?check_name=Cloudflare%20Pages" \
+                          --jq '[.check_runs[]] | sort_by(.id) | last | if . == null then "" else "\(.status) \(.conclusion // "")" end')
+                      case "$run" in
+                          "completed success")
+                              echo "Cloudflare Pages deployed ${GITHUB_SHA}."
+                              exit 0 ;;
+                          completed*)
+                              echo "::error::Cloudflare Pages deploy of ${GITHUB_SHA} finished with: ${run#completed }"
+                              exit 1 ;;
+                      esac
+                      if [ "$SECONDS" -ge "$deadline" ]; then
+                          echo "::error::No finished Cloudflare Pages deploy for ${GITHUB_SHA} after 15 minutes (last status: ${run:-not reported})"
+                          exit 1
+                      fi
+                      echo "Waiting for Cloudflare Pages (${run:-not reported yet})..."
+                      sleep 15
+                  done
+
+            - uses: actions/checkout@v7
+
+            - uses: actions/setup-node@v7
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Install Playwright Chromium
+              run: npx playwright install --with-deps --no-shell chromium
+
+            - name: Live check
+              run: npm run check:live
+
+            - name: Upload live-check screenshot
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: live-check
+                  path: playtest-output/live-check.png
+                  if-no-files-found: ignore
+                  retention-days: 7

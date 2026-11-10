@@ -37,6 +37,7 @@ eslint.config.js      # ESLint flat config: Node tooling + concatenated game bun
 .nvmrc                # Node major for local dev and CI (26, current LTS)
 .github/
   workflows/ci.yml    # GitHub Actions: npm test + playtest (Playwright Chromium)
+  workflows/deploy-check.yml  # After each push to main: wait for Cloudflare, then live check
   dependabot.yml      # Weekly grouped npm + GitHub Actions update PRs
 scripts/
   lint.js             # node --check + ESLint (tooling and the JS_FILE_ORDER bundle)
@@ -45,6 +46,7 @@ scripts/
   smoke.js            # Static source contracts (no browser)
   serve.js            # Static server for dist/ with _headers (npm start; used by playtest)
   playtest.js         # Playwright against dist/ served with _headers
+  live-check.js       # Read-only smoke check of the deployed site (npm run check:live)
   pages-headers.js    # Cloudflare Pages _headers matching used by serve.js
 dist/                 # Build output (gitignored)
 playtest-output/      # Playtest screenshots (gitignored)
@@ -108,6 +110,7 @@ npm run smoke          # static contracts on source
 npm test               # lint + build + smoke
 npm run playtest       # Playwright on dist/ with _headers applied (requires build first)
 npm run check          # npm test + playtest (what CI runs)
+npm run check:live     # smoke-test the live site (LIVE_URL overrides)
 ```
 
 ### Verification defaults
@@ -131,6 +134,8 @@ The playtest and `npm run lint:p5-globals` always use **Playwright's own Chromiu
 ### CI
 
 `.github/workflows/ci.yml` runs on pushes to `main` / `develop` and on every PR: `npm ci`, `npm test`, then `npm run playtest` with the same Playwright Chromium as local runs, on the Node version in `.nvmrc`. Screenshots are uploaded as an artifact when it fails. Keep it green; a red check means a gate above failed.
+
+`.github/workflows/deploy-check.yml` runs after each push to `main`. It waits (up to 15 minutes) for Cloudflare's own **Cloudflare Pages** check on that commit to succeed, then runs `npm run check:live` against https://mimicfeeder.yest.dev/: the page loads with its CSP, p5 loads, the game reaches active play, and there are no CSP violations, errors, failed requests or HTTP errors. A failed deploy, a missing deploy, or a broken live site turns that run red. It is not a required check (it runs after merging). To verify a deploy, read that run's result rather than probing the site from the owner's Mac; there, a newly installed Playwright Chromium must first be approved in Little Snitch.
 
 `main` is protected by the **Protect main** repository ruleset (GitHub → Settings → Rules): changes arrive only through PRs (0 approvals required), the `Lint, build, smoke, playtest` check must pass, and force pushes and branch deletion are blocked. Repo admins can bypass it on a PR for emergencies (e.g. a cdnjs outage breaking CI); agents must never use or suggest the bypass. If you rename the CI job, update the ruleset's required check in the same change, or every PR to `main` will wait forever for the old check name.
 
