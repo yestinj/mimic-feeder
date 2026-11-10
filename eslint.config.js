@@ -67,7 +67,6 @@ module.exports = [
     {
         ignores: [
             'dist/**',
-            'docs/**',
             'playtest-output/**',
             'archive/**',
             // Linted as one concatenated bundle by scripts/lint.js (see header).

@@ -44,6 +44,8 @@ Mastery tracking includes:
 3. Build the project: `npm run build`
 4. Start the local server: `npm start` (this will open the game in your browser)
 
+`npm start` serves `dist/` with the production headers from `src/_headers`, including the Content-Security-Policy, so local runs behave like the live site. The only difference is caching: it sends `Cache-Control: no-store` so a refresh always picks up a new build.
+
 The game must be served over HTTP. Opening `dist/index.html` directly (`file://`) does not work: the browser blocks asset loading and the game stays on "Loading...".
 
 ### Deploy notes
@@ -68,10 +70,10 @@ The game must be served over HTTP. Opening `dist/index.html` directly (`file://`
 - Stay on p5 **1.x** unless you plan a dedicated 2.x migration (see `AGENTS.md`).
 
 ### Development Workflow
-1. Run `npm run dev` to rebuild `dist/` automatically on file changes (this does not serve the game)
+1. Run `npm run dev` to rebuild `dist/` automatically on file changes (Node's built-in watcher; this does not serve the game)
 2. In a second terminal, run `npm start` to serve `dist/` and open it in your browser
 3. Make changes to files in the `src` directory
-4. When you see "Build complete" in the console, refresh your browser to see changes
+4. When you see "Build completed successfully!" in the console, refresh your browser to see changes
 
 The project uses a simple build process that:
 - Concatenates and minifies JavaScript files
@@ -85,14 +87,6 @@ Use the Node version in `.nvmrc` (26). Run `npm run check` before opening a PR; 
 - `npm run lint:p5-globals`: regenerates `scripts/p5-globals.json` (the allowed p5 names) from the CDN URLs in `src/index.html`. Run it after changing the p5 version; lint fails until you do.
 - `npm test`: lint, build, and static smoke contracts.
 - `npm run playtest`: drives the built game in Playwright's headless Chromium, the same browser CI uses. Run `npm run playtest:install` once to download it (and again after upgrading Playwright). The local server applies `src/_headers` like Cloudflare Pages, so the run fails on any Content-Security-Policy violation or if a path would get more than one `Cache-Control` value.
-
-### Documentation
-The project uses JSDoc for code documentation:
-
-1. Generate documentation: `npm run docs`
-2. View documentation: `npm run serve-docs`
-
-This will create documentation in the `docs` directory and open it in your browser.
 
 ## Technologies Used
 - p5.js **1.11.13** (pinned cdnjs URLs) for rendering and game logic — see [p5.js CDN](#p5js-cdn) when upgrading

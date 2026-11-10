@@ -27,114 +27,23 @@
  *   channel 'chromium'), the same build CI uses. Install it once, and again
  *   after a Playwright upgrade: npm run playtest:install
  */
-const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
-const { loadHeadersFile, resolveHeaders, toResponseHeaders } = require('./pages-headers.js');
 const { chromium } = require('playwright');
+const { resolveHeaders } = require('./pages-headers.js');
+const {
+    DIST,
+    loadDistHeaderRules,
+    listServedPaths,
+    describeCacheControlConflict,
+    startStaticServer,
+} = require('./serve.js');
 
 const PORT = Number(process.env.PLAYTEST_PORT || 4173);
 const HOST = '127.0.0.1';
 const BASE = `http://${HOST}:${PORT}`;
-const DIST = path.join(__dirname, '..', 'dist');
 const OUT_DIR = path.join(__dirname, '..', 'playtest-output');
-const HEADERS_FILE = path.join(DIST, '_headers');
-
-function contentType(filePath) {
-    const ext = path.extname(filePath).toLowerCase();
-    return ({
-        '.html': 'text/html; charset=utf-8',
-        '.js': 'application/javascript; charset=utf-8',
-        '.css': 'text/css; charset=utf-8',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.webp': 'image/webp',
-        '.jpeg': 'image/jpeg',
-        '.gif': 'image/gif',
-        '.ico': 'image/x-icon',
-        '.mp3': 'audio/mpeg',
-        '.json': 'application/json',
-        '.svg': 'image/svg+xml',
-        '.woff': 'font/woff',
-        '.woff2': 'font/woff2',
-    })[ext] || 'application/octet-stream';
-}
-
-function listDistFiles(dirPath, files = []) {
-    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
-        const fullPath = path.join(dirPath, entry.name);
-        if (entry.isDirectory()) {
-            listDistFiles(fullPath, files);
-        } else if (entry.isFile()) {
-            files.push(fullPath);
-        }
-    }
-    return files;
-}
-
-/**
- * Every URL path Cloudflare Pages would serve from dist/: `/` (index.html)
- * plus each file, minus `_headers` itself (Pages consumes it, never serves it).
- */
-function listServedPaths() {
-    const filePaths = listDistFiles(DIST)
-        .filter((filePath) => filePath !== HEADERS_FILE)
-        .map((filePath) => '/' + path.relative(DIST, filePath).split(path.sep).join('/'));
-    return ['/', ...filePaths.sort()];
-}
-
-/**
- * Returns `path (rule, rule)` descriptions for resolved headers that got
- * Cache-Control from more than one _headers rule (Pages would join them).
- */
-function describeCacheControlConflict(urlPath, resolved) {
-    const cacheControl = resolved.headers.get('cache-control');
-    if (!cacheControl || cacheControl.values.length <= 1) {
-        return null;
-    }
-    return `${urlPath} <- ${cacheControl.rules.join(' + ')} => "${cacheControl.values.join(', ')}"`;
-}
-
-function startStaticServer(headerRules, cacheControlConflicts) {
-    const server = http.createServer((req, res) => {
-        const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-        // Pages emulation: apply every matching _headers rule to every response.
-        const resolved = resolveHeaders(headerRules, urlPath, BASE);
-        const conflict = describeCacheControlConflict(urlPath, resolved);
-        if (conflict && !cacheControlConflicts.includes(conflict)) {
-            cacheControlConflicts.push(conflict);
-        }
-        const pagesHeaders = toResponseHeaders(resolved.headers);
-
-        const safePath = urlPath === '/' ? '/index.html' : urlPath;
-        const filePath = path.normalize(path.join(DIST, safePath));
-        if (!filePath.startsWith(DIST)) {
-            res.writeHead(403, pagesHeaders);
-            res.end('Forbidden');
-            return;
-        }
-        if (filePath === HEADERS_FILE) {
-            res.writeHead(404, pagesHeaders);
-            res.end('Not found');
-            return;
-        }
-        fs.readFile(filePath, (err, data) => {
-            if (err) {
-                res.writeHead(404, pagesHeaders);
-                res.end('Not found');
-                return;
-            }
-            res.writeHead(200, { ...pagesHeaders, 'Content-Type': contentType(filePath) });
-            res.end(data);
-        });
-    });
-
-    return new Promise((resolve, reject) => {
-        server.once('error', reject);
-        server.listen(PORT, HOST, () => resolve(server));
-    });
-}
 
 function assert(condition, message) {
     if (!condition) {
@@ -215,16 +124,9 @@ async function waitForGameplay(page, timeoutMs = 12000) {
 }
 
 async function main() {
-    if (!fs.existsSync(path.join(DIST, 'index.html'))) {
-        throw new Error('dist/index.html missing. Run `npm run build` first.');
-    }
-    if (!fs.existsSync(HEADERS_FILE)) {
-        throw new Error('dist/_headers missing. The build should copy src/_headers; run `npm run build`.');
-    }
-
+    const headerRules = loadDistHeaderRules();
     fs.mkdirSync(OUT_DIR, { recursive: true });
 
-    const headerRules = loadHeadersFile(HEADERS_FILE);
     const servedPaths = listServedPaths();
     const cacheControlConflicts = servedPaths
         .map((urlPath) => describeCacheControlConflict(urlPath, resolveHeaders(headerRules, urlPath, BASE)))
@@ -245,7 +147,8 @@ async function main() {
         args: ['--autoplay-policy=user-gesture-required'],
     });
     console.log(`Using browser: Playwright Chromium ${browser.version()}`);
-    const server = await startStaticServer(headerRules, cacheControlConflicts);
+    // Exact production headers here (no Cache-Control override).
+    const server = await startStaticServer({ headerRules, host: HOST, port: PORT, cacheControlConflicts });
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 
     const consoleErrors = [];

@@ -13,7 +13,7 @@ I'm not open to contributions, but if you'd like to fork the project and make yo
 
 1. Create a new branch for your feature or bugfix: `git checkout -b feature/your-feature-name`
 2. Make your changes
-3. Test your changes: `npm test` (syntax lint, build, and smoke checks)
+3. Test your changes: `npm run check` (lint, build, smoke checks and the browser playtest; run `npm run playtest:install` once first)
 4. Run the game: `npm start`
 5. Commit your changes with a descriptive commit message
 6. Push to your fork: `git push origin feature/your-feature-name`

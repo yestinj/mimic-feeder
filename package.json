@@ -11,22 +11,16 @@
     "playtest:install": "playwright install --no-shell chromium",
     "test": "npm run lint && npm run build && npm run smoke",
     "check": "npm test && npm run playtest",
-    "start": "npx http-server dist -o",
-    "dev": "nodemon --watch src --ext js,html,css --exec \"npm run build && echo 'Build complete, refresh your browser'\"",
-    "docs": "jsdoc -c jsdoc.json",
-    "serve-docs": "npx http-server docs -o"
+    "start": "node scripts/serve.js",
+    "dev": "node --watch-path=src build.js"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "clean-css": "^5.3.3",
-    "docdash": "^2.0.2",
     "esbuild": "^0.28.1",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
     "html-minifier-terser": "^7.2.0",
-    "http-server": "^14.1.1",
-    "jsdoc": "^4.0.5",
-    "nodemon": "^3.1.14",
     "playwright": "^1.65.0"
   },
   "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",
