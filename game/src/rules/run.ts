@@ -4,7 +4,8 @@
 import { TENTACLES_FROM_LEVEL, tentacleReach, type Ability } from './abilities';
 import { BOSS, isBossZone } from './boss';
 import { CAT_RESCUE_POINTS } from './cats';
-import { EDIBLE_KINDS, HAZARD_KINDS, OBJECTS, SHINY_KINDS, type EdibleKind, type HazardKind, type ObjectKind, type PowerUpKind, type ShinyKind } from './objects';
+import { JUDGMENT } from './judgment';
+import { EDIBLE_KINDS, HAZARD_KINDS, OBJECTS, SHINY_KINDS, type CreatureKind, type EdibleKind, type HazardKind, type ObjectKind, type PowerUpKind, type ShinyKind } from './objects';
 import { pickPowerUp } from './offers';
 import { CREATURES_PER_ZONE, gameLevel, nextZone } from './progression';
 import type { Rng } from './spawner';
@@ -22,6 +23,15 @@ export const BOLTED_BOMB_POINTS = 10;
 /** Per-level growth of the mimic: speed and size +5%, jump +3%. */
 export const GROWTH = { speed: 1.05, size: 1.05, jump: 1.03 } as const;
 
+/** What cost a life: the last one is the run's cause of death. */
+export type DeathCause =
+    /** A creature hit the floor or the side of the chest. */
+    | { readonly type: 'wasted'; readonly creature: CreatureKind }
+    | { readonly type: 'bomb' }
+    | { readonly type: 'fireball' }
+    | { readonly type: 'boss' }
+    | { readonly type: 'judgment' };
+
 export type RunEvent =
     | { readonly type: 'points'; readonly points: number }
     | { readonly type: 'levelUp'; readonly level: number }
@@ -33,6 +43,10 @@ export type RunEvent =
     | { readonly type: 'lifeLost' }
     | { readonly type: 'unlock'; readonly ability: Ability }
     | { readonly type: 'tentaclesGrow'; readonly reach: number }
+    /** Five cats shot: the dungeon warns once. */
+    | { readonly type: 'catWarning' }
+    /** Ten cats shot: the Ninefold Judgment begins. */
+    | { readonly type: 'judgment' }
     | { readonly type: 'gameOver' };
 
 /** What the results screen shows about a finished run. */
@@ -44,6 +58,8 @@ export interface RunSummary {
     readonly playTimeMs: number;
     readonly creaturesEaten: number;
     readonly shiniesCollected: number;
+    /** What cost the last life (null if the run didn't end in a loss). */
+    readonly causeOfDeath: DeathCause | null;
 }
 
 export interface Growth {
@@ -89,6 +105,12 @@ export class Run {
     catsKilled = 0;
     /** Cats killed with Shadow Bolts (the Ninefold Judgment counts these, M2c). */
     catsShot = 0;
+
+    /** The dungeon has warned about shot cats, and has judged (each happens once per run). */
+    catWarningGiven = false;
+    judged = false;
+    /** What cost the most recent life. */
+    lastLoss: DeathCause | null = null;
 
     /** A boss fight is on (from its zone starting until the next floor). */
     inBossFight = false;
@@ -180,6 +202,7 @@ export class Run {
             playTimeMs: this.playTimeMs,
             creaturesEaten: this.creaturesEaten,
             shiniesCollected: this.shiniesCollected,
+            causeOfDeath: this.isOver ? this.lastLoss : null,
         };
     }
 
@@ -239,10 +262,20 @@ export class Run {
         this.catsKilled += 1;
     }
 
-    /** A Shadow Bolt killed a cat. */
-    shootCat(): void {
+    /** A Shadow Bolt killed a cat. The fifth brings the dungeon's warning, the tenth its judgment. */
+    shootCat(): RunEvent[] {
         this.catsShot += 1;
         this.shotDown += 1;
+        const events: RunEvent[] = [];
+        if (!this.catWarningGiven && this.catsShot >= JUDGMENT.warningAt) {
+            this.catWarningGiven = true;
+            events.push({ type: 'catWarning' });
+        }
+        if (!this.judged && this.catsShot >= JUDGMENT.judgmentAt) {
+            this.judged = true;
+            events.push({ type: 'judgment' });
+        }
+        return events;
     }
 
     /** A shiny was picked up. Shinies don't count towards clearing a zone. */
@@ -288,25 +321,30 @@ export class Run {
 
     /** A boss fireball hit the mimic. */
     burn(): RunEvent[] {
-        return this.loseLife();
+        return this.loseLife({ type: 'boss' });
+    }
+
+    /** A fireball of the Ninefold Judgment hit the mimic. */
+    judge(): RunEvent[] {
+        return this.loseLife({ type: 'judgment' });
     }
 
     /** A creature hit the side of the chest: it's destroyed and, like a miss, costs a life. */
-    sideHit(): RunEvent[] {
+    sideHit(kind: CreatureKind): RunEvent[] {
         this.sideHits += 1;
-        return this.loseLife();
+        return this.loseLife({ type: 'wasted', creature: kind });
     }
 
     /** A creature hit the floor. */
-    miss(): RunEvent[] {
+    miss(kind: CreatureKind): RunEvent[] {
         this.missed += 1;
-        return this.loseLife();
+        return this.loseLife({ type: 'wasted', creature: kind });
     }
 
     /** The mimic touched a hazard. */
     detonate(kind: HazardKind): RunEvent[] {
         this.detonated[kind] += 1;
-        return this.loseLife();
+        return this.loseLife({ type: kind });
     }
 
     private gain(points: number): RunEvent[] {
@@ -330,11 +368,12 @@ export class Run {
         return events;
     }
 
-    private loseLife(): RunEvent[] {
+    private loseLife(cause: DeathCause): RunEvent[] {
         if (this.isOver) {
             return [];
         }
         this.lives -= 1;
+        this.lastLoss = cause;
         return this.isOver ? [{ type: 'lifeLost' }, { type: 'gameOver' }] : [{ type: 'lifeLost' }];
     }
 }

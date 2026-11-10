@@ -67,7 +67,7 @@ export class AbilityBar extends Phaser.GameObjects.Container {
         for (const state of states) {
             const slot = this.slots.get(state.ability);
             if (slot) {
-                this.drawCooldown(state.ability, slot, state.cooldown);
+                this.drawCooldown(state.ability, slot, state.cooldown, state.blocked);
             }
         }
     }
@@ -126,8 +126,11 @@ export class AbilityBar extends Phaser.GameObjects.Container {
         }
     }
 
-    /** A dark sweep over the remaining cooldown; the icon brightens with a pop when a long cooldown ends. */
-    private drawCooldown(ability: Ability, slot: Slot, remaining: number): void {
+    /**
+     * A dark sweep over the remaining cooldown; the icon brightens with a pop
+     * when a long cooldown ends. A blocked ability (during the judgment) is dimmed.
+     */
+    private drawCooldown(ability: Ability, slot: Slot, remaining: number, blocked: boolean): void {
         slot.sweep.clear();
         const cooling = remaining > 0;
         if (cooling) {
@@ -137,7 +140,7 @@ export class AbilityBar extends Phaser.GameObjects.Container {
             slot.sweep.slice(0, 0, SLOT / 2 - 6, start, start + Math.PI * 2 * remaining, false);
             slot.sweep.fillPath();
         }
-        slot.icon.setAlpha(cooling ? 0.6 : 1);
+        slot.icon.setAlpha(blocked ? 0.25 : cooling ? 0.6 : 1);
         if (slot.cooling && !cooling && COOLDOWNS[ability] >= 1000) {
             this.scene.tweens.add({ targets: slot.icon, scale: { from: slot.icon.scale * 1.25, to: slot.icon.scale }, duration: MOTION.slow, ease: 'Back.Out' });
         }

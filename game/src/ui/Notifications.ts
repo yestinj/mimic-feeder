@@ -11,6 +11,8 @@ import { addText } from './text';
 const BANNER_Y = 300;
 const BANNER_HEIGHT = 157;
 const BANNER_HOLD_MS = 1800;
+/** The dungeon's warning stays up longer (4 s in all, as in the p5 game). */
+const JUDGMENT_WARNING_HOLD_MS = 3500;
 const TOAST_Y = 132;
 /** Toasts sit lower while the boss bar is showing. */
 const TOAST_Y_UNDER_BOSS_BAR = 150;
@@ -23,6 +25,8 @@ interface Notice {
     readonly key?: string;
     /** An ability toast: its icon, name and key. */
     readonly ability?: Ability;
+    /** A banner in the Ninefold Judgment's colours, with a line under the title. */
+    readonly judgment?: boolean;
 }
 
 /**
@@ -38,6 +42,8 @@ export class Notifications {
     private toastShowing: Notice | null = null;
     private readonly shown: Phaser.GameObjects.Container[] = [];
     private toastY = TOAST_Y;
+    /** Held: nothing new shows and what's showing is hidden and frozen (during the judgment). */
+    private held = false;
 
     constructor(private readonly scene: Phaser.Scene) {}
 
@@ -58,6 +64,49 @@ export class Notifications {
     /** An ability unlocking again (in a later run): a toast with its icon, name and key. */
     abilityToast(ability: Ability): void {
         this.enqueue(this.toasts, this.toastShowing, { title: STRINGS.abilities[ability].name, ability }, () => this.nextToast());
+    }
+
+    /** The dungeon's warning after five cats: a judgment-coloured banner. */
+    judgmentWarning(title: string, detail: string): void {
+        this.enqueue(this.banners, this.bannerShowing, { title, detail, key: 'catWarning', judgment: true }, () => this.nextBanner());
+    }
+
+    /** Removes a notice by key, showing or queued (the cat warning, once the judgment it warned of begins). */
+    discard(key: string): void {
+        for (const queue of [this.banners, this.toasts]) {
+            for (let i = queue.length - 1; i >= 0; i--) {
+                if (queue[i]?.key === key) {
+                    queue.splice(i, 1);
+                }
+            }
+        }
+        if (this.bannerShowing?.key === key) {
+            this.bannerShowing = null;
+            this.finishShown('banner');
+        }
+    }
+
+    /**
+     * Holds notices (during the judgment): nothing new appears, and anything
+     * showing is hidden and frozen. Released, everything carries on.
+     */
+    setHeld(held: boolean): void {
+        if (held === this.held) {
+            return;
+        }
+        this.held = held;
+        for (const container of this.shown) {
+            container.setVisible(!held);
+            this.scene.tweens.getTweensOf(container).forEach((tween) => (held ? tween.pause() : tween.resume()));
+        }
+        if (!held) {
+            if (!this.bannerShowing) {
+                this.nextBanner();
+            }
+            if (!this.toastShowing) {
+                this.nextToast();
+            }
+        }
     }
 
     /** True while a banner is showing or waiting to. */
@@ -89,23 +138,49 @@ export class Notifications {
             return;
         }
         queue.push(notice);
-        if (!showing) {
+        if (!showing && !this.held) {
             next();
         }
     }
 
+    /** Removes the banner or toast currently on screen at once. */
+    private finishShown(kind: 'banner' | 'toast'): void {
+        const container = this.shown.find((shown) => shown.getData('kind') === kind);
+        if (container) {
+            this.scene.tweens.killTweensOf(container);
+            container.destroy();
+            this.shown.splice(this.shown.indexOf(container), 1);
+        }
+        if (kind === 'banner' && !this.held) {
+            this.nextBanner();
+        }
+    }
+
     private nextBanner(): void {
+        if (this.held) {
+            return;
+        }
         const notice = this.banners.shift() ?? null;
         this.bannerShowing = notice;
         if (!notice) {
             return;
         }
+        if (notice.judgment) {
+            const title = addText(this.scene, 0, -24, notice.title, TYPE.title, { role: 'display', bold: true, colour: '#ffa6b2' }).setOrigin(0.5);
+            const detail = addText(this.scene, 0, 40, notice.detail ?? '', TYPE.body, { colour: '#ebdce6' }).setOrigin(0.5);
+            const panel = addPanel(this.scene, 0, 0, Math.max(760, title.width + SPACE.xl * 2), 170, 'judgment');
+            this.show([panel, title, detail], BANNER_Y, JUDGMENT_WARNING_HOLD_MS, 0, () => this.nextBanner(), 'banner');
+            return;
+        }
         const text = addText(this.scene, 0, -2, notice.title, TYPE.banner, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         const ribbon = this.scene.add.nineslice(0, 0, UI.banner, undefined, Math.max(720, text.width + SLICE.banner * 2 + SPACE.l), BANNER_HEIGHT, SLICE.banner, SLICE.banner);
-        this.show([ribbon, text], BANNER_Y, BANNER_HOLD_MS, 0, () => this.nextBanner());
+        this.show([ribbon, text], BANNER_Y, BANNER_HOLD_MS, 0, () => this.nextBanner(), 'banner');
     }
 
     private nextToast(): void {
+        if (this.held) {
+            return;
+        }
         const notice = this.toasts.shift() ?? null;
         this.toastShowing = notice;
         if (!notice) {
@@ -124,7 +199,7 @@ export class Notifications {
             parts.push(detail);
         }
         const panel = addPanel(this.scene, 0, 0, Math.max(360, width + SPACE.xl * 1.5), notice.detail ? 136 : 96);
-        this.show([panel, title, ...parts], this.toastY, TOAST_HOLD_MS, -24, () => this.nextToast());
+        this.show([panel, title, ...parts], this.toastY, TOAST_HOLD_MS, -24, () => this.nextToast(), 'toast');
     }
 
     /** [icon] Name [Key], in the toast spot. */
@@ -140,12 +215,13 @@ export class Notifications {
         name.x = left + iconSize + SPACE.m;
         keycap.x = name.x + name.width + SPACE.m + keycap.width / 2;
         const panel = addPanel(this.scene, 0, 0, width, 96);
-        this.show([panel, slot, icon, name, keycap], this.toastY, TOAST_HOLD_MS, -24, () => this.nextToast());
+        this.show([panel, slot, icon, name, keycap], this.toastY, TOAST_HOLD_MS, -24, () => this.nextToast(), 'toast');
     }
 
     /** Fades a notice in (sliding by `slide`), holds it, fades it out, then calls `done`. */
-    private show(parts: Phaser.GameObjects.GameObject[], y: number, holdMs: number, slide: number, done: () => void): void {
+    private show(parts: Phaser.GameObjects.GameObject[], y: number, holdMs: number, slide: number, done: () => void, kind: 'banner' | 'toast'): void {
         const container = this.scene.add.container(DESIGN_WIDTH / 2, y + slide, parts).setAlpha(0).setScale(slide ? 1 : 0.9);
+        container.setData('kind', kind);
         this.shown.push(container);
         this.scene.tweens.add({ targets: container, alpha: 1, y, scale: 1, duration: MOTION.normal, ease: 'Back.Out' });
         this.scene.tweens.add({

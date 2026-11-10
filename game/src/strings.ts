@@ -42,6 +42,34 @@ export const STRINGS = {
     boss: {
         name: 'The Flying Demon',
     },
+    /** The Ninefold Judgment's words: the dungeon speaks without full stops. */
+    judgment: {
+        warningTitle: 'Five innocent lives',
+        warningDetail: 'The dungeon is watching',
+        summonTitle: 'Ten lives taken',
+        summonLine: 'You have angered the dungeon',
+        summonRun: 'Now—run',
+        header: (wave: number, waves: number) => `Ninefold Judgment  ·  ${wave} / ${waves}`,
+        endTitle: 'The dungeon relents',
+        endLine: 'For now',
+    },
+    /** The creatures, as named in a cause of death. */
+    creatureNames: {
+        goblin: 'goblin',
+        dwarf: 'dwarf',
+        wraith: 'wraith',
+        human: 'human',
+        elf: 'elf',
+        dragon: 'dragon',
+    },
+    /** What cost the last life, on the results (draft wording, reviewed in M4). */
+    causes: {
+        wasted: (creature: string) => `Let a perfectly good ${creature} go to waste`,
+        bomb: 'Blown apart by a bomb',
+        fireball: 'Scorched by a falling fireball',
+        boss: 'Burned by the Flying Demon',
+        judgment: 'Judged by the dungeon',
+    },
     unlockCard: {
         title: 'New ability',
         continue: 'Continue',

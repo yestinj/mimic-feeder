@@ -11,6 +11,8 @@ export const TEXTURES = {
     chestAjar: 'chest-ajar',
     chestOpen: 'chest-open',
     chain: 'chain',
+    /** The Ninefold Judgment's apparition (loaded in the background). */
+    apparition: 'judgment-apparition',
 } as const;
 
 /** Background texture for a floor index (0 = Floor 1). */
@@ -135,6 +137,10 @@ export const SOUNDS = {
     catMeow: { file: 'cat_meow.mp3', volume: 0.5 },
     catHurt: { file: 'cat_hurt.mp3', volume: 0.5 },
     bossDeath: { file: 'boss_death.mp3', volume: 0.5 },
+    /** The dungeon's voice in the Ninefold Judgment. */
+    dungeonWarning: { file: 'dungeon_warning.mp3', volume: 0.85 },
+    dungeonJudgment: { file: 'dungeon_judgment.mp3', volume: 0.85 },
+    dungeonRelents: { file: 'dungeon_relents.mp3', volume: 0.85 },
 } as const;
 
 export type SoundName = keyof typeof SOUNDS;
@@ -189,6 +195,7 @@ export function loadDeferredAssets(load: Phaser.Loader.LoaderPlugin): void {
     });
     load.audio(MUSIC.music2.key, MUSIC.music2.file);
     load.audio(MUSIC.boss.key, MUSIC.boss.file);
+    load.image(TEXTURES.apparition, 'ninefold_judgment.webp');
 }
 
 export function createAnimations(anims: Phaser.Animations.AnimationManager): void {

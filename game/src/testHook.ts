@@ -25,6 +25,9 @@ export interface GameView {
     /** Dragons flying off right now. */
     readonly flyingDragons: number;
     readonly boss: { readonly health: number; readonly max: number; readonly phase: string } | null;
+    /** The Ninefold Judgment, while it's on. */
+    readonly judgment: { readonly phase: string; readonly gap: number | null } | null;
+    readonly boltsCast: number;
     /** Falling creatures' centres, lowest first (lets a test chase food). */
     readonly food: readonly { readonly x: number; readonly y: number }[];
 }
@@ -43,6 +46,8 @@ export interface GameSnapshot {
     readonly dialog: boolean;
     /** The new-ability card on screen, and whether it accepts its key yet. */
     readonly card: { readonly ability: string; readonly ready: boolean } | null;
+    /** The results screen, while it's showing: the cause of death it gives. */
+    readonly results: { readonly cause: string | null } | null;
 }
 
 /** Shortcuts for the playtest, present only with ?test in the URL. */
@@ -57,6 +62,8 @@ export interface DebugApi {
     startBoss(): void;
     /** Applies Shadow Bolt hits to the boss without aiming. */
     damageBoss(hits: number): void;
+    /** Counts cats as shot, as if by Shadow Bolts (the fifth warns, the tenth brings the judgment). */
+    shootCats(count: number): void;
 }
 
 export interface MimicFeederTestHook {
@@ -107,6 +114,12 @@ export function setDialogOpen(open: boolean): void {
 }
 
 let card: (() => GameSnapshot['card']) | null = null;
+let results: GameSnapshot['results'] = null;
+
+/** The results scene reports what it shows; null when it closes. */
+export function setResultsView(view: GameSnapshot['results']): void {
+    results = view;
+}
 
 /** The unlock scene reports its card here; null when none is showing. */
 export function setCardView(view: (() => GameSnapshot['card']) | null): void {
@@ -130,6 +143,7 @@ export function installTestHook(game: Phaser.Game): void {
             muted: isMuted(),
             dialog: dialogOpen,
             card: card ? card() : null,
+            results,
         };
     };
 }

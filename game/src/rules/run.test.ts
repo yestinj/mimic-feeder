@@ -78,19 +78,19 @@ describe('Run', () => {
 
     it('loses a life when a creature hits the floor or a hazard is touched, and ends at zero', () => {
         const run = new Run();
-        expect(run.miss()).toEqual([{ type: 'lifeLost' }]);
+        expect(run.miss('goblin')).toEqual([{ type: 'lifeLost' }]);
         expect(run.detonate('bomb')).toEqual([{ type: 'lifeLost' }]);
         expect(run.detonate('fireball')).toEqual([{ type: 'lifeLost' }, { type: 'gameOver' }]);
         expect(run.isOver).toBe(true);
         expect([run.missed, run.hazardsDetonated, run.detonated.fireball]).toEqual([1, 2, 1]);
         // Nothing more happens once the run is over.
-        expect(run.miss()).toEqual([]);
+        expect(run.miss('goblin')).toEqual([]);
         expect(run.lives).toBe(0);
     });
 
     it('a side hit destroys the creature and costs a life, like a miss', () => {
         const run = new Run();
-        expect(run.sideHit()).toEqual([{ type: 'lifeLost' }]);
+        expect(run.sideHit('dwarf')).toEqual([{ type: 'lifeLost' }]);
         expect([run.lives, run.score, run.sideHits, run.creaturesEaten]).toEqual([2, 0, 1, 0]);
     });
 
