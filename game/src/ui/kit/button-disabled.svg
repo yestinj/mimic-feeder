@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="64" viewBox="0 0 120 64">
+  <!-- Three-slice button: 28 px ends stay fixed, the middle stretches. -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2420"/>
+      <stop offset="1" stop-color="#1d1916"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="116" height="60" rx="13" fill="url(#body)" stroke="#5a5047" stroke-opacity="0.9" stroke-width="2.5"/>
+  
+  <line x1="18" y1="6" x2="102" y2="6" stroke="#ffe6aa" stroke-opacity="0.22"/>
+</svg>

@@ -10,6 +10,7 @@
  */
 const js = require('@eslint/js');
 const globals = require('globals');
+const tseslint = require('typescript-eslint');
 const p5GlobalsFile = require('./scripts/p5-globals.json');
 
 /** Virtual file name scripts/lint.js passes to ESLint for the concatenated game. */
@@ -112,5 +113,31 @@ module.exports = [
         },
     },
 ];
+
+// The Phaser + TypeScript rewrite in game/ (built to /next/ until it replaces
+// the p5 game; see docs/phaser-migration/plan.md). typescript-eslint's
+// recommended rules, with the same rule as the bundle for stale disables.
+module.exports.push(
+    ...tseslint.configs.recommended.map((config) => ({ ...config, files: ['game/**/*.ts', 'game/**/*.mts'] })),
+    {
+        files: ['game/**/*.ts', 'game/**/*.mts'],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+            },
+        },
+        linterOptions: {
+            reportUnusedDisableDirectives: 'error',
+        },
+    },
+    {
+        files: ['game/vite.config.mts'],
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
+    },
+);
 
 module.exports.GAME_BUNDLE_PATH = GAME_BUNDLE_PATH;

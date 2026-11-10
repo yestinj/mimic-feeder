@@ -14,6 +14,11 @@ updates:
               # things; keep its updates in their own PRs.
               exclude-patterns: [esbuild]
               update-types: [minor, patch]
+      ignore:
+          # typescript-eslint supports TypeScript only below 6.1 (its peer
+          # range). Lift this once typescript-eslint accepts newer versions.
+          - dependency-name: typescript
+            versions: ['>=6.1.0']
 
     - package-ecosystem: github-actions
       directory: /

@@ -5,7 +5,7 @@
  * 1. Syntax: `node --check` on every JS file one at a time (src/index.html
  *    loads the game files separately in dev, so each must parse on its own).
  * 2. ESLint on the Node tooling (build.js, eslint.config.js, scripts/) with
- *    Node globals.
+ *    Node globals, and on the TypeScript rewrite in game/ (typescript-eslint).
  * 3. ESLint on the game exactly as shipped: src/js concatenated in build.js
  *    JS_FILE_ORDER, with browser + p5/p5.sound globals (see eslint.config.js).
  *    Findings are reported against the original src/js file and line.
@@ -168,7 +168,7 @@ function mapBundleResult(bundleResult, segments) {
 async function runEslint() {
     const eslint = new ESLint({ cwd: REPO_ROOT });
 
-    const toolingResults = await eslint.lintFiles(['build.js', 'eslint.config.js', 'scripts/']);
+    const toolingResults = await eslint.lintFiles(['build.js', 'eslint.config.js', 'scripts/', 'game/']);
 
     const { code, segments } = buildGameBundle();
     const [bundleResult] = await eslint.lintText(code, {
@@ -186,7 +186,7 @@ async function runEslint() {
         return false;
     }
 
-    console.log(`OK  ESLint tooling (${toolingResults.length} files)`);
+    console.log(`OK  ESLint tooling and game/ (${toolingResults.length} files)`);
     console.log(`OK  ESLint game bundle (${JS_FILE_ORDER.length} files concatenated in JS_FILE_ORDER)`);
     return true;
 }

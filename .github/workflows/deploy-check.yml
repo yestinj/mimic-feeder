@@ -65,11 +65,11 @@ jobs:
             - name: Live check
               run: npm run check:live
 
-            - name: Upload live-check screenshot
+            - name: Upload live-check screenshots
               if: failure()
               uses: actions/upload-artifact@v7
               with:
                   name: live-check
-                  path: playtest-output/live-check.png
+                  path: playtest-output/live-check*.png
                   if-no-files-found: ignore
                   retention-days: 7

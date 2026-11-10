@@ -224,6 +224,17 @@ async function copyOptionalBuildFile(sourcePath, destPath) {
     }
 }
 
+/**
+ * Builds the Phaser + TypeScript rewrite (game/) into dist/next/, served at
+ * /next/ next to the p5 game until it replaces it (docs/phaser-migration/plan.md).
+ * Runs after the p5 build: Vite only empties its own dist/next/ folder.
+ */
+async function buildNext() {
+    const { build } = await import('vite');
+    await build({ configFile: path.join(__dirname, 'game', 'vite.config.mts'), logLevel: 'warn' });
+    console.log('Phaser rewrite built into dist/next/');
+}
+
 async function main() {
     try {
         // Create output directory
@@ -238,6 +249,7 @@ async function main() {
             copyAssets(ASSET_DIR, `${OUTPUT_DIR}/assets`),
             copyOptionalBuildFile('src/_headers', `${OUTPUT_DIR}/_headers`),
         ]);
+        await buildNext();
 
         console.log('Build completed successfully!');
     } catch (error) {

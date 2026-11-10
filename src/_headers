@@ -19,6 +19,22 @@
 /styles.css
   Cache-Control: public, max-age=3600
 
+# Phaser + TypeScript rewrite, served at /next/ until it replaces the p5 game
+# (docs/phaser-migration/plan.md). Vite content-hashes everything under
+# /next/bundle/, so those files never change in place.
+/next/bundle/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/next/
+  Cache-Control: public, max-age=3600
+
+/next/index.html
+  Cache-Control: public, max-age=3600
+
+/next/*
+  # Work-in-progress preview: keep it out of search results.
+  X-Robots-Tag: noindex
+
 /*
   Content-Security-Policy: default-src 'self' https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com https://static.cloudflareinsights.com blob:; worker-src 'self' blob:; object-src 'none'; img-src 'self' data:; style-src 'self'; connect-src 'self' https://cloudflareinsights.com
   X-Content-Type-Options: nosniff

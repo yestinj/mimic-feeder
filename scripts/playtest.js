@@ -123,6 +123,72 @@ async function waitForGameplay(page, timeoutMs = 12000) {
     throw new Error('Timed out waiting for active gameplay');
 }
 
+/**
+ * The Phaser + TypeScript rewrite at /next/ (docs/phaser-migration/plan.md):
+ * served with the same headers, reaches its title screen, the menu responds to
+ * the keyboard, the font preview page loads every font, and nothing errors or
+ * violates the CSP. Uses its own page so its errors are reported separately.
+ */
+async function checkNextBuild(browser) {
+    const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    const errors = [];
+    const cspViolations = [];
+    page.on('console', (msg) => {
+        if (msg.type() === 'error') {
+            errors.push(`console: ${msg.text()}`);
+        }
+    });
+    page.on('pageerror', (err) => errors.push(`page: ${err && err.message ? err.message : err}`));
+    page.on('response', (response) => {
+        if (response.status() >= 400) {
+            errors.push(`HTTP ${response.status()}: ${response.url()}`);
+        }
+    });
+    await page.exposeFunction('__playtestReportNextCspViolation', (violation) => cspViolations.push(violation));
+    await page.addInitScript(() => {
+        document.addEventListener('securitypolicyviolation', (event) => {
+            window.__playtestReportNextCspViolation(`${event.effectiveDirective || event.violatedDirective} ${event.blockedURI}`);
+        });
+    });
+
+    try {
+        const response = await page.goto(BASE + '/next/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        assert(Boolean(response && response.headers()['content-security-policy']), '/next/ is served with the _headers Content-Security-Policy');
+        await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 20000 });
+        assert(true, '/next/ reaches the title screen');
+        await page.waitForTimeout(600);
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(500);
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-title.png') });
+        assert(true, '/next/ menu accepts keyboard navigation');
+
+        await page.goto(BASE + '/next/fonts.html', { waitUntil: 'load', timeout: 30000 });
+        const fontsLoaded = await page.evaluate(async () => {
+            await document.fonts.ready;
+            const faces = [
+                '700 20px Cinzel', '400 20px "Alegreya Sans"',
+                '400 20px "IM Fell English SC"', '400 20px "EB Garamond"',
+                '700 20px "Grenze Gotisch"', '400 20px Barlow',
+            ];
+            return faces.filter((face) => !document.fonts.check(face));
+        });
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-fonts.png'), fullPage: true });
+        assert(fontsLoaded.length === 0, `/next/fonts.html loads every candidate font${fontsLoaded.length ? ` (missing: ${fontsLoaded.join(', ')})` : ''}`);
+
+        if (cspViolations.length) {
+            console.error('/next/ CSP violations:', cspViolations);
+        }
+        assert(cspViolations.length === 0, '/next/ has no Content-Security-Policy violations');
+        if (errors.length) {
+            console.error('/next/ errors:', errors);
+        }
+        assert(errors.length === 0, '/next/ has no page errors, console errors or failed requests');
+    } finally {
+        await page.close().catch(() => {});
+    }
+}
+
 async function main() {
     const headerRules = loadDistHeaderRules();
     fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -807,6 +873,8 @@ async function main() {
 
         assert(pageErrors.length === 0, 'No page errors');
         assert(hardConsoleErrors.length === 0, 'No unexpected console errors');
+
+        await checkNextBuild(browser);
 
         console.log(`\nPlaytest passed.`);
         console.log(`Screenshots: ${pathToFileURL(OUT_DIR).href}`);
