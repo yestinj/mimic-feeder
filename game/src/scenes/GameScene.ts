@@ -27,8 +27,6 @@ export const RUN_EVENTS = {
 } as const;
 
 const DEPTH = { background: -10, ground: -9, glow: -1, objects: 0, mimic: 1, effects: 2, popups: 3 } as const;
-/** The longest step simulated at once, as in the p5 game after a stall. */
-const MAX_DELTA_MS = (1000 / 60) * 2.5;
 /** How long the playfield lingers after the last life before the results. */
 const GAME_OVER_HOLD_MS = 1800;
 const BACKGROUND_FADE_MS = 1200;
@@ -113,10 +111,13 @@ export class GameScene extends Phaser.Scene {
         if (this.ending) {
             return;
         }
-        const step = Math.min(delta, MAX_DELTA_MS);
-        this.run.tick(step);
+        // Phaser smooths the frame time and caps it after a stall, and Arcade
+        // Physics catches up in fixed steps, so the run's clock uses the same
+        // delta as the physics: on a slow machine nothing falls faster than
+        // things spawn.
+        this.run.tick(delta);
 
-        this.spawnElapsed += step;
+        this.spawnElapsed += delta;
         const interval = spawnInterval(this.run.gameLevel);
         if (this.spawnElapsed >= interval) {
             this.spawnElapsed -= interval;

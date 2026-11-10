@@ -234,12 +234,12 @@ async function checkNextBuild(browser) {
             await page.keyboard.press('ArrowDown');
         }
         await page.keyboard.press('Enter');
-        await page.waitForTimeout(400);
+        await waitForSnapshot((s) => s.dialog);
         await page.keyboard.press('Enter');
-        await page.waitForTimeout(400);
+        await waitForSnapshot((s) => !s.dialog);
         assert((await snapshot()).running.includes('pause'), '/next/ Restart asks to confirm, and Cancel keeps the run');
         await page.keyboard.press('Enter');
-        await page.waitForTimeout(400);
+        await waitForSnapshot((s) => s.dialog);
         await page.keyboard.press('ArrowRight');
         const beforeRestart = (await snapshot()).game.playTimeMs;
         await page.keyboard.press('Enter');

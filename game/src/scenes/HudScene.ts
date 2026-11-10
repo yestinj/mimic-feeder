@@ -102,7 +102,8 @@ export class HudScene extends Phaser.Scene {
 
         const badgeX = right - 44;
         const badgeY = 162;
-        this.levelText = addText(this, 0, 2, '1', TYPE.heading, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
+        // Numbers use the text font (Barlow), whose digits sit centred in their box.
+        this.levelText = addText(this, 0, 0, '1', TYPE.heading, { bold: true, colour: TEXT_COLOURS.gold, shadow: false }).setOrigin(0.5);
         this.badge = this.add.container(badgeX, badgeY, [this.add.image(0, 0, UI.badge), this.levelText]);
         this.xpBar = new ProgressBar(this, badgeX - 44 - SPACE.s - XP_BAR_WIDTH / 2, badgeY, XP_BAR_WIDTH, COLOURS.xp);
         addText(this, badgeX - 44 - SPACE.s - XP_BAR_WIDTH, badgeY - 44, 'LEVEL', TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true });

@@ -49,7 +49,7 @@ export const SLICE = {
     button: 28,
     keycap: 18,
     barFrame: 14,
-    banner: 72,
+    banner: 100,
 } as const;
 
 export function preloadUiKit(scene: Phaser.Scene): void {

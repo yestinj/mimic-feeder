@@ -30,6 +30,8 @@ export interface GameSnapshot {
     /** The Web Audio context's state ("suspended" until the first key press or click). */
     readonly audio: string;
     readonly muted: boolean;
+    /** A confirm dialog is open. */
+    readonly dialog: boolean;
 }
 
 export interface MimicFeederTestHook {
@@ -54,6 +56,11 @@ export function markReady(sceneKey: string): void {
 }
 
 let gameView: (() => GameView) | null = null;
+let dialogOpen = false;
+
+export function setDialogOpen(open: boolean): void {
+    dialogOpen = open;
+}
 
 /** The game scene registers how to describe the run; null when it shuts down. */
 export function setGameView(view: (() => GameView) | null): void {
@@ -70,6 +77,7 @@ export function installTestHook(game: Phaser.Game): void {
             game: gameView ? gameView() : null,
             audio: context ? context.state : 'none',
             muted: isMuted(),
+            dialog: dialogOpen,
         };
     };
 }

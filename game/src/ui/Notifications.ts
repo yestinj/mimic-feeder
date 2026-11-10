@@ -5,8 +5,9 @@ import { SLICE, UI, addPanel } from './kit';
 import { addText } from './text';
 
 const BANNER_Y = 300;
+const BANNER_HEIGHT = 157;
 const BANNER_HOLD_MS = 1800;
-const TOAST_Y = 112;
+const TOAST_Y = 132;
 const TOAST_HOLD_MS = 2000;
 
 interface Notice {
@@ -66,8 +67,8 @@ export class Notifications {
         if (!notice) {
             return;
         }
-        const text = addText(this.scene, 0, 0, notice.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
-        const ribbon = this.scene.add.nineslice(0, 0, UI.banner, undefined, Math.max(520, text.width + SLICE.banner * 2 + SPACE.l), 112, SLICE.banner, SLICE.banner);
+        const text = addText(this.scene, 0, -2, notice.title, TYPE.banner, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
+        const ribbon = this.scene.add.nineslice(0, 0, UI.banner, undefined, Math.max(720, text.width + SLICE.banner * 2 + SPACE.l), BANNER_HEIGHT, SLICE.banner, SLICE.banner);
         this.show([ribbon, text], BANNER_Y, BANNER_HOLD_MS, 0, () => this.nextBanner());
     }
 
@@ -77,15 +78,15 @@ export class Notifications {
         if (!notice) {
             return;
         }
-        const title = addText(this.scene, 0, notice.detail ? -14 : 0, notice.title, TYPE.body, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
+        const title = addText(this.scene, 0, notice.detail ? -22 : 0, notice.title, TYPE.heading, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         const parts: Phaser.GameObjects.GameObject[] = [];
         let width = title.width;
         if (notice.detail) {
-            const detail = addText(this.scene, 0, 20, notice.detail, TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
+            const detail = addText(this.scene, 0, 28, notice.detail, TYPE.body, { colour: TEXT_COLOURS.primary }).setOrigin(0.5);
             width = Math.max(width, detail.width);
             parts.push(detail);
         }
-        const panel = addPanel(this.scene, 0, 0, Math.max(280, width + SPACE.xl * 1.5), notice.detail ? 100 : 76);
+        const panel = addPanel(this.scene, 0, 0, Math.max(360, width + SPACE.xl * 1.5), notice.detail ? 136 : 96);
         this.show([panel, title, ...parts], TOAST_Y, TOAST_HOLD_MS, -24, () => this.nextToast());
     }
 

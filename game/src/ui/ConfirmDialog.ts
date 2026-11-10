@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
+import { setDialogOpen } from '../testHook';
 import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from './Button';
 import { Menu } from './Menu';
@@ -40,6 +41,8 @@ export class ConfirmDialog {
         this.menu = new Menu(scene, [cancel, confirm], { horizontal: true });
         this.container = scene.add.container(0, 0, [blocker, backing, panel, message, cancel, confirm]).setDepth(100).setAlpha(0);
         scene.tweens.add({ targets: this.container, alpha: 1, duration: MOTION.fast });
+        setDialogOpen(true);
+        scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => setDialogOpen(false));
     }
 
     cancel(): void {
@@ -59,6 +62,7 @@ export class ConfirmDialog {
             return false;
         }
         this.closed = true;
+        setDialogOpen(false);
         this.menu.destroy();
         this.container.destroy();
         return true;
