@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="112" viewBox="0 0 240 112">
+  <!-- Three-slice banner for big moments: 72 px swallowtail ends stay fixed. -->
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b211b"/>
+      <stop offset="1" stop-color="#120c09"/>
+    </linearGradient>
+  </defs>
+  <path d="M4 20 L236 20 L216 56 L236 92 L4 92 L24 56 Z" fill="url(#body)" fill-opacity="0.94" stroke="#3b322b" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M16 27 L224 27 L207 56 L224 85 L16 85 L33 56 Z" fill="none" stroke="#e0b55a" stroke-opacity="0.9" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M72 14 L168 14" stroke="#e0b55a" stroke-opacity="0.6" stroke-width="2"/>
+  <path d="M72 98 L168 98" stroke="#e0b55a" stroke-opacity="0.6" stroke-width="2"/>
+</svg>

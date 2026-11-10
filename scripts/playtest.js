@@ -125,17 +125,25 @@ async function waitForGameplay(page, timeoutMs = 12000) {
 
 /**
  * The Phaser + TypeScript rewrite at /next/ (docs/phaser-migration/plan.md):
- * served with the same headers, reaches its title screen, the menu responds to
- * the keyboard, the self-hosted fonts load, and nothing errors or violates the
- * CSP. Uses its own page so its errors are reported separately.
+ * served with the same headers and fonts, and a full run works: the title menu
+ * starts a game, audio unlocks on the first key press, the mimic moves, pause
+ * freezes everything and blocks gameplay keys, M mutes, Restart asks first,
+ * the run ends in game over and the results, and Play Again starts afresh.
+ * Nothing errors, violates the CSP or trips the autoplay policy. Uses its own
+ * page so its errors are reported separately; reads state through the game's
+ * test hook (window.__mimicFeeder).
  */
 async function checkNextBuild(browser) {
     const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     const errors = [];
     const cspViolations = [];
+    const audioPolicyMessages = [];
     page.on('console', (msg) => {
         if (msg.type() === 'error') {
             errors.push(`console: ${msg.text()}`);
+        }
+        if (/AudioContext was not allowed to start|user gesture/i.test(msg.text())) {
+            audioPolicyMessages.push(msg.text());
         }
     });
     page.on('pageerror', (err) => errors.push(`page: ${err && err.message ? err.message : err}`));
@@ -151,6 +159,26 @@ async function checkNextBuild(browser) {
         });
     });
 
+    const snapshot = () => page.evaluate(() => window.__mimicFeeder.snapshot());
+    /** Polls the game's snapshot until `predicate` holds. */
+    const waitForSnapshot = async (predicate, timeout = 10000) => {
+        const deadline = Date.now() + timeout;
+        let last = null;
+        while (Date.now() < deadline) {
+            last = await snapshot();
+            if (predicate(last)) {
+                return last;
+            }
+            await page.waitForTimeout(50);
+        }
+        throw new Error(`Timed out waiting for the /next/ game state; last snapshot: ${JSON.stringify(last)}`);
+    };
+    const holdKey = async (key, ms) => {
+        await page.keyboard.down(key);
+        await page.waitForTimeout(ms);
+        await page.keyboard.up(key);
+    };
+
     try {
         const response = await page.goto(BASE + '/next/', { waitUntil: 'domcontentloaded', timeout: 30000 });
         assert(Boolean(response && response.headers()['content-security-policy']), '/next/ is served with the _headers Content-Security-Policy');
@@ -160,17 +188,82 @@ async function checkNextBuild(browser) {
             '700 20px "Grenze Gotisch"', '400 20px Barlow', '700 20px Barlow',
         ].filter((face) => !document.fonts.check(face)));
         assert(missingFonts.length === 0, `/next/ loads its self-hosted fonts${missingFonts.length ? ` (missing: ${missingFonts.join(', ')})` : ''}`);
-        await page.waitForTimeout(600);
-        await page.keyboard.press('ArrowDown');
-        await page.keyboard.press('Enter');
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(400);
         await page.screenshot({ path: path.join(OUT_DIR, 'next-title.png') });
-        assert(true, '/next/ menu accepts keyboard navigation');
+
+        // Play is focused on the title menu.
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('game') && s.running.includes('hud') && s.game && s.game.playTimeMs > 0);
+        const start = await snapshot();
+        assert(start.game.lives === 3 && start.game.score === 0 && start.game.floor === 1 && start.game.zone === 1,
+            '/next/ Play starts a run on Floor 1 Zone 1 with three lives');
+        await waitForSnapshot((s) => s.audio === 'running', 5000);
+        assert(true, '/next/ audio is running after the first key press');
+
+        await holdKey('ArrowLeft', 400);
+        const moved = await snapshot();
+        assert(moved.game.mimicX < start.game.mimicX - 50, '/next/ the mimic moves with the arrow keys');
+
+        await page.keyboard.press('KeyP');
+        await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game') && s.paused.includes('hud'));
+        const paused = await snapshot();
+        await holdKey('ArrowRight', 400);
+        await page.keyboard.press('ArrowUp');
+        await page.waitForTimeout(400);
+        const stillPaused = await snapshot();
+        assert(stillPaused.game.playTimeMs === paused.game.playTimeMs && stillPaused.game.objects === paused.game.objects,
+            '/next/ pause freezes play time and spawning');
+        assert(stillPaused.game.mimicX === paused.game.mimicX, '/next/ gameplay keys do nothing while paused');
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-pause.png') });
+
+        await page.keyboard.press('KeyM');
+        await waitForSnapshot((s) => s.muted === true, 2000);
+        await page.keyboard.press('KeyM');
+        await waitForSnapshot((s) => s.muted === false, 2000);
+        assert(true, '/next/ M mutes and unmutes, also while paused');
+
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause'));
+        await page.waitForTimeout(300);
+        assert((await snapshot()).game.playTimeMs > paused.game.playTimeMs, '/next/ Esc resumes the run');
+
+        // Pause menu: Restart (fifth item) asks first; Cancel is the default.
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('pause'));
+        for (let i = 0; i < 4; i++) {
+            await page.keyboard.press('ArrowDown');
+        }
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(400);
+        assert((await snapshot()).running.includes('pause'), '/next/ Restart asks to confirm, and Cancel keeps the run');
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(400);
+        await page.keyboard.press('ArrowRight');
+        const beforeRestart = (await snapshot()).game.playTimeMs;
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && s.game && s.game.playTimeMs > 0);
+        assert((await snapshot()).game.playTimeMs < beforeRestart, '/next/ confirming Restart starts a new run');
+
+        // Wait in a corner until enough food hits the floor to end the run.
+        await page.keyboard.down('ArrowLeft');
+        await waitForSnapshot((s) => s.running.includes('results'), 90000);
+        await page.keyboard.up('ArrowLeft');
+        assert(true, '/next/ losing the last life ends the run and shows the results');
+        await page.waitForTimeout(800);
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-results.png') });
+
+        // Play Again is focused on the results.
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('game') && s.game && s.game.lives === 3 && s.game.playTimeMs > 0);
+        assert(true, '/next/ Play Again starts a new run');
 
         if (cspViolations.length) {
             console.error('/next/ CSP violations:', cspViolations);
         }
         assert(cspViolations.length === 0, '/next/ has no Content-Security-Policy violations');
+        assert(audioPolicyMessages.length === 0, '/next/ has no AudioContext autoplay-policy warnings');
         if (errors.length) {
             console.error('/next/ errors:', errors);
         }

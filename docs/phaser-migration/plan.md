@@ -234,4 +234,3 @@ The p5 game stays live and unchanged until M5. `AGENTS.md` gets a short note abo
 - **Final wording** for cause-of-death lines, banners, cards and secret achievements: reviewed with the owner in M4.
 - **The new secret achievements:** which ones exactly, decided in M3.
 - **The resume countdown:** kept or removed after trying it in M4.
-- **The Phaser spike** (draft PR #13): closed once M0 lands. It stays as a reference until then.

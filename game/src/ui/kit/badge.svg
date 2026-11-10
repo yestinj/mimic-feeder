@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="88" height="88" viewBox="0 0 88 88">
+  <!-- Level medallion: dark centre (the number goes on top), gold rim. -->
+  <defs>
+    <radialGradient id="face" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#3a2b20"/>
+      <stop offset="1" stop-color="#15100d"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe3a0"/>
+      <stop offset="0.5" stop-color="#e0b55a"/>
+      <stop offset="1" stop-color="#8f6d35"/>
+    </linearGradient>
+  </defs>
+  <circle cx="44" cy="44" r="40" fill="url(#rim)" stroke="#2a1d10" stroke-width="3"/>
+  <circle cx="44" cy="44" r="32" fill="url(#face)" stroke="#2a1d10" stroke-width="2"/>
+  <circle cx="44" cy="44" r="28" fill="none" stroke="#e0b55a" stroke-opacity="0.35" stroke-width="1.5"/>
+</svg>

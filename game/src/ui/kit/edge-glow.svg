@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="216" viewBox="0 0 384 216">
+  <!-- Screen-edge tint for low health: clear in the middle, red at the edges. Stretched to the screen. -->
+  <defs>
+    <radialGradient id="edge" cx="0.5" cy="0.5" r="0.75">
+      <stop offset="0.55" stop-color="#d8473a" stop-opacity="0"/>
+      <stop offset="1" stop-color="#d8473a" stop-opacity="0.85"/>
+    </radialGradient>
+  </defs>
+  <rect width="384" height="216" fill="url(#edge)"/>
+</svg>
