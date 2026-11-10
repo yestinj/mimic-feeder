@@ -39,6 +39,8 @@ const OBJECT_IMAGES: Partial<Record<ObjectKind, string>> = {
     diamond: 'diamond.png',
     bomb: 'small_bomb.png',
     staff: 'staff.png',
+    cat: 'cat.png',
+    dragon: 'dragon.png',
 };
 
 
@@ -64,6 +66,11 @@ const SEQUENCES = {
     shadowBolt: { file: (i) => `shadow_bolt/frame${pad(i)}.png`, first: 0, count: 4, frameRate: 12, repeat: -1 },
     /** A Shadow Bolt hit: 12 frames over half a second. */
     boltHit: { file: (i) => `humanoid_splat/frame${pad(i)}.png`, first: 0, count: 12, frameRate: 24, repeat: 0 },
+    bossFly: { file: (i) => `bosses/flying_demon/fly/frame${pad(i)}.png`, first: 0, count: 8, frameRate: 12, repeat: -1 },
+    bossIdle: { file: (i) => `bosses/flying_demon/idle/frame${pad(i)}.png`, first: 0, count: 6, frameRate: 12, repeat: -1 },
+    bossHit: { file: (i) => `bosses/flying_demon/get_hit/frame${pad(i)}.png`, first: 0, count: 7, frameRate: 12, repeat: 0 },
+    bossDie: { file: (i) => `bosses/flying_demon/die/frame${pad(i)}.png`, first: 0, count: 17, frameRate: 60 / 7, repeat: 0 },
+    bossFireball: { file: (i) => `bosses/flying_demon/fireball/PNG/frame${pad(i)}.png`, first: 0, count: 30, frameRate: 20, repeat: -1 },
 } satisfies Record<string, Sequence>;
 
 export type AnimationName = keyof typeof SEQUENCES;
@@ -77,6 +84,11 @@ export const ANIMATIONS: Record<AnimationName, string> = {
     magnet: 'anim-magnet',
     shadowBolt: 'anim-shadow-bolt',
     boltHit: 'anim-bolt-hit',
+    bossFly: 'anim-boss-fly',
+    bossIdle: 'anim-boss-idle',
+    bossHit: 'anim-boss-hit',
+    bossDie: 'anim-boss-die',
+    bossFireball: 'anim-boss-fireball',
 };
 
 function frameKey(name: AnimationName, i: number): string {
@@ -120,6 +132,9 @@ export const SOUNDS = {
     magnetism: { file: 'magnetism.mp3', volume: 0.5 },
     wizardStaff: { file: 'wizard_staff.mp3', volume: 0.2 },
     healthPotion: { file: 'health_potion.mp3', volume: 0.2 },
+    catMeow: { file: 'cat_meow.mp3', volume: 0.5 },
+    catHurt: { file: 'cat_hurt.mp3', volume: 0.5 },
+    bossDeath: { file: 'boss_death.mp3', volume: 0.5 },
 } as const;
 
 export type SoundName = keyof typeof SOUNDS;
@@ -128,9 +143,13 @@ export function soundKey(name: SoundName): string {
     return `sfx-${name}`;
 }
 
-export const MUSIC: Record<MusicTrack, { readonly key: string; readonly file: string }> = {
+/** The floor tracks, and the boss fight's. */
+export type Track = MusicTrack | 'boss';
+
+export const MUSIC: Record<Track, { readonly key: string; readonly file: string }> = {
     music1: { key: 'music-1', file: 'music/background1.mp3' },
     music2: { key: 'music-2', file: 'music/background2.mp3' },
+    boss: { key: 'music-boss', file: 'music/boss.mp3' },
 };
 export const MUSIC_VOLUME = 0.4;
 
@@ -157,7 +176,7 @@ export function loadCoreAssets(load: Phaser.Loader.LoaderPlugin): void {
 }
 
 /**
- * Later floors' backgrounds and the second music track, loaded in the
+ * Later floors' backgrounds, the second music track and the boss music, loaded in the
  * background once the game is running (inventory §5). Until a floor's
  * background arrives, the closest earlier floor's is shown.
  */
@@ -169,6 +188,7 @@ export function loadDeferredAssets(load: Phaser.Loader.LoaderPlugin): void {
         }
     });
     load.audio(MUSIC.music2.key, MUSIC.music2.file);
+    load.audio(MUSIC.boss.key, MUSIC.boss.file);
 }
 
 export function createAnimations(anims: Phaser.Animations.AnimationManager): void {

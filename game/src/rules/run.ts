@@ -2,7 +2,9 @@
 // through floors and zones (inventory §3 and §5). Each action returns the
 // events it caused, in order, so scenes can show and play them.
 import { TENTACLES_FROM_LEVEL, tentacleReach, type Ability } from './abilities';
-import { CREATURE_KINDS, HAZARD_KINDS, OBJECTS, SHINY_KINDS, type CreatureKind, type HazardKind, type ObjectKind, type PowerUpKind, type ShinyKind } from './objects';
+import { BOSS, isBossZone } from './boss';
+import { CAT_RESCUE_POINTS } from './cats';
+import { EDIBLE_KINDS, HAZARD_KINDS, OBJECTS, SHINY_KINDS, type EdibleKind, type HazardKind, type ObjectKind, type PowerUpKind, type ShinyKind } from './objects';
 import { pickPowerUp } from './offers';
 import { CREATURES_PER_ZONE, gameLevel, nextZone } from './progression';
 import type { Rng } from './spawner';
@@ -23,7 +25,9 @@ export const GROWTH = { speed: 1.05, size: 1.05, jump: 1.03 } as const;
 export type RunEvent =
     | { readonly type: 'points'; readonly points: number }
     | { readonly type: 'levelUp'; readonly level: number }
-    | { readonly type: 'zone'; readonly floor: number; readonly zone: number; readonly newFloor: boolean }
+    /** A new zone or floor. `boss`: this zone is a boss fight (Zone 5 of an even floor). */
+    | { readonly type: 'zone'; readonly floor: number; readonly zone: number; readonly newFloor: boolean; readonly boss: boolean }
+    | { readonly type: 'bossDefeated' }
     | { readonly type: 'extraLife' }
     | { readonly type: 'lifeGained' }
     | { readonly type: 'lifeLost' }
@@ -69,7 +73,7 @@ export class Run {
 
     playTimeMs = 0;
 
-    readonly eaten: Record<CreatureKind, number> = zeroCounts(CREATURE_KINDS);
+    readonly eaten: Record<EdibleKind, number> = zeroCounts(EDIBLE_KINDS);
     readonly collected: Record<ShinyKind, number> = zeroCounts(SHINY_KINDS);
     /** Creatures destroyed by hitting the side of the chest. */
     sideHits = 0;
@@ -79,6 +83,16 @@ export class Run {
     readonly detonated: Record<HazardKind, number> = zeroCounts(HAZARD_KINDS);
     /** Objects destroyed by Shadow Bolts (bombs included). */
     shotDown = 0;
+
+    catsRescued = 0;
+    /** Cats killed by touching them other than through the mouth. */
+    catsKilled = 0;
+    /** Cats killed with Shadow Bolts (the Ninefold Judgment counts these, M2c). */
+    catsShot = 0;
+
+    /** A boss fight is on (from its zone starting until the next floor). */
+    inBossFight = false;
+    bossesDefeated = 0;
 
     hasStaff = false;
     hasMagnet = false;
@@ -98,8 +112,9 @@ export class Run {
         return this.lives <= 0;
     }
 
+    /** Everything eaten: creatures and cats. */
     get creaturesEaten(): number {
-        return CREATURE_KINDS.reduce((sum, kind) => sum + this.eaten[kind], 0);
+        return EDIBLE_KINDS.reduce((sum, kind) => sum + this.eaten[kind], 0);
     }
 
     get hazardsDetonated(): number {
@@ -175,8 +190,8 @@ export class Run {
         }
     }
 
-    /** A creature went into the mouth. */
-    eat(kind: CreatureKind): RunEvent[] {
+    /** A creature or cat went into the mouth. Cats score nothing but count towards the zone. */
+    eat(kind: EdibleKind): RunEvent[] {
         const events: RunEvent[] = [];
         this.eaten[kind] += 1;
         if (kind === 'human' && this.eaten.human % HUMANS_PER_EXTRA_LIFE === 0) {
@@ -185,14 +200,49 @@ export class Run {
             events.push({ type: 'extraLife' });
         }
         events.push(...this.gain(OBJECTS[kind].points));
+        // Nothing else falls during a boss fight, so its zone can't be cleared by eating.
         this.eatenInZone += 1;
-        if (this.eatenInZone >= CREATURES_PER_ZONE) {
+        if (this.eatenInZone >= CREATURES_PER_ZONE && !this.inBossFight) {
             this.eatenInZone = 0;
             const previousFloor = this.floor;
             ({ floor: this.floor, zone: this.zone } = nextZone(this.floor, this.zone));
-            events.push({ type: 'zone', floor: this.floor, zone: this.zone, newFloor: this.floor !== previousFloor });
+            const boss = isBossZone(this.floor, this.zone);
+            this.inBossFight = boss;
+            events.push({ type: 'zone', floor: this.floor, zone: this.zone, newFloor: this.floor !== previousFloor, boss });
         }
         return events;
+    }
+
+    /** The boss is beaten: its points, and the fight is won (the next floor follows its death). */
+    defeatBoss(): RunEvent[] {
+        this.bossesDefeated += 1;
+        return [...this.gain(BOSS.points), { type: 'bossDefeated' }];
+    }
+
+    /** After a boss: on to the next floor, Zone 1. */
+    finishBossFloor(): RunEvent[] {
+        this.inBossFight = false;
+        this.floor += 1;
+        this.zone = 1;
+        this.eatenInZone = 0;
+        return [{ type: 'zone', floor: this.floor, zone: this.zone, newFloor: true, boss: false }];
+    }
+
+    /** A cat waited on the floor long enough to be rescued. */
+    rescueCat(): RunEvent[] {
+        this.catsRescued += 1;
+        return this.gain(CAT_RESCUE_POINTS);
+    }
+
+    /** A cat was touched other than through the mouth: it dies, but no life is lost. */
+    killCat(): void {
+        this.catsKilled += 1;
+    }
+
+    /** A Shadow Bolt killed a cat. */
+    shootCat(): void {
+        this.catsShot += 1;
+        this.shotDown += 1;
     }
 
     /** A shiny was picked up. Shinies don't count towards clearing a zone. */
@@ -234,6 +284,11 @@ export class Run {
     /** Bonus score and XP (cat rescues and bosses, from M2b). */
     bonus(points: number): RunEvent[] {
         return this.gain(points);
+    }
+
+    /** A boss fireball hit the mimic. */
+    burn(): RunEvent[] {
+        return this.loseLife();
     }
 
     /** A creature hit the side of the chest: it's destroyed and, like a miss, costs a life. */

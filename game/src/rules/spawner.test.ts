@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OBJECTS } from './objects';
-import { HAZARD_CHANCE, SPAWN_POOL, SpawnHistory, keepClearOf, pickObject, pickSpawnX, pickWeighted, rollHazard } from './spawner';
+import { HAZARD_CHANCE, SpawnHistory, keepClearOf, pickObject, pickSpawnX, pickWeighted, rollHazard, spawnPool } from './spawner';
 
 /** An Rng that returns the given values in turn. */
 function sequence(...values: number[]): () => number {
@@ -14,8 +14,16 @@ function sequence(...values: number[]): () => number {
 
 describe('spawner', () => {
     it('only rolls hazards separately, never in the normal pool', () => {
-        expect(SPAWN_POOL.map((def) => def.kind)).not.toContain('bomb');
-        expect(SPAWN_POOL.map((def) => def.kind)).not.toContain('fireball');
+        expect(spawnPool(9).map((def) => def.kind)).not.toContain('bomb');
+        expect(spawnPool(9).map((def) => def.kind)).not.toContain('fireball');
+    });
+
+    it('adds cats from Floor 2 and dragons from Floor 3', () => {
+        const kinds = (floor: number): string[] => spawnPool(floor).map((def) => def.kind);
+        expect(kinds(1)).not.toContain('cat');
+        expect(kinds(2)).toContain('cat');
+        expect(kinds(2)).not.toContain('dragon');
+        expect(kinds(3)).toContain('dragon');
     });
 
     it('picks in proportion to weight', () => {
@@ -30,10 +38,10 @@ describe('spawner', () => {
         const counts = new Map<string, number>();
         const steps = 10_000;
         for (let i = 0; i < steps; i++) {
-            const kind = pickObject(() => (i + 0.5) / steps);
+            const kind = pickObject(1, () => (i + 0.5) / steps);
             counts.set(kind, (counts.get(kind) ?? 0) + 1);
         }
-        const total = SPAWN_POOL.reduce((sum, def) => sum + def.weight, 0);
+        const total = spawnPool(1).reduce((sum, def) => sum + def.weight, 0);
         expect((counts.get('goblin') ?? 0) / steps).toBeCloseTo(OBJECTS.goblin.weight / total, 2);
         expect((counts.get('diamond') ?? 0) / steps).toBeCloseTo(OBJECTS.diamond.weight / total, 2);
         expect(OBJECTS.goblin.weight / total).toBeCloseTo(0.278, 3);

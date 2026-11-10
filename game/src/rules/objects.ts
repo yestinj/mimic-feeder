@@ -1,20 +1,23 @@
-// Everything that falls into the dungeon, as data (inventory §4). Cats and
-// dragons arrive later in M2.
+// Everything that falls into the dungeon, as data (inventory §4).
 
-export type CreatureKind = 'goblin' | 'dwarf' | 'wraith' | 'human' | 'elf';
+export type CreatureKind = 'goblin' | 'dwarf' | 'wraith' | 'human' | 'elf' | 'dragon';
 export type ShinyKind = 'crown' | 'diamond';
 export type HazardKind = 'bomb' | 'fireball';
 export type PowerUpKind = 'potion' | 'staff' | 'magnet';
-export type ObjectKind = CreatureKind | ShinyKind | HazardKind | PowerUpKind;
+export type ObjectKind = CreatureKind | 'cat' | ShinyKind | HazardKind | PowerUpKind;
+/** What the mimic can eat: creatures and cats. */
+export type EdibleKind = CreatureKind | 'cat';
 
 /**
  * - creature: eaten from above for points; costs a life if it hits the side
  *   of the chest or the floor.
+ * - cat: eaten from above for no points; lands safely and is rescued after
+ *   3 s for 100; dies if the mimic touches it any other way (no life lost).
  * - shiny: collected on any contact; breaks harmlessly on the floor.
  * - hazard: costs a life on contact; explodes harmlessly on the floor.
  * - powerUp: collected on any contact for its effect; breaks harmlessly on the floor.
  */
-export type ObjectCategory = 'creature' | 'shiny' | 'hazard' | 'powerUp';
+export type ObjectCategory = 'creature' | 'cat' | 'shiny' | 'hazard' | 'powerUp';
 
 export interface ObjectDef {
     readonly kind: ObjectKind;
@@ -31,6 +34,8 @@ export interface ObjectDef {
     readonly magnetic?: boolean;
     /** What a Shadow Bolt does to it: destroys it (default), sets it off, or passes through. */
     readonly bolt?: 'destroy' | 'detonate' | 'pass';
+    /** First floor it can appear on (default 1). */
+    readonly fromFloor?: number;
 }
 
 // The p5 spawn table's probabilities, kept as they were: only their ratios
@@ -43,6 +48,9 @@ export const OBJECTS: Readonly<Record<ObjectKind, ObjectDef>> = {
     wraith: { kind: 'wraith', category: 'creature', points: 7, weight: 0.1 * P5, scale: 1.4, fallSpeed: 1 },
     human: { kind: 'human', category: 'creature', points: 10, weight: 0.2 * P5, scale: 1.5, fallSpeed: 1 },
     elf: { kind: 'elf', category: 'creature', points: 20, weight: 0.1 * P5, scale: 1.5, fallSpeed: 1 },
+    // Dragons fly off when the mimic gets close (dragon.ts).
+    dragon: { kind: 'dragon', category: 'creature', points: 25, weight: 0.05, scale: 1, fallSpeed: 1, fromFloor: 3 },
+    cat: { kind: 'cat', category: 'cat', points: 0, weight: 0.05 * P5, scale: 1.5, fallSpeed: 1, fromFloor: 2 },
     // Drawn 45 and 35 px wide (the source images are 126 and 186 px wide).
     crown: { kind: 'crown', category: 'shiny', points: 50, weight: 0.03 * P5, scale: 45 / 126, fallSpeed: 1, magnetic: true },
     diamond: { kind: 'diamond', category: 'shiny', points: 100, weight: 0.02 * P5, scale: 35 / 186, fallSpeed: 1, magnetic: true },
@@ -54,13 +62,19 @@ export const OBJECTS: Readonly<Record<ObjectKind, ObjectDef>> = {
     magnet: { kind: 'magnet', category: 'powerUp', points: 0, weight: 0, scale: 1.75, fallSpeed: 1 },
 };
 
-export const CREATURE_KINDS: readonly CreatureKind[] = ['goblin', 'dwarf', 'wraith', 'human', 'elf'];
+export const CREATURE_KINDS: readonly CreatureKind[] = ['goblin', 'dwarf', 'wraith', 'human', 'elf', 'dragon'];
+export const EDIBLE_KINDS: readonly EdibleKind[] = [...CREATURE_KINDS, 'cat'];
 export const SHINY_KINDS: readonly ShinyKind[] = ['crown', 'diamond'];
 export const HAZARD_KINDS: readonly HazardKind[] = ['bomb', 'fireball'];
 export const POWER_UP_KINDS: readonly PowerUpKind[] = ['potion', 'staff', 'magnet'];
 
 export function isCreature(kind: ObjectKind): kind is CreatureKind {
     return OBJECTS[kind].category === 'creature';
+}
+
+/** Creatures and cats: what the mimic eats and the tentacles grab. */
+export function isEdible(kind: ObjectKind): kind is EdibleKind {
+    return isCreature(kind) || kind === 'cat';
 }
 
 export function isShiny(kind: ObjectKind): kind is ShinyKind {

@@ -10,12 +10,13 @@ import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import type { Ability } from '../rules/abilities';
 import { overlaps } from '../rules/contact';
 import { AbilityBar } from '../ui/AbilityBar';
+import { BossBar } from '../ui/BossBar';
 import { Hearts } from '../ui/Hearts';
 import { Notifications } from '../ui/Notifications';
 import { ProgressBar } from '../ui/ProgressBar';
 import { UI } from '../ui/kit';
 import { addText } from '../ui/text';
-import { RUN_EVENTS, type GameScene } from './GameScene';
+import { RUN_EVENTS, type BossHealth, type GameScene } from './GameScene';
 import { GAME_EVENTS } from './SystemScene';
 
 const MARGIN = 48;
@@ -30,6 +31,7 @@ export class HudScene extends Phaser.Scene {
     private playfield!: GameScene;
     private run!: Run;
     private abilityBar!: AbilityBar;
+    private bossBar!: BossBar;
     private scoreText!: Phaser.GameObjects.Text;
     private floorText!: Phaser.GameObjects.Text;
     private hearts!: Hearts;
@@ -63,11 +65,16 @@ export class HudScene extends Phaser.Scene {
         this.notifications = new Notifications(this);
         this.abilityBar = new AbilityBar(this, MARGIN, DESIGN_HEIGHT - 84);
         this.abilityBar.sync(game.abilityStates(), false);
+        this.bossBar = new BossBar(this, DESIGN_WIDTH / 2, 24);
 
         const onEvent = (event: RunEvent): void => this.onRunEvent(event);
         const onChanged = (): void => this.refresh(true);
         const onOver = (): void => this.showGameOver();
         const onAbilityNotice = (ability: Ability): void => this.notifications.abilityToast(ability);
+        const onBoss = (health: BossHealth | null): void => {
+            this.bossBar.set(health);
+            this.notifications.makeRoomForBossBar(health !== null);
+        };
         const onMute = (muted: boolean): void => {
             this.muteIcon.setVisible(muted);
         };
@@ -75,12 +82,14 @@ export class HudScene extends Phaser.Scene {
         game.events.on(RUN_EVENTS.changed, onChanged);
         game.events.on(RUN_EVENTS.over, onOver);
         game.events.on(RUN_EVENTS.abilityNotice, onAbilityNotice);
+        game.events.on(RUN_EVENTS.boss, onBoss);
         this.game.events.on(GAME_EVENTS.muteChanged, onMute);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             game.events.off(RUN_EVENTS.event, onEvent);
             game.events.off(RUN_EVENTS.changed, onChanged);
             game.events.off(RUN_EVENTS.over, onOver);
             game.events.off(RUN_EVENTS.abilityNotice, onAbilityNotice);
+            game.events.off(RUN_EVENTS.boss, onBoss);
             this.game.events.off(GAME_EVENTS.muteChanged, onMute);
         });
 
@@ -181,11 +190,16 @@ export class HudScene extends Phaser.Scene {
     private onRunEvent(event: RunEvent): void {
         switch (event.type) {
             case 'zone':
-                if (event.newFloor) {
+                if (event.boss) {
+                    this.notifications.banner(STRINGS.notices.bossFight);
+                } else if (event.newFloor) {
                     this.notifications.banner(floorTitle(event.floor));
                 } else {
                     this.notifications.toast(STRINGS.notices.zone(event.zone));
                 }
+                break;
+            case 'bossDefeated':
+                this.notifications.banner(STRINGS.notices.bossDefeated);
                 break;
             case 'levelUp':
                 this.notifications.toast(STRINGS.notices.levelUp(event.level), STRINGS.notices.levelUpDetail, 'levelUp');

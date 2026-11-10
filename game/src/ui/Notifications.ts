@@ -12,6 +12,8 @@ const BANNER_Y = 300;
 const BANNER_HEIGHT = 157;
 const BANNER_HOLD_MS = 1800;
 const TOAST_Y = 132;
+/** Toasts sit lower while the boss bar is showing. */
+const TOAST_Y_UNDER_BOSS_BAR = 150;
 const TOAST_HOLD_MS = 2000;
 
 interface Notice {
@@ -35,6 +37,7 @@ export class Notifications {
     private bannerShowing: Notice | null = null;
     private toastShowing: Notice | null = null;
     private readonly shown: Phaser.GameObjects.Container[] = [];
+    private toastY = TOAST_Y;
 
     constructor(private readonly scene: Phaser.Scene) {}
 
@@ -55,6 +58,11 @@ export class Notifications {
     /** An ability unlocking again (in a later run): a toast with its icon, name and key. */
     abilityToast(ability: Ability): void {
         this.enqueue(this.toasts, this.toastShowing, { title: STRINGS.abilities[ability].name, ability }, () => this.nextToast());
+    }
+
+    /** Moves later toasts down out of the boss bar's way, or back. */
+    makeRoomForBossBar(room: boolean): void {
+        this.toastY = room ? TOAST_Y_UNDER_BOSS_BAR : TOAST_Y;
     }
 
     /** Drops everything, shown or queued (for game over). */
@@ -111,7 +119,7 @@ export class Notifications {
             parts.push(detail);
         }
         const panel = addPanel(this.scene, 0, 0, Math.max(360, width + SPACE.xl * 1.5), notice.detail ? 136 : 96);
-        this.show([panel, title, ...parts], TOAST_Y, TOAST_HOLD_MS, -24, () => this.nextToast());
+        this.show([panel, title, ...parts], this.toastY, TOAST_HOLD_MS, -24, () => this.nextToast());
     }
 
     /** [icon] Name [Key], in the toast spot. */
@@ -127,7 +135,7 @@ export class Notifications {
         name.x = left + iconSize + SPACE.m;
         keycap.x = name.x + name.width + SPACE.m + keycap.width / 2;
         const panel = addPanel(this.scene, 0, 0, width, 96);
-        this.show([panel, slot, icon, name, keycap], TOAST_Y, TOAST_HOLD_MS, -24, () => this.nextToast());
+        this.show([panel, slot, icon, name, keycap], this.toastY, TOAST_HOLD_MS, -24, () => this.nextToast());
     }
 
     /** Fades a notice in (sliding by `slide`), holds it, fades it out, then calls `done`. */

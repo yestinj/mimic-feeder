@@ -2,8 +2,7 @@
 // locked until the first key press or click; Phaser unlocks it on that
 // gesture, and nothing here plays before then (inventory §9).
 import * as Phaser from 'phaser';
-import { MUSIC, MUSIC_VOLUME, SOUNDS, soundKey, type SoundName } from './assets';
-import type { MusicTrack } from './rules/progression';
+import { MUSIC, MUSIC_VOLUME, SOUNDS, soundKey, type SoundName, type Track } from './assets';
 
 // Phaser's `mute` getter reads the master gain node's value, which only
 // updates while audio is rendering, so it can report the old state (for
@@ -21,11 +20,16 @@ export function toggleMute(game: Phaser.Game): boolean {
     return muted;
 }
 
-export function playSound(scene: Phaser.Scene, name: SoundName): void {
+/** Plays a sound effect; returns it, or null if audio is still locked. */
+export function playSound(scene: Phaser.Scene, name: SoundName): Phaser.Sound.BaseSound | null {
     if (scene.sound.locked) {
-        return;
+        return null;
     }
-    scene.sound.play(soundKey(name), { volume: SOUNDS[name].volume });
+    const sound = scene.sound.add(soundKey(name), { volume: SOUNDS[name].volume });
+    sound.once(Phaser.Sound.Events.COMPLETE, () => sound.destroy());
+    sound.once(Phaser.Sound.Events.STOP, () => sound.destroy());
+    sound.play();
+    return sound;
 }
 
 /**
@@ -34,8 +38,8 @@ export function playSound(scene: Phaser.Scene, name: SoundName): void {
  */
 export class MusicPlayer {
     private sound: Phaser.Sound.BaseSound | null = null;
-    private playing: MusicTrack | null = null;
-    private wanted: MusicTrack | null = null;
+    private playing: Track | null = null;
+    private wanted: Track | null = null;
 
     private readonly onUnlock = (): void => {
         if (this.wanted) {
@@ -51,7 +55,7 @@ export class MusicPlayer {
         });
     }
 
-    play(track: MusicTrack): void {
+    play(track: Track): void {
         this.wanted = track;
         const manager = this.scene.sound;
         if (manager.locked) {

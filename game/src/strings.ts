@@ -27,6 +27,8 @@ export const STRINGS = {
         extraLife: 'Extra life!',
         extraLifeDetail: 'One more heart',
         press: 'Press',
+        bossFight: 'Boss Fight!',
+        bossDefeated: 'Boss Defeated!',
         tentaclesGrow: 'Tentacles +1',
         tentaclesGrowDetail: (reach: number) => `They grab ${reach} at once`,
     },
@@ -36,6 +38,9 @@ export const STRINGS = {
         shadowBolt: { name: 'Shadow Bolt', key: 'Space', use: 'to cast a Shadow Bolt' },
         tentacles: { name: 'Tentacles', key: 'Z', use: 'to grab with your Tentacles' },
         magnetism: { name: 'Magnetism', key: 'X', use: 'to pull in treasure… and bombs' },
+    },
+    boss: {
+        name: 'The Flying Demon',
     },
     unlockCard: {
         title: 'New ability',

@@ -54,7 +54,7 @@ describe('Run', () => {
         }
         run.collect('crown');
         expect(run.zone).toBe(1);
-        expect(run.eat('goblin')).toContainEqual({ type: 'zone', floor: 1, zone: 2, newFloor: false });
+        expect(run.eat('goblin')).toContainEqual({ type: 'zone', floor: 1, zone: 2, newFloor: false, boss: false });
         expect([run.zone, run.eatenInZone, run.gameLevel]).toEqual([2, 0, 2]);
     });
 
@@ -62,7 +62,7 @@ describe('Run', () => {
         const run = new Run();
         run.zone = 5;
         run.eatenInZone = CREATURES_PER_ZONE - 1;
-        expect(run.eat('goblin')).toContainEqual({ type: 'zone', floor: 2, zone: 1, newFloor: true });
+        expect(run.eat('goblin')).toContainEqual({ type: 'zone', floor: 2, zone: 1, newFloor: true, boss: false });
         expect(run.gameLevel).toBe(6);
     });
 
