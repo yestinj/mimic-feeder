@@ -13,29 +13,27 @@ const BANNER_HEIGHT = 157;
 const BANNER_HOLD_MS = 1800;
 const TOAST_Y = 132;
 const TOAST_HOLD_MS = 2000;
-const UNLOCK_Y = 540;
-const UNLOCK_HOLD_MS = 4000;
 
 interface Notice {
     title: string;
     detail?: string | undefined;
     /** Notices with the same key replace each other while queued (several level-ups at once show as the last). */
     readonly key?: string;
+    /** An ability toast: its icon, name and key. */
+    readonly ability?: Ability;
 }
 
 /**
- * Big moments as banners in the upper third, new abilities as larger unlock
- * notices mid-screen, smaller news as toasts at the top. Each kind shows one
- * at a time from its own queue, without duplicates. Everything here runs on
- * the HUD scene's clock, so it waits while paused.
+ * Big moments as banners in the upper third, smaller news as toasts at the
+ * top (new abilities get their own card the first time; see UnlockScene).
+ * Each kind shows one at a time from its own queue, without duplicates.
+ * Everything here runs on the HUD scene's clock, so it waits while paused.
  */
 export class Notifications {
     private readonly banners: Notice[] = [];
     private readonly toasts: Notice[] = [];
-    private readonly unlocks: Notice[] = [];
     private bannerShowing: Notice | null = null;
     private toastShowing: Notice | null = null;
-    private unlockShowing: Notice | null = null;
     private readonly shown: Phaser.GameObjects.Container[] = [];
 
     constructor(private readonly scene: Phaser.Scene) {}
@@ -54,19 +52,17 @@ export class Notifications {
         this.enqueue(this.toasts, this.toastShowing, { title, ...(detail ? { detail } : {}), ...(key ? { key } : {}) }, () => this.nextToast());
     }
 
-    /** A newly unlocked ability: its icon, name and the key to press. */
-    unlock(ability: Ability): void {
-        this.enqueue(this.unlocks, this.unlockShowing, { title: ability }, () => this.nextUnlock());
+    /** An ability unlocking again (in a later run): a toast with its icon, name and key. */
+    abilityToast(ability: Ability): void {
+        this.enqueue(this.toasts, this.toastShowing, { title: STRINGS.abilities[ability].name, ability }, () => this.nextToast());
     }
 
     /** Drops everything, shown or queued (for game over). */
     clear(): void {
         this.banners.length = 0;
         this.toasts.length = 0;
-        this.unlocks.length = 0;
         this.bannerShowing = null;
         this.toastShowing = null;
-        this.unlockShowing = null;
         for (const container of this.shown) {
             this.scene.tweens.killTweensOf(container);
             container.destroy();
@@ -102,6 +98,10 @@ export class Notifications {
         if (!notice) {
             return;
         }
+        if (notice.ability) {
+            this.showAbilityToast(notice.ability);
+            return;
+        }
         const title = addText(this.scene, 0, notice.detail ? -22 : 0, notice.title, TYPE.heading, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         const parts: Phaser.GameObjects.GameObject[] = [];
         let width = title.width;
@@ -114,41 +114,20 @@ export class Notifications {
         this.show([panel, title, ...parts], TOAST_Y, TOAST_HOLD_MS, -24, () => this.nextToast());
     }
 
-    private nextUnlock(): void {
-        const notice = this.unlocks.shift() ?? null;
-        this.unlockShowing = notice;
-        if (!notice) {
-            return;
-        }
-        const ability = notice.title as Ability;
+    /** [icon] Name [Key], in the toast spot. */
+    private showAbilityToast(ability: Ability): void {
         const info = STRINGS.abilities[ability];
-        const scene = this.scene;
-
-        const label = addText(scene, 0, -70, STRINGS.notices.unlocked.toUpperCase(), TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true }).setOrigin(0, 0.5);
-        const title = addText(scene, 0, -24, info.name, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0, 0.5);
-        const press = addText(scene, 0, 50, STRINGS.notices.press, TYPE.body).setOrigin(0, 0.5);
-        const keycap = new Keycap(scene, 0, 50, info.key, 56);
-        const use = addText(scene, 0, 50, info.use, TYPE.body).setOrigin(0, 0.5);
-        const rowWidth = press.width + SPACE.s + keycap.width + SPACE.s + use.width;
-
-        const iconSize = 128;
-        const margin = SPACE.xl;
-        const textWidth = Math.max(title.width, label.width, rowWidth);
-        const width = Math.max(760, margin * 2 + iconSize + SPACE.l + textWidth);
-        const height = 220;
-        const left = -width / 2 + margin;
-        const textX = left + iconSize + SPACE.l;
-        label.x = textX;
-        title.x = textX;
-        press.x = textX;
-        keycap.x = textX + press.width + SPACE.s + keycap.width / 2;
-        use.x = keycap.x + keycap.width / 2 + SPACE.s;
-
-        const panel = addPanel(scene, 0, 0, width, height);
-        const slot = scene.add.image(left + iconSize / 2, 0, UI.abilitySlot).setDisplaySize(iconSize, iconSize);
-        const icon = scene.add.image(left + iconSize / 2, -4, ABILITY_ICONS[ability]).setDisplaySize(iconSize * 0.64, iconSize * 0.64);
-        scene.tweens.add({ targets: keycap, scale: 1.12, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-        this.show([panel, slot, icon, label, title, press, keycap, use], UNLOCK_Y, UNLOCK_HOLD_MS, 0, () => this.nextUnlock());
+        const iconSize = 64;
+        const name = addText(this.scene, 0, 0, info.name, TYPE.heading, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0, 0.5);
+        const keycap = new Keycap(this.scene, 0, 0, info.key, 48);
+        const width = SPACE.l * 2 + iconSize + SPACE.m + name.width + SPACE.m + keycap.width;
+        const left = -width / 2 + SPACE.l;
+        const slot = this.scene.add.image(left + iconSize / 2, 0, UI.abilitySlot).setDisplaySize(iconSize, iconSize);
+        const icon = this.scene.add.image(left + iconSize / 2, -2, ABILITY_ICONS[ability]).setDisplaySize(iconSize * 0.64, iconSize * 0.64);
+        name.x = left + iconSize + SPACE.m;
+        keycap.x = name.x + name.width + SPACE.m + keycap.width / 2;
+        const panel = addPanel(this.scene, 0, 0, width, 96);
+        this.show([panel, slot, icon, name, keycap], TOAST_Y, TOAST_HOLD_MS, -24, () => this.nextToast());
     }
 
     /** Fades a notice in (sliding by `slide`), holds it, fades it out, then calls `done`. */

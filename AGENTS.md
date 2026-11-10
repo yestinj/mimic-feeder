@@ -117,7 +117,7 @@ npm install
 npm run playtest:install # once (and after Playwright upgrades): Playwright's Chromium
 npm run build          # src → dist
 npm run dev            # watch src, rebuild on change (node --watch-path)
-npm run dev:next       # Vite dev server for the game/ rewrite (reloads on save; serves src/assets at /assets/; add ?debug to outline physics bodies)
+npm run dev:next       # Vite dev server for the game/ rewrite (reloads on save; serves src/assets at /assets/; add ?debug to outline physics bodies and show frame times)
 npm run typecheck      # tsc on game/ (strict)
 npm run test:unit      # Vitest unit tests for game/src/rules
 npm start              # serve dist with _headers (CSP etc.; Cache-Control: no-store)

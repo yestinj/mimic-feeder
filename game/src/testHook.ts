@@ -37,6 +37,8 @@ export interface GameSnapshot {
     readonly muted: boolean;
     /** A confirm dialog is open. */
     readonly dialog: boolean;
+    /** The new-ability card on screen, and whether it accepts its key yet. */
+    readonly card: { readonly ability: string; readonly ready: boolean } | null;
 }
 
 /** Shortcuts for the playtest, present only with ?test in the URL. */
@@ -56,8 +58,11 @@ export interface MimicFeederTestHook {
     debug?: DebugApi;
 }
 
+const query = new URLSearchParams(window.location.search);
 /** True when the page was opened with ?test: the debug shortcuts are available. */
-export const TEST_MODE = new URLSearchParams(window.location.search).has('test');
+export const TEST_MODE = query.has('test');
+/** True with ?debug: physics bodies are outlined and frame times shown. */
+export const DEBUG_MODE = query.has('debug');
 
 declare global {
     interface Window {
@@ -93,6 +98,13 @@ export function setDialogOpen(open: boolean): void {
     dialogOpen = open;
 }
 
+let card: (() => GameSnapshot['card']) | null = null;
+
+/** The unlock scene reports its card here; null when none is showing. */
+export function setCardView(view: (() => GameSnapshot['card']) | null): void {
+    card = view;
+}
+
 /** The game scene registers how to describe the run; null when it shuts down. */
 export function setGameView(view: (() => GameView) | null): void {
     gameView = view;
@@ -109,6 +121,7 @@ export function installTestHook(game: Phaser.Game): void {
             audio: context ? context.state : 'none',
             muted: isMuted(),
             dialog: dialogOpen,
+            card: card ? card() : null,
         };
     };
 }

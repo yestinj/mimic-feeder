@@ -236,9 +236,24 @@ async function checkNextBuild(browser) {
         // Abilities, unlocked through the debug shortcuts, with the normal spawns off so only the test's objects fall.
         const debug = (name, ...args) => page.evaluate(([fn, list]) => window.__mimicFeeder.debug[fn](...list), [name, args]);
         await debug('setSpawning', false);
+        // The first unlock of each ability pauses the game on a card that only its own key (or Enter) closes.
         await debug('grant', 'shadowBolt');
-        await debug('grant', 'tentacles');
-        await debug('grant', 'magnetism');
+        await waitForSnapshot((s) => s.card && s.card.ability === 'shadowBolt' && s.paused.includes('game'));
+        assert(true, '/next/ the first Shadow Bolt unlock pauses the game on a card');
+        await waitForSnapshot((s) => s.card && s.card.ready);
+        await page.keyboard.press('ArrowLeft');
+        await page.keyboard.press('ArrowRight');
+        await page.waitForTimeout(300);
+        assert((await snapshot()).card !== null, '/next/ movement keys do not close the card');
+        await page.keyboard.press('Space');
+        await waitForSnapshot((s) => !s.card && s.running.includes('game'));
+        assert(true, "/next/ the ability's own key closes the card and play resumes");
+        for (const [ability, key] of [['tentacles', 'KeyZ'], ['magnetism', 'KeyX']]) {
+            await debug('grant', ability);
+            await waitForSnapshot((s) => s.card && s.card.ability === ability && s.card.ready);
+            await page.keyboard.press(key);
+            await waitForSnapshot((s) => !s.card && s.running.includes('game'));
+        }
         let before = await waitForSnapshot((s) => s.game.abilities.length === 4);
         assert(true, '/next/ the Staff, levelling up and the Magnet unlock Shadow Bolt, Tentacles and Magnetism');
         const awayX = before.game.mimicX > 960 ? 300 : 1620;

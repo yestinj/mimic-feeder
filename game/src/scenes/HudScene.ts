@@ -7,6 +7,7 @@ import type { Run, RunEvent } from '../rules/run';
 import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
+import type { Ability } from '../rules/abilities';
 import { overlaps } from '../rules/contact';
 import { AbilityBar } from '../ui/AbilityBar';
 import { Hearts } from '../ui/Hearts';
@@ -66,17 +67,20 @@ export class HudScene extends Phaser.Scene {
         const onEvent = (event: RunEvent): void => this.onRunEvent(event);
         const onChanged = (): void => this.refresh(true);
         const onOver = (): void => this.showGameOver();
+        const onAbilityNotice = (ability: Ability): void => this.notifications.abilityToast(ability);
         const onMute = (muted: boolean): void => {
             this.muteIcon.setVisible(muted);
         };
         game.events.on(RUN_EVENTS.event, onEvent);
         game.events.on(RUN_EVENTS.changed, onChanged);
         game.events.on(RUN_EVENTS.over, onOver);
+        game.events.on(RUN_EVENTS.abilityNotice, onAbilityNotice);
         this.game.events.on(GAME_EVENTS.muteChanged, onMute);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             game.events.off(RUN_EVENTS.event, onEvent);
             game.events.off(RUN_EVENTS.changed, onChanged);
             game.events.off(RUN_EVENTS.over, onOver);
+            game.events.off(RUN_EVENTS.abilityNotice, onAbilityNotice);
             this.game.events.off(GAME_EVENTS.muteChanged, onMute);
         });
 
@@ -188,9 +192,6 @@ export class HudScene extends Phaser.Scene {
                 break;
             case 'extraLife':
                 this.notifications.toast(STRINGS.notices.extraLife, STRINGS.notices.extraLifeDetail);
-                break;
-            case 'unlock':
-                this.notifications.unlock(event.ability);
                 break;
             case 'tentaclesGrow':
                 this.notifications.toast(STRINGS.notices.tentaclesGrow, STRINGS.notices.tentaclesGrowDetail(event.reach), 'tentacles');

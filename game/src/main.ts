@@ -12,6 +12,7 @@ import { PreloadScene } from './scenes/PreloadScene';
 import { ResultsScene } from './scenes/ResultsScene';
 import { SystemScene } from './scenes/SystemScene';
 import { TitleScene } from './scenes/TitleScene';
+import { UnlockScene } from './scenes/UnlockScene';
 import { installTestHook } from './testHook';
 import { COLOURS } from './theme';
 
@@ -28,7 +29,7 @@ const game = new Phaser.Game({
     // Load images with plain <img> requests. Phaser's default (XHR + blob: URLs)
     // would need blob: in the CSP's img-src.
     loader: { imageLoadType: 'HTMLImageElement' },
-    // Listed bottom to top: the HUD draws over the game, the pause menu over both.
-    scene: [BootScene, PreloadScene, TitleScene, GameScene, HudScene, PauseScene, ResultsScene, SystemScene],
+    // Listed bottom to top: the HUD draws over the game, the pause menu and new-ability card over both.
+    scene: [BootScene, PreloadScene, TitleScene, GameScene, HudScene, PauseScene, UnlockScene, ResultsScene, SystemScene],
 });
 installTestHook(game);

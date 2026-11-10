@@ -26,7 +26,6 @@ export const STRINGS = {
         levelUpDetail: 'Faster and bigger',
         extraLife: 'Extra life!',
         extraLifeDetail: 'One more heart',
-        unlocked: 'New ability',
         press: 'Press',
         tentaclesGrow: 'Tentacles +1',
         tentaclesGrowDetail: (reach: number) => `They grab ${reach} at once`,
@@ -37,6 +36,11 @@ export const STRINGS = {
         shadowBolt: { name: 'Shadow Bolt', key: 'Space', use: 'to cast a Shadow Bolt' },
         tentacles: { name: 'Tentacles', key: 'Z', use: 'to grab with your Tentacles' },
         magnetism: { name: 'Magnetism', key: 'X', use: 'to pull in treasure… and bombs' },
+    },
+    unlockCard: {
+        title: 'New ability',
+        continue: 'Continue',
+        orPress: (key: string) => `or press ${key}`,
     },
     pause: {
         title: 'Paused',

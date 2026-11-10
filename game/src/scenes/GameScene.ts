@@ -14,7 +14,8 @@ import { dropSpeed, musicForFloor, spawnInterval } from '../rules/progression';
 import { Run, type RunEvent } from '../rules/run';
 import { SpawnHistory, keepClearOf, pickObject, pickSpawnX, rollHazard } from '../rules/spawner';
 import { MIMIC, SPAWNING } from '../rules/tuning';
-import { markReady, setDebugApi, setGameView } from '../testHook';
+import { firstIntroduction } from '../session';
+import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
 import { onKeyDown } from '../ui/keys';
 import { COLOURS, MOTION } from '../theme';
 import { GAME_EVENTS } from './SystemScene';
@@ -27,6 +28,8 @@ export const RUN_EVENTS = {
     changed: 'run-changed',
     /** The last life is gone. */
     over: 'run-over',
+    /** An ability unlocked that the player has been introduced to before (payload: the ability). */
+    abilityNotice: 'ability-notice',
 } as const;
 
 const DEPTH = { background: -10, ground: -9, glow: -1, objects: 0, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
@@ -49,7 +52,6 @@ export interface AbilityState {
 const GAME_OVER_HOLD_MS = 1800;
 const BACKGROUND_FADE_MS = 1200;
 
-const showPhysicsBodies = new URLSearchParams(window.location.search).has('debug');
 
 /** The playfield: the mimic, everything falling, and the run's rules. */
 export class GameScene extends Phaser.Scene {
@@ -71,10 +73,12 @@ export class GameScene extends Phaser.Scene {
     private spawning = true;
     private ending = false;
     private pauseBlur: Phaser.Filters.Blur | null = null;
+    /** Abilities unlocked for the first time, waiting to be introduced on a card. */
+    private pendingCards: Ability[] = [];
     private readonly random = Math.random;
 
     constructor() {
-        super({ key: 'game', physics: { default: 'arcade', arcade: { debug: showPhysicsBodies } } });
+        super({ key: 'game', physics: { default: 'arcade', arcade: { debug: DEBUG_MODE } } });
     }
 
     /** The run in progress, for the HUD and pause screens. */
@@ -107,6 +111,7 @@ export class GameScene extends Phaser.Scene {
         this.spawning = true;
         this.ending = false;
         this.pauseBlur = null;
+        this.pendingCards = [];
         this.shownBackground = '';
 
         this.physics.world.setBounds(0, 0, DESIGN_WIDTH, GROUND_Y);
@@ -208,6 +213,11 @@ export class GameScene extends Phaser.Scene {
                 this.land(object);
             }
         }
+
+        // New abilities are introduced at the end of the frame, with the game paused.
+        if (this.pendingCards.length > 0 && !this.ending) {
+            this.openOverlay('unlock', { abilities: this.pendingCards.splice(0) });
+        }
     }
 
     private setUpInput(): void {
@@ -225,7 +235,7 @@ export class GameScene extends Phaser.Scene {
         // Arrow keys and Space would scroll the page.
         keyboard.addCapture([Phaser.Input.Keyboard.KeyCodes.UP, Phaser.Input.Keyboard.KeyCodes.DOWN, Phaser.Input.Keyboard.KeyCodes.SPACE]);
         onKeyDown(this, ['UP', 'W'], () => this.jump());
-        onKeyDown(this, ['P', 'ESC'], () => this.openPause());
+        onKeyDown(this, ['P', 'ESC'], () => this.openOverlay('pause'));
         onKeyDown(this, ['LEFT', 'A'], (event) => this.tryDash(-1, event.timeStamp));
         onKeyDown(this, ['RIGHT', 'D'], (event) => this.tryDash(1, event.timeStamp));
         onKeyDown(this, ['SPACE'], () => this.castShadowBolt());
@@ -501,6 +511,14 @@ export class GameScene extends Phaser.Scene {
                 case 'lifeLost':
                     playSound(this, 'loseLife');
                     break;
+                case 'unlock':
+                    // The first time: a card that pauses the game. After that: a toast.
+                    if (firstIntroduction(event.ability)) {
+                        this.pendingCards.push(event.ability);
+                    } else {
+                        this.events.emit(RUN_EVENTS.abilityNotice, event.ability);
+                    }
+                    break;
                 case 'gameOver':
                     this.endRun();
                     break;
@@ -558,7 +576,8 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    private openPause(): void {
+    /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card). */
+    private openOverlay(key: 'pause' | 'unlock', data?: object): void {
         if (this.ending || !this.scene.isActive()) {
             return;
         }
@@ -566,7 +585,7 @@ export class GameScene extends Phaser.Scene {
         this.sound.pauseAll();
         this.scene.pause();
         this.scene.pause('hud');
-        this.scene.launch('pause');
+        this.scene.launch(key, data);
     }
 
     private onResume(): void {
