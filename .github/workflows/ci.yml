@@ -1,0 +1,54 @@
+name: CI
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    test:
+        # Required status check in the "Protect main" ruleset: if you rename
+        # this job, update the ruleset (Settings -> Rules) in the same change.
+        name: Lint, build, smoke, playtest
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        steps:
+            - uses: actions/checkout@v7
+
+            - uses: actions/setup-node@v7
+              with:
+                  # .nvmrc holds the Node major for local and CI (26, current LTS).
+                  node-version-file: .nvmrc
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            # ESLint (bundle + tooling) + syntax check, build, static smoke contracts.
+            - name: npm test
+              run: npm test
+
+            # Same browser as local runs (npm run playtest:install), plus OS packages.
+            - name: Install Playwright Chromium
+              run: npx playwright install --with-deps --no-shell chromium
+
+            # Browser playtest against dist/ served with src/_headers (CSP enforced).
+            - name: Playtest
+              run: npm run playtest
+
+            - name: Upload playtest screenshots
+              if: failure()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: playtest-output
+                  path: playtest-output/
+                  if-no-files-found: ignore
+                  retention-days: 7

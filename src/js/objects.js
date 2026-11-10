@@ -708,7 +708,7 @@ function updateObjects() {
         let objectBottomEdge = obj.y + obj.h / 2;
 
         if (objectBottomEdge >= groundLevel) {
-            let removed = false;
+            let removed; // Every branch below sets it.
             const humanoidSplatTypes = [OBJ_HUMAN, OBJ_GOBLIN, OBJ_ELF, OBJ_DWARF, OBJ_WRAITH, OBJ_DRAGON]; // Removed OBJ_CAT as it has special handling
 
             if (obj.type === OBJ_SMALL_BOMB) {

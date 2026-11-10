@@ -296,7 +296,8 @@ function drawObjectInfoScreen() {
     // Object description body
     textSize(metrics.descTextSize);
     textStyle(NORMAL);
-    currentY += drawWrappedTextBlock(objectDescText, leftMargin, currentY, textBlockWidth, metrics.descLineHeight);
+    // Last block above the navigation, which is anchored to the overlay bottom.
+    drawWrappedTextBlock(objectDescText, leftMargin, currentY, textBlockWidth, metrics.descLineHeight);
 
     // Navigation instructions at bottom
     let bottomPadding = scalePx(10);

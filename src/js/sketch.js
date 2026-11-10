@@ -960,7 +960,7 @@ function mousePressed() {
 function stopAllSounds(allowGameOverSound = false, keepBackgroundMusic = false) {
     stopDungeonVoice();
     for (const soundName in soundMap) {
-        if (soundMap.hasOwnProperty(soundName)) {
+        if (Object.prototype.hasOwnProperty.call(soundMap, soundName)) {
             const sound = soundMap[soundName];
             if (sound && typeof sound.stop === 'function' && typeof sound.isLoaded === 'function' && sound.isLoaded()) {
                 if ((sound === gameOverSound && allowGameOverSound) ||

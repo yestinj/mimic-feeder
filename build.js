@@ -145,7 +145,7 @@ async function assertJsBundleSourcesComplete(inputDir) {
         try {
             await fs.access(inputPath);
         } catch (error) {
-            throw new Error(`Cannot read required game JS: ${inputPath} (${error.message})`);
+            throw new Error(`Cannot read required game JS: ${inputPath} (${error.message})`, { cause: error });
         }
     }
 }
@@ -254,4 +254,9 @@ async function main() {
     }
 }
 
-main();
+// Allow scripts/lint.js to reuse the bundle order without running a build.
+if (require.main === module) {
+    main();
+}
+
+module.exports = { JS_DIR, JS_FILE_ORDER };

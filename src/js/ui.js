@@ -658,8 +658,8 @@ function drawUI() {
     let currentIconX = iconRightEdge;
     const staffImg = objectImages[OBJ_WIZARD_STAFF];
     if (hasStaff) {
-        let staffIconWidth = 0;
-        let staffIconHeight = 0;
+        let staffIconWidth;
+        let staffIconHeight;
         if (staffImg && staffImg.width) {
             const scale = iconHeightTarget / staffImg.height;
             staffIconWidth = staffImg.width * scale;
@@ -816,7 +816,7 @@ function drawNameInputScreen() {
 
 // --- High Score and Name Persistence functions ---
 function loadHighScores() {
-    let storedScores = null;
+    let storedScores;
     try {
         storedScores = localStorage.getItem('mimicFeederHighScores');
     } catch (error) {
