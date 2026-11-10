@@ -20,6 +20,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
+    "phaser": "^4.2.1",
     "playwright": "^1.65.0"
   },
   "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",

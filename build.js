@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const esbuild = require('esbuild');
+const { buildSpike } = require('./spike/phaser/build.js'); // spike branch only
 
 const OUTPUT_DIR = 'dist';
 const ASSET_DIR = 'src/assets';
@@ -238,6 +239,7 @@ async function main() {
             copyAssets(ASSET_DIR, `${OUTPUT_DIR}/assets`),
             copyOptionalBuildFile('src/_headers', `${OUTPUT_DIR}/_headers`),
         ]);
+        await buildSpike(OUTPUT_DIR);
 
         console.log('Build completed successfully!');
     } catch (error) {
