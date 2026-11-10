@@ -113,6 +113,12 @@ export class GameScene extends Phaser.Scene {
         }));
     }
 
+    /** The boss's hitbox while it's here, so the HUD can fade what it flies behind. */
+    bossBounds(): Rect | null {
+        const body = this.boss?.body;
+        return body ? { x: body.x, y: body.y, width: body.width, height: body.height } : null;
+    }
+
     /** Where the mimic is, so the HUD can fade what it's standing behind. */
     mimicBounds(): Rect {
         const { x, y, displayWidth, displayHeight } = this.mimic.sprite;
@@ -474,14 +480,14 @@ export class GameScene extends Phaser.Scene {
                 }
                 break;
             case 'sideHit':
-                // A cat touched any way but through the mouth dies; that costs no life.
+                // A cat touched any way but through the mouth dies: no life lost, but it cries out.
                 if (kind === 'cat') {
                     this.run.killCat();
                 } else {
                     events = this.run.sideHit();
                 }
                 splat(this, object.x, object.y, object.displayWidth).setDepth(DEPTH.effects);
-                playSound(this, 'splat');
+                playSound(this, kind === 'cat' ? 'catHurt' : 'splat');
                 break;
             case 'detonate':
                 if (isHazard(kind)) {

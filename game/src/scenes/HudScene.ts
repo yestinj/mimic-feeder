@@ -21,6 +21,14 @@ import { GAME_EVENTS } from './SystemScene';
 
 const MARGIN = 48;
 const XP_BAR_WIDTH = 300;
+/** HUD blocks fade to this while the boss flies behind them. */
+const COVERED_ALPHA = 0.3;
+
+/** A group of HUD pieces that fades together while the boss is behind any of them. */
+interface HudBlock {
+    readonly parts: (Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.AlphaSingle & { getBounds(): Phaser.Geom.Rectangle })[];
+    faded: boolean;
+}
 
 /**
  * The heads-up display over the playfield: score, floor and zone (top left),
@@ -32,6 +40,7 @@ export class HudScene extends Phaser.Scene {
     private run!: Run;
     private abilityBar!: AbilityBar;
     private bossBar!: BossBar;
+    private blocks: HudBlock[] = [];
     private scoreText!: Phaser.GameObjects.Text;
     private floorText!: Phaser.GameObjects.Text;
     private hearts!: Hearts;
@@ -59,9 +68,9 @@ export class HudScene extends Phaser.Scene {
 
         this.addTopShade();
         this.addLowHealthGlow();
+        this.blocks = [];
         this.addScore();
         this.addVitals();
-        this.muteIcon = this.add.image(MARGIN + 22, 196, UI.soundOff).setVisible(isMuted());
         this.notifications = new Notifications(this);
         this.abilityBar = new AbilityBar(this, MARGIN, DESIGN_HEIGHT - 84);
         this.abilityBar.sync(game.abilityStates(), false);
@@ -102,6 +111,19 @@ export class HudScene extends Phaser.Scene {
         // Cooldowns change every frame; everything else waits for the game's events.
         this.abilityBar.sync(this.playfield.abilityStates(), true);
         this.abilityBar.setFaded(overlaps(this.playfield.mimicBounds(), this.abilityBar.bounds()));
+        this.fadeBlocksUnderBoss();
+    }
+
+    /** The score and the hearts fade while the boss flies behind them, so it never vanishes. */
+    private fadeBlocksUnderBoss(): void {
+        const boss = this.playfield.bossBounds();
+        for (const block of this.blocks) {
+            const covered = boss !== null && block.parts.some((part) => overlaps(boss, part.getBounds()));
+            if (covered !== block.faded) {
+                block.faded = covered;
+                this.tweens.add({ targets: block.parts, alpha: covered ? COVERED_ALPHA : 1, duration: MOTION.normal });
+            }
+        }
     }
 
     /** Darkens the top of the screen a little so the HUD reads on any background. */
@@ -117,9 +139,11 @@ export class HudScene extends Phaser.Scene {
     }
 
     private addScore(): void {
-        addText(this, MARGIN, 34, 'SCORE', TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true });
+        const label = addText(this, MARGIN, 34, 'SCORE', TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true });
         this.scoreText = addText(this, MARGIN, 56, '0', TYPE.title, { colour: TEXT_COLOURS.gold, bold: true });
         this.floorText = addText(this, MARGIN, 136, '', TYPE.small, { colour: TEXT_COLOURS.primary });
+        this.muteIcon = this.add.image(MARGIN + 22, 196, UI.soundOff).setVisible(isMuted());
+        this.blocks.push({ parts: [label, this.scoreText, this.floorText, this.muteIcon], faded: false });
     }
 
     private addVitals(): void {
@@ -132,7 +156,8 @@ export class HudScene extends Phaser.Scene {
         this.levelText = addText(this, 0, 0, '1', TYPE.heading, { bold: true, colour: TEXT_COLOURS.gold, shadow: false }).setOrigin(0.5);
         this.badge = this.add.container(badgeX, badgeY, [this.add.image(0, 0, UI.badge), this.levelText]);
         this.xpBar = new ProgressBar(this, badgeX - 44 - SPACE.s - XP_BAR_WIDTH / 2, badgeY, XP_BAR_WIDTH, COLOURS.xp);
-        addText(this, badgeX - 44 - SPACE.s - XP_BAR_WIDTH, badgeY - 44, 'LEVEL', TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true });
+        const label = addText(this, badgeX - 44 - SPACE.s - XP_BAR_WIDTH, badgeY - 44, 'LEVEL', TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true });
+        this.blocks.push({ parts: [this.hearts, this.badge, this.xpBar, label], faded: false });
     }
 
     /** Brings every number up to date with the run. */
