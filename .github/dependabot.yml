@@ -9,6 +9,10 @@ updates:
       groups:
           # One PR for all minor/patch dev-tool updates; majors come separately.
           dev-tools:
+              patterns: ['*']
+              # esbuild is still 0.x, where each 0.N minor release can break
+              # things; keep its updates in their own PRs.
+              exclude-patterns: [esbuild]
               update-types: [minor, patch]
 
     - package-ecosystem: github-actions
