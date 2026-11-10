@@ -21,7 +21,7 @@ Guidance for coding agents working in this repository.
 | Deploy | Static **Cloudflare Pages** from `dist/` (GitHub integration) |
 | Backend | **None** — no Pages Functions or D1; optional **Cloudflare Web Analytics** via dashboard/CSP only |
 
-Do **not** reintroduce in-app track beacons, Pages Functions, or D1. Production is static-only (`wrangler.toml` documents this). Cloudflare Web Analytics (Insights) is allowed in CSP on purpose — not the removed client/D1 metrics pipeline.
+Do **not** reintroduce in-app track beacons, Pages Functions, or D1. Production is static-only: Cloudflare Pages builds `dist/` using the project's dashboard settings (build command, output directory `dist`, Node from `.nvmrc`). There is deliberately no `wrangler.toml`; adding one makes it the source of truth for the project's settings and bindings and locks them in the dashboard. Cloudflare Web Analytics (Insights) is allowed in CSP on purpose — not the removed client/D1 metrics pipeline.
 
 ## Layout
 
