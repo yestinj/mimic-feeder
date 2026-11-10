@@ -1,17 +1,20 @@
 import * as Phaser from 'phaser';
 import { MUSIC, backgroundKey, floorBackground } from '../assets';
 import { MusicPlayer, playSound } from '../audio';
-import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y, SIZE_SCALE } from '../config';
+import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y, RUN_SCALE, SIZE_SCALE } from '../config';
 import { FallingObject, objectWidth } from '../game/FallingObject';
 import { Mimic } from '../game/Mimic';
-import { GLOW_COLOURS, explode, pointsPopup, shake, spawnGlow, splat } from '../game/effects';
-import { expand, overlaps, resolveContact } from '../rules/contact';
-import { isCreature, isHazard, isShiny, type ObjectKind } from '../rules/objects';
+import { ShadowBolts } from '../game/ShadowBolts';
+import { Tentacles } from '../game/Tentacles';
+import { GLOW_COLOURS, boltHit, explode, pointsPopup, shake, spawnGlow, splat } from '../game/effects';
+import { ABILITIES, Cooldowns, DoubleTap, nearestTargets, type Ability } from '../rules/abilities';
+import { expand, overlaps, resolveContact, type Rect } from '../rules/contact';
+import { isCreature, isHazard, isPowerUp, isShiny, type ObjectKind, type PowerUpKind } from '../rules/objects';
 import { dropSpeed, musicForFloor, spawnInterval } from '../rules/progression';
 import { Run, type RunEvent } from '../rules/run';
 import { SpawnHistory, keepClearOf, pickObject, pickSpawnX, rollHazard } from '../rules/spawner';
 import { MIMIC, SPAWNING } from '../rules/tuning';
-import { markReady, setGameView } from '../testHook';
+import { markReady, setDebugApi, setGameView } from '../testHook';
 import { onKeyDown } from '../ui/keys';
 import { COLOURS, MOTION } from '../theme';
 import { GAME_EVENTS } from './SystemScene';
@@ -26,7 +29,22 @@ export const RUN_EVENTS = {
     over: 'run-over',
 } as const;
 
-const DEPTH = { background: -10, ground: -9, glow: -1, objects: 0, mimic: 1, effects: 2, popups: 3 } as const;
+const DEPTH = { background: -10, ground: -9, glow: -1, objects: 0, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
+/** Dash distance from the p5 game (100 px), across the wider screen. */
+const DASH_DISTANCE = 100 * RUN_SCALE;
+/** Magnetised objects fly at the mimic at 5× their fall speed. */
+const MAGNET_PULL = 5;
+/** How long the lid stays open after the tentacles lash out, and ajar after a cast (ms). */
+const TENTACLE_LID_MS = 1000;
+const CAST_LID_MS = 250;
+const POWER_UP_SOUNDS = { staff: 'wizardStaff', magnet: 'magnetism', potion: 'healthPotion' } as const satisfies Record<PowerUpKind, string>;
+
+export interface AbilityState {
+    readonly ability: Ability;
+    readonly unlocked: boolean;
+    /** Cooldown left, 1 (just used) to 0 (ready). */
+    readonly cooldown: number;
+}
 /** How long the playfield lingers after the last life before the results. */
 const GAME_OVER_HOLD_MS = 1800;
 const BACKGROUND_FADE_MS = 1200;
@@ -38,6 +56,10 @@ export class GameScene extends Phaser.Scene {
     private run!: Run;
     private mimic!: Mimic;
     private objects!: Phaser.Physics.Arcade.Group;
+    private bolts!: ShadowBolts;
+    private tentacles!: Tentacles;
+    private cooldowns!: Cooldowns;
+    private doubleTap!: DoubleTap;
     private history!: SpawnHistory;
     private music!: MusicPlayer;
     private keys!: Record<'left' | 'right' | 'a' | 'd', Phaser.Input.Keyboard.Key>;
@@ -45,6 +67,8 @@ export class GameScene extends Phaser.Scene {
     private backgrounds!: [Phaser.GameObjects.Image, Phaser.GameObjects.Image];
     private shownBackground = '';
     private spawnElapsed = 0;
+    /** Test mode can switch the normal spawns off. */
+    private spawning = true;
     private ending = false;
     private pauseBlur: Phaser.Filters.Blur | null = null;
     private readonly random = Math.random;
@@ -58,11 +82,29 @@ export class GameScene extends Phaser.Scene {
         return this.run;
     }
 
+    /** Each ability's state, for the HUD's ability bar. */
+    abilityStates(): AbilityState[] {
+        return ABILITIES.map((ability) => ({
+            ability,
+            unlocked: this.run.hasAbility(ability),
+            cooldown: this.cooldowns.fraction(ability),
+        }));
+    }
+
+    /** Where the mimic is, so the HUD can fade what it's standing behind. */
+    mimicBounds(): Rect {
+        const { x, y, displayWidth, displayHeight } = this.mimic.sprite;
+        return { x: x - displayWidth / 2, y: y - displayHeight, width: displayWidth, height: displayHeight };
+    }
+
     create(): void {
         // The scene object is reused on restart, so reset everything here.
         this.run = new Run();
         this.history = new SpawnHistory(SPAWNING.recentPositions);
+        this.cooldowns = new Cooldowns();
+        this.doubleTap = new DoubleTap();
         this.spawnElapsed = 0;
+        this.spawning = true;
         this.ending = false;
         this.pauseBlur = null;
         this.shownBackground = '';
@@ -72,7 +114,14 @@ export class GameScene extends Phaser.Scene {
         this.mimic = new Mimic(this, DESIGN_WIDTH / 2);
         this.mimic.sprite.setDepth(DEPTH.mimic);
         this.objects = this.physics.add.group();
-        this.physics.add.overlap(this.mimic.hitbox, this.objects, (_mimic, object) => this.touch(object as FallingObject));
+        // Grabbed objects belong to the tentacles until they reach the mouth.
+        this.physics.add.overlap(this.mimic.hitbox, this.objects, (_mimic, object) => this.touch(object as FallingObject),
+            (_mimic, object) => !(object as FallingObject).grabbed);
+        this.bolts = new ShadowBolts(this, DEPTH.bolts);
+        // Shadow Bolts pass through fireballs.
+        this.physics.add.overlap(this.bolts.group, this.objects, (bolt, object) => this.boltHit(bolt as Phaser.Physics.Arcade.Sprite, object as FallingObject),
+            (_bolt, object) => (object as FallingObject).def.bolt !== 'pass');
+        this.tentacles = new Tentacles(this, DEPTH.chains);
 
         this.setUpInput();
         this.music = new MusicPlayer(this);
@@ -85,6 +134,17 @@ export class GameScene extends Phaser.Scene {
             this.game.events.off(GAME_EVENTS.deferredLoaded, onDeferredLoaded);
             this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
             setGameView(null);
+            setDebugApi(null);
+        });
+        setDebugApi({
+            grant: (ability) => this.debugGrant(ability),
+            spawn: (kind, x) => this.addObject(kind as ObjectKind, x ?? this.mimic.centerX),
+            setSpawning: (on) => {
+                this.spawning = on;
+                if (!on) {
+                    this.activeObjects().forEach((object) => object.destroy());
+                }
+            },
         });
         setGameView(() => ({
             score: this.run.score,
@@ -96,6 +156,10 @@ export class GameScene extends Phaser.Scene {
             playTimeMs: this.run.playTimeMs,
             mimicX: this.mimic.centerX,
             objects: this.objects.countActive(),
+            abilities: ABILITIES.filter((ability) => this.run.hasAbility(ability)),
+            creaturesEaten: this.run.creaturesEaten,
+            shiniesCollected: this.run.shiniesCollected,
+            hazardsDetonated: this.run.hazardsDetonated,
             food: this.activeObjects()
                 .filter((object) => isCreature(object.kind))
                 .map((object) => ({ x: Math.round(object.x), y: Math.round(object.y) }))
@@ -121,7 +185,17 @@ export class GameScene extends Phaser.Scene {
         const interval = spawnInterval(this.run.gameLevel);
         if (this.spawnElapsed >= interval) {
             this.spawnElapsed -= interval;
-            this.spawn();
+            if (this.spawning) {
+                this.spawn();
+            }
+        }
+
+        this.cooldowns.tick(delta);
+        this.bolts.update();
+        const mouth = this.mimic.mouth;
+        this.tentacles.update(delta, mouth.x, mouth.y, (target) => this.eatGrabbed(target));
+        if (this.tentacles.active) {
+            this.mimic.holdOpen(this.time.now);
         }
 
         const left = this.keys.left.isDown || this.keys.a.isDown;
@@ -129,7 +203,8 @@ export class GameScene extends Phaser.Scene {
         this.mimic.update(Number(right) - Number(left), this.foodNearby(), this.time.now);
 
         for (const object of this.activeObjects()) {
-            if (object.body.bottom >= GROUND_Y) {
+            object.steerTowards(this.mimic.centerX, this.mimic.centerY);
+            if (!object.grabbed && object.body.bottom >= GROUND_Y) {
                 this.land(object);
             }
         }
@@ -151,6 +226,89 @@ export class GameScene extends Phaser.Scene {
         keyboard.addCapture([Phaser.Input.Keyboard.KeyCodes.UP, Phaser.Input.Keyboard.KeyCodes.DOWN, Phaser.Input.Keyboard.KeyCodes.SPACE]);
         onKeyDown(this, ['UP', 'W'], () => this.jump());
         onKeyDown(this, ['P', 'ESC'], () => this.openPause());
+        onKeyDown(this, ['LEFT', 'A'], (event) => this.tryDash(-1, event.timeStamp));
+        onKeyDown(this, ['RIGHT', 'D'], (event) => this.tryDash(1, event.timeStamp));
+        onKeyDown(this, ['SPACE'], () => this.castShadowBolt());
+        onKeyDown(this, ['Z'], () => this.lashTentacles());
+        onKeyDown(this, ['X'], () => this.magnetise());
+    }
+
+    /** Test mode only: unlocks an ability through the game's own paths. */
+    private debugGrant(ability: string): void {
+        if (ability === 'shadowBolt') {
+            this.apply(this.run.collectPowerUp('staff'), false);
+        } else if (ability === 'magnetism') {
+            this.apply(this.run.collectPowerUp('magnet'), false);
+        } else if (ability === 'tentacles') {
+            while (!this.run.hasAbility('tentacles')) {
+                this.apply(this.run.bonus(this.run.xpToNext - this.run.xp), false);
+            }
+        }
+    }
+
+    /** Uses an ability if it's unlocked and off cooldown; returns whether it did. */
+    private useAbility(ability: Ability): boolean {
+        if (this.ending || !this.run.hasAbility(ability) || !this.cooldowns.ready(ability)) {
+            return false;
+        }
+        this.cooldowns.start(ability);
+        this.run.use(ability);
+        return true;
+    }
+
+    /** A second tap of the same direction within a quarter second dashes that way. */
+    private tryDash(direction: -1 | 1, time: number): void {
+        // Like the p5 game, taps only count while the dash is ready.
+        if (this.ending || !this.cooldowns.ready('dash') || !this.doubleTap.press(direction, time) || !this.useAbility('dash')) {
+            return;
+        }
+        const { sprite } = this.mimic;
+        const ghost = this.add.image(sprite.x, sprite.y, sprite.texture.key)
+            .setOrigin(0.5, 1)
+            .setScale(sprite.scaleX, sprite.scaleY)
+            .setAlpha(0.45)
+            .setDepth(DEPTH.mimic - 0.1);
+        this.tweens.add({ targets: ghost, alpha: 0, duration: 220, onComplete: () => ghost.destroy() });
+        this.mimic.dash(direction * DASH_DISTANCE);
+        shake(this.cameras.main, 3);
+        playSound(this, 'castSpell');
+    }
+
+    private castShadowBolt(): void {
+        if (!this.useAbility('shadowBolt')) {
+            return;
+        }
+        this.bolts.fire(this.mimic.centerX, this.mimic.centerY);
+        this.mimic.holdAjar(this.time.now + CAST_LID_MS);
+        playSound(this, 'castSpell');
+    }
+
+    /** Grabs the nearest creatures. Nothing happens (and no cooldown) with none in sight. */
+    private lashTentacles(): void {
+        if (!this.run.hasAbility('tentacles') || !this.cooldowns.ready('tentacles')) {
+            return;
+        }
+        const creatures = this.activeObjects().filter((object) => isCreature(object.kind) && !object.grabbed);
+        const targets = nearestTargets(this.mimic.centerX, this.mimic.centerY, creatures, this.run.tentacleReach);
+        if (targets.length === 0 || !this.useAbility('tentacles')) {
+            return;
+        }
+        this.tentacles.lash(targets);
+        this.mimic.holdOpen(this.time.now + TENTACLE_LID_MS);
+        playSound(this, 'slurp');
+    }
+
+    /** Pulls in the treasure and bombs on screen now; anything that falls later isn't affected. */
+    private magnetise(): void {
+        if (!this.useAbility('magnetism')) {
+            return;
+        }
+        for (const object of this.activeObjects()) {
+            if (object.def.magnetic && !object.grabbed) {
+                object.magnetise(MAGNET_PULL);
+            }
+        }
+        playSound(this, 'magnetism');
     }
 
     private jump(): void {
@@ -175,7 +333,9 @@ export class GameScene extends Phaser.Scene {
     }
 
     private spawn(): void {
-        const kind = pickObject(this.random);
+        // A power-up that's due takes the place of the normal spawn.
+        const onScreen = new Set(this.activeObjects().map((object) => object.kind));
+        const kind = this.run.offerPowerUp(onScreen, this.random) ?? pickObject(this.random);
         this.addObject(kind, this.placeX(kind));
 
         const hazard = rollHazard(this.run.floor, this.run.zone, this.random);
@@ -205,7 +365,7 @@ export class GameScene extends Phaser.Scene {
         object.setDepth(DEPTH.objects);
         this.history.add(x);
         if (kind === 'crown' || kind === 'diamond') {
-            playSound(this, 'bling');
+            playSound(this, 'castSpell');
             spawnGlow(this, object, GLOW_COLOURS[kind], object.displayWidth * 1.8).setDepth(DEPTH.glow);
         }
     }
@@ -233,9 +393,13 @@ export class GameScene extends Phaser.Scene {
             case 'collect':
                 if (isShiny(kind)) {
                     events = this.run.collect(kind);
+                    playSound(this, 'collect');
+                    shake(this.cameras.main, 4);
+                } else if (isPowerUp(kind)) {
+                    events = this.run.collectPowerUp(kind);
+                    playSound(this, POWER_UP_SOUNDS[kind]);
+                    shake(this.cameras.main, kind === 'potion' ? 4 : 3);
                 }
-                playSound(this, 'collect');
-                shake(this.cameras.main, 4);
                 break;
             case 'sideHit':
                 events = this.run.sideHit();
@@ -263,7 +427,7 @@ export class GameScene extends Phaser.Scene {
             events = this.run.miss();
             splat(this, object.x, GROUND_Y, object.displayWidth).setDepth(DEPTH.effects);
             playSound(this, 'splat');
-        } else if (isShiny(kind)) {
+        } else if (isShiny(kind) || isPowerUp(kind)) {
             playSound(this, 'glassBreak');
         } else if (isHazard(kind)) {
             explode(this, kind, object.x, GROUND_Y - object.displayHeight / 2, object.displayWidth, object.displayHeight).setDepth(DEPTH.effects);
@@ -273,13 +437,51 @@ export class GameScene extends Phaser.Scene {
         this.apply(events, false);
     }
 
-    /** Plays and shows what the run's rules reported, then tells the HUD. */
-    private apply(events: readonly RunEvent[], treasure: boolean): void {
+    /** A tentacle reeled its creature into the mouth. */
+    private eatGrabbed(target: FallingObject): void {
+        if (this.ending || !target.active) {
+            return;
+        }
+        const kind = target.kind;
+        const events = isCreature(kind) ? this.run.eat(kind) : [];
+        playSound(this, 'collect');
+        target.destroy();
+        this.apply(events, false);
+    }
+
+    /** A Shadow Bolt hit something: bombs go off (for points), everything else is destroyed. */
+    private boltHit(bolt: Phaser.Physics.Arcade.Sprite, object: FallingObject): void {
+        if (this.ending || !bolt.active || !object.active) {
+            return;
+        }
+        bolt.destroy();
+        const kind = object.kind;
+        let events: RunEvent[] = [];
+        if (object.def.bolt === 'detonate' && isHazard(kind)) {
+            events = this.run.shootHazard(kind);
+            explode(this, kind, object.x, object.y, object.displayWidth, object.displayHeight).setDepth(DEPTH.effects);
+            playSound(this, 'explode');
+            shake(this.cameras.main, 5);
+        } else {
+            this.run.shoot();
+            boltHit(this, object.x, object.y).setDepth(DEPTH.effects);
+            playSound(this, 'boltHit');
+        }
+        const at = { x: object.x, y: object.y };
+        object.destroy();
+        this.apply(events, false, at);
+    }
+
+    /** Plays and shows what the run's rules reported, then tells the HUD. Points pop up at `at`, or the mouth. */
+    private apply(events: readonly RunEvent[], treasure: boolean, at?: { x: number; y: number }): void {
         for (const event of events) {
             switch (event.type) {
-                case 'points':
-                    pointsPopup(this, this.mimic.centerX, this.mimic.top - 8, event.points, treasure).setDepth(DEPTH.popups);
+                case 'points': {
+                    const x = at?.x ?? this.mimic.centerX;
+                    const y = at?.y ?? this.mimic.top - 8;
+                    pointsPopup(this, x, y, event.points, treasure).setDepth(DEPTH.popups);
                     break;
+                }
                 case 'levelUp':
                     playSound(this, 'playerLevelUp');
                     this.mimic.applyGrowth(this.run.growth);

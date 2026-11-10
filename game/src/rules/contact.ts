@@ -40,7 +40,7 @@ export function isBite(food: Rect, mimic: Rect, falling: boolean): boolean {
 /**
  * - eat: a creature went into the mouth.
  * - sideHit: a creature hit the side of the chest and was destroyed (costs a life).
- * - collect: a shiny, on any contact.
+ * - collect: a shiny or power-up, on any contact.
  * - detonate: a hazard, on any contact.
  */
 export type ContactResult = 'eat' | 'sideHit' | 'collect' | 'detonate';
@@ -50,6 +50,7 @@ export function resolveContact(category: ObjectCategory, object: Rect, mimic: Re
         case 'hazard':
             return 'detonate';
         case 'shiny':
+        case 'powerUp':
             return 'collect';
         case 'creature':
             return isBite(object, mimic, falling) ? 'eat' : 'sideHit';

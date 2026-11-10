@@ -1,8 +1,11 @@
 // One run's state: score, lives, the mimic's level and growth, and progress
 // through floors and zones (inventory §3 and §5). Each action returns the
 // events it caused, in order, so scenes can show and play them.
-import { CREATURE_KINDS, HAZARD_KINDS, OBJECTS, SHINY_KINDS, type CreatureKind, type HazardKind, type ShinyKind } from './objects';
+import { TENTACLES_FROM_LEVEL, tentacleReach, type Ability } from './abilities';
+import { CREATURE_KINDS, HAZARD_KINDS, OBJECTS, SHINY_KINDS, type CreatureKind, type HazardKind, type ObjectKind, type PowerUpKind, type ShinyKind } from './objects';
+import { pickPowerUp } from './offers';
 import { CREATURES_PER_ZONE, gameLevel, nextZone } from './progression';
+import type { Rng } from './spawner';
 
 export const START_LIVES = 3;
 /** Every 50 humans eaten add a heart (and fill it). */
@@ -10,6 +13,9 @@ export const HUMANS_PER_EXTRA_LIFE = 50;
 /** XP for the first level-up; each later one needs twice the last. */
 export const FIRST_LEVEL_XP = 100;
 const XP_GROWTH = 2;
+
+/** Score and XP for setting off a bomb with a Shadow Bolt. */
+export const BOLTED_BOMB_POINTS = 10;
 
 /** Per-level growth of the mimic: speed and size +5%, jump +3%. */
 export const GROWTH = { speed: 1.05, size: 1.05, jump: 1.03 } as const;
@@ -19,7 +25,10 @@ export type RunEvent =
     | { readonly type: 'levelUp'; readonly level: number }
     | { readonly type: 'zone'; readonly floor: number; readonly zone: number; readonly newFloor: boolean }
     | { readonly type: 'extraLife' }
+    | { readonly type: 'lifeGained' }
     | { readonly type: 'lifeLost' }
+    | { readonly type: 'unlock'; readonly ability: Ability }
+    | { readonly type: 'tentaclesGrow'; readonly reach: number }
     | { readonly type: 'gameOver' };
 
 /** What the results screen shows about a finished run. */
@@ -66,8 +75,19 @@ export class Run {
     sideHits = 0;
     /** Creatures that hit the floor. */
     missed = 0;
-    /** Hazards set off by touching them. Hazards that hit the floor don't count. */
+    /** Hazards set off by touching, shooting or pulling them in. Hazards that hit the floor don't count. */
     readonly detonated: Record<HazardKind, number> = zeroCounts(HAZARD_KINDS);
+    /** Objects destroyed by Shadow Bolts (bombs included). */
+    shotDown = 0;
+
+    hasStaff = false;
+    hasMagnet = false;
+    staffOffers = 0;
+    magnetOffers = 0;
+    lastPotionLevel = 0;
+
+    /** Ability uses this run (lifetime totals and achievements build on these in M3). */
+    readonly uses: Record<Ability, number> = { dash: 0, shadowBolt: 0, tentacles: 0, magnetism: 0 };
 
     /** Game level: Floor 1 Zone 1 is 1, and each zone adds 1. */
     get gameLevel(): number {
@@ -94,6 +114,42 @@ export class Run {
             size: GROWTH.size ** levels,
             jump: GROWTH.jump ** levels,
         };
+    }
+
+    /** Creatures the tentacles grab at once (0 until they unlock). */
+    get tentacleReach(): number {
+        return tentacleReach(this.level);
+    }
+
+    hasAbility(ability: Ability): boolean {
+        switch (ability) {
+            case 'dash':
+                return true;
+            case 'shadowBolt':
+                return this.hasStaff;
+            case 'tentacles':
+                return this.level >= TENTACLES_FROM_LEVEL;
+            case 'magnetism':
+                return this.hasMagnet;
+        }
+    }
+
+    /** Counts an ability use. */
+    use(ability: Ability): void {
+        this.uses[ability] += 1;
+    }
+
+    /** The power-up to drop instead of a normal spawn, if one is due; records the offer. */
+    offerPowerUp(onScreen: ReadonlySet<ObjectKind>, rng: Rng): PowerUpKind | null {
+        const kind = pickPowerUp(this, onScreen, rng);
+        if (kind === 'staff') {
+            this.staffOffers += 1;
+        } else if (kind === 'magnet') {
+            this.magnetOffers += 1;
+        } else if (kind === 'potion') {
+            this.lastPotionLevel = this.gameLevel;
+        }
+        return kind;
     }
 
     get shiniesCollected(): number {
@@ -145,6 +201,41 @@ export class Run {
         return this.gain(OBJECTS[kind].points);
     }
 
+    /** A power-up was picked up: the Staff and Magnet unlock abilities, a potion fills a heart. */
+    collectPowerUp(kind: PowerUpKind): RunEvent[] {
+        switch (kind) {
+            case 'staff':
+                this.hasStaff = true;
+                return [{ type: 'unlock', ability: 'shadowBolt' }];
+            case 'magnet':
+                this.hasMagnet = true;
+                return [{ type: 'unlock', ability: 'magnetism' }];
+            case 'potion':
+                if (this.lives >= this.maxLives) {
+                    return [];
+                }
+                this.lives += 1;
+                return [{ type: 'lifeGained' }];
+        }
+    }
+
+    /** A Shadow Bolt set off a bomb: points and XP, and it counts as a detonation. No life lost. */
+    shootHazard(kind: HazardKind): RunEvent[] {
+        this.detonated[kind] += 1;
+        this.shotDown += 1;
+        return this.gain(BOLTED_BOMB_POINTS);
+    }
+
+    /** A Shadow Bolt destroyed something else: no points, no penalty. */
+    shoot(): void {
+        this.shotDown += 1;
+    }
+
+    /** Bonus score and XP (cat rescues and bosses, from M2b). */
+    bonus(points: number): RunEvent[] {
+        return this.gain(points);
+    }
+
     /** A creature hit the side of the chest: it's destroyed and, like a miss, costs a life. */
     sideHit(): RunEvent[] {
         this.sideHits += 1;
@@ -175,6 +266,11 @@ export class Run {
             this.xpToNext = Math.round(this.xpToNext * XP_GROWTH);
             this.level += 1;
             events.push({ type: 'levelUp', level: this.level });
+            if (this.level === TENTACLES_FROM_LEVEL) {
+                events.push({ type: 'unlock', ability: 'tentacles' });
+            } else if (this.level > TENTACLES_FROM_LEVEL) {
+                events.push({ type: 'tentaclesGrow', reach: this.tentacleReach });
+            }
         }
         return events;
     }

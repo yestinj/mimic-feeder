@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Shadow Bolt: a violet orb streaking upwards. -->
+  <defs>
+    <radialGradient id="orb" cx="0.45" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#f1d9ff"/>
+      <stop offset="0.35" stop-color="#b57ae8"/>
+      <stop offset="1" stop-color="#3d1466"/>
+    </radialGradient>
+    <linearGradient id="tail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9a5bd6" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#9a5bd6" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path d="M20 30 Q32 64 44 30 Z" fill="url(#tail)"/>
+  <circle cx="32" cy="24" r="15" fill="url(#orb)" stroke="#1a0a2b" stroke-width="2.5"/>
+  <circle cx="27" cy="19" r="4" fill="#ffffff" fill-opacity="0.7"/>
+</svg>

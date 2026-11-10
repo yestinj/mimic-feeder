@@ -10,6 +10,7 @@ export const TEXTURES = {
     chestClosed: 'chest-closed',
     chestAjar: 'chest-ajar',
     chestOpen: 'chest-open',
+    chain: 'chain',
 } as const;
 
 /** Background texture for a floor index (0 = Floor 1). */
@@ -37,6 +38,7 @@ const OBJECT_IMAGES: Partial<Record<ObjectKind, string>> = {
     crown: 'crown.png',
     diamond: 'diamond.png',
     bomb: 'small_bomb.png',
+    staff: 'staff.png',
 };
 
 
@@ -57,6 +59,11 @@ const SEQUENCES = {
     fireballBurst: { file: (i) => `fireball_burst/frame${pad(i)}.png`, first: 0, count: 16, frameRate: 12, repeat: 0 },
     bombExplosion: { file: (i) => `bomb_explosion/frame${i}.png`, first: 1, count: 7, frameRate: 12, repeat: 0 },
     groundSplat: { file: (i) => `humanoid_splat_ground/frame${pad(i)}.png`, first: 0, count: 8, frameRate: 10, repeat: 0 },
+    potion: { file: (i) => `health_potion/frame${pad(i)}.png`, first: 0, count: 16, frameRate: 15, repeat: -1 },
+    magnet: { file: (i) => `magnet/frame${pad(i)}.png`, first: 0, count: 3, frameRate: 7.5, repeat: -1 },
+    shadowBolt: { file: (i) => `shadow_bolt/frame${pad(i)}.png`, first: 0, count: 4, frameRate: 12, repeat: -1 },
+    /** A Shadow Bolt hit: 12 frames over half a second. */
+    boltHit: { file: (i) => `humanoid_splat/frame${pad(i)}.png`, first: 0, count: 12, frameRate: 24, repeat: 0 },
 } satisfies Record<string, Sequence>;
 
 export type AnimationName = keyof typeof SEQUENCES;
@@ -66,6 +73,10 @@ export const ANIMATIONS: Record<AnimationName, string> = {
     fireballBurst: 'anim-fireball-burst',
     bombExplosion: 'anim-bomb-explosion',
     groundSplat: 'anim-ground-splat',
+    potion: 'anim-potion',
+    magnet: 'anim-magnet',
+    shadowBolt: 'anim-shadow-bolt',
+    boltHit: 'anim-bolt-hit',
 };
 
 function frameKey(name: AnimationName, i: number): string {
@@ -80,6 +91,8 @@ export function firstFrame(name: AnimationName): string {
 /** Falling objects that animate while they fall. */
 export const OBJECT_ANIMATIONS: Partial<Record<ObjectKind, AnimationName>> = {
     fireball: 'fireball',
+    potion: 'potion',
+    magnet: 'magnet',
 };
 
 /** The texture a falling object starts with. */
@@ -100,8 +113,13 @@ export const SOUNDS = {
     explode: { file: 'explode.mp3', volume: 0.5 },
     splat: { file: 'splat.mp3', volume: 0.2 },
     loseLife: { file: 'lose_life.mp3', volume: 0.2 },
-    /** Crowns and diamonds announce themselves with the spell sound. */
-    bling: { file: 'cast_spell.mp3', volume: 0.2 },
+    /** Shadow Bolt and dash (until the dash gets its own whoosh in M4); crowns and diamonds announce themselves with it too. */
+    castSpell: { file: 'cast_spell.mp3', volume: 0.2 },
+    boltHit: { file: 'shadowbolt_hit.mp3', volume: 0.2 },
+    slurp: { file: 'slurp.mp3', volume: 0.5 },
+    magnetism: { file: 'magnetism.mp3', volume: 0.5 },
+    wizardStaff: { file: 'wizard_staff.mp3', volume: 0.2 },
+    healthPotion: { file: 'health_potion.mp3', volume: 0.2 },
 } as const;
 
 export type SoundName = keyof typeof SOUNDS;
@@ -123,6 +141,7 @@ export function loadCoreAssets(load: Phaser.Loader.LoaderPlugin): void {
     load.image(TEXTURES.chestClosed, 'chest_closed.png');
     load.image(TEXTURES.chestAjar, 'chest_ajar.png');
     load.image(TEXTURES.chestOpen, 'chest_open.png');
+    load.image(TEXTURES.chain, 'chain.png');
     for (const [kind, file] of Object.entries(OBJECT_IMAGES)) {
         load.image(`object-${kind}`, file);
     }

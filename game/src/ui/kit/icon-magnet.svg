@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Magnetism: a horseshoe magnet with its pull. -->
+  <path d="M14 10 L14 34 A18 18 0 0 0 50 34 L50 10" fill="none" stroke="#0b0806" stroke-width="16" stroke-linecap="butt"/>
+  <path d="M14 18 L14 34 A18 18 0 0 0 50 34 L50 18" fill="none" stroke="#d8473a" stroke-width="11"/>
+  <path d="M14 8 L14 18 M50 8 L50 18" stroke="#e8e4dc" stroke-width="11"/>
+  <path d="M14 34 A18 18 0 0 0 26 51" fill="none" stroke="#ff9a8a" stroke-opacity="0.6" stroke-width="3"/>
+  <g stroke="#ffd98a" stroke-width="2.5" stroke-linecap="round" fill="none" stroke-opacity="0.85">
+    <path d="M24 6 Q32 1 40 6"/>
+  </g>
+</svg>

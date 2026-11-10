@@ -42,7 +42,7 @@ game/                 # Phaser + TypeScript rewrite, built to dist/next/ (served
   src/ui/             # UI kit (generated SVGs in kit/), buttons, menus, HUD pieces, text; keys.ts for key input
   src/assets.ts       # Asset keys and files (shared src/assets, served at /assets/), animations
   src/audio.ts        # Sound effects, music and mute
-  src/testHook.ts     # window.__mimicFeeder: ready scenes and a state snapshot for the playtest
+  src/testHook.ts     # window.__mimicFeeder: ready scenes and a state snapshot for the playtest; with ?test, debug shortcuts (grant abilities, spawn objects)
   src/theme.ts        # Colours, fonts, type scale, spacing, timings
   src/strings.ts      # All player-facing text
 docs/phaser-migration/  # Migration inventory and plan

@@ -184,7 +184,8 @@ async function checkNextBuild(browser) {
     };
 
     try {
-        const response = await page.goto(BASE + '/next/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        // ?test adds the game's debug shortcuts (window.__mimicFeeder.debug), used for the abilities below.
+        const response = await page.goto(BASE + '/next/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
         assert(Boolean(response && response.headers()['content-security-policy']), '/next/ is served with the _headers Content-Security-Policy');
         await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 20000 });
         assert(true, '/next/ reaches the title screen');
@@ -231,6 +232,34 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && s.game.playTimeMs > paused.game.playTimeMs);
         assert(true, '/next/ Esc resumes the run');
+
+        // Abilities, unlocked through the debug shortcuts, with the normal spawns off so only the test's objects fall.
+        const debug = (name, ...args) => page.evaluate(([fn, list]) => window.__mimicFeeder.debug[fn](...list), [name, args]);
+        await debug('setSpawning', false);
+        await debug('grant', 'shadowBolt');
+        await debug('grant', 'tentacles');
+        await debug('grant', 'magnetism');
+        let before = await waitForSnapshot((s) => s.game.abilities.length === 4);
+        assert(true, '/next/ the Staff, levelling up and the Magnet unlock Shadow Bolt, Tentacles and Magnetism');
+        const awayX = before.game.mimicX > 960 ? 300 : 1620;
+
+        await debug('spawn', 'bomb');
+        await page.keyboard.press('Space');
+        await waitForSnapshot((s) => s.game.hazardsDetonated > before.game.hazardsDetonated);
+        assert((await snapshot()).game.lives === before.game.lives, '/next/ a Shadow Bolt sets off a bomb without costing a life');
+
+        before = await snapshot();
+        await debug('spawn', 'goblin', awayX);
+        await page.keyboard.press('KeyZ');
+        await waitForSnapshot((s) => s.game.creaturesEaten > before.game.creaturesEaten);
+        assert(true, '/next/ Tentacles reel a creature into the mouth');
+
+        before = await snapshot();
+        await debug('spawn', 'crown', awayX);
+        await page.keyboard.press('KeyX');
+        await waitForSnapshot((s) => s.game.shiniesCollected > before.game.shiniesCollected);
+        assert(true, '/next/ Magnetism pulls treasure to the mimic');
+        await debug('setSpawning', true);
 
         // Pause menu: Restart (fifth item) asks first; Cancel is the default.
         await page.keyboard.press('Escape');

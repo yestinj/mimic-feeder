@@ -16,6 +16,11 @@ export interface GameView {
     readonly playTimeMs: number;
     readonly mimicX: number;
     readonly objects: number;
+    /** Abilities unlocked so far. */
+    readonly abilities: readonly string[];
+    readonly creaturesEaten: number;
+    readonly shiniesCollected: number;
+    readonly hazardsDetonated: number;
     /** Falling creatures' centres, lowest first (lets a test chase food). */
     readonly food: readonly { readonly x: number; readonly y: number }[];
 }
@@ -34,11 +39,25 @@ export interface GameSnapshot {
     readonly dialog: boolean;
 }
 
+/** Shortcuts for the playtest, present only with ?test in the URL. */
+export interface DebugApi {
+    /** Unlocks an ability the way the game does (Staff, Magnet, or levelling up to 5 for tentacles). */
+    grant(ability: string): void;
+    /** Drops an object at x (default: above the mimic). */
+    spawn(kind: string, x?: number): void;
+    /** Stops (and clears) or restarts the normal spawns, so a test controls what falls. */
+    setSpawning(on: boolean): void;
+}
+
 export interface MimicFeederTestHook {
     /** Scene keys that have finished creating, in order. */
     readonly ready: string[];
     snapshot?: () => GameSnapshot;
+    debug?: DebugApi;
 }
+
+/** True when the page was opened with ?test: the debug shortcuts are available. */
+export const TEST_MODE = new URLSearchParams(window.location.search).has('test');
 
 declare global {
     interface Window {
@@ -56,6 +75,18 @@ export function markReady(sceneKey: string): void {
 }
 
 let gameView: (() => GameView) | null = null;
+
+/** The game scene provides the debug shortcuts while it exists (test mode only). */
+export function setDebugApi(api: DebugApi | null): void {
+    if (!TEST_MODE) {
+        return;
+    }
+    if (api) {
+        hook().debug = api;
+    } else {
+        delete hook().debug;
+    }
+}
 let dialogOpen = false;
 
 export function setDialogOpen(open: boolean): void {

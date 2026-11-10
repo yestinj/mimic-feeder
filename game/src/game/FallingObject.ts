@@ -15,6 +15,10 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
     readonly def: ObjectDef;
     /** This object's own speed factor (±25%), kept when the drop speed changes. */
     private readonly variation: number;
+    /** Set by Magnetism: the speed it flies at the mimic (5× its fall speed when pulled). */
+    magnetSpeed: number | null = null;
+    /** Held by a tentacle and being pulled into the mouth: no contact or floor checks. */
+    grabbed = false;
     declare body: Phaser.Physics.Arcade.Body;
 
     constructor(scene: Phaser.Scene, kind: ObjectKind, x: number, variation: number) {
@@ -42,9 +46,34 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
         return this.body.velocity.y > 0;
     }
 
-    /** Sets the fall speed from the current drop speed (design px/s). */
+    /** Sets the fall speed from the current drop speed (design px/s). Magnetised and grabbed objects keep moving their own way. */
     setDropSpeed(dropSpeed: number): void {
-        this.setVelocityY(dropSpeed * this.variation * this.def.fallSpeed);
+        if (this.magnetSpeed === null && !this.grabbed) {
+            this.setVelocityY(dropSpeed * this.variation * this.def.fallSpeed);
+        }
+    }
+
+    /** Starts flying at the mimic at `multiplier` times its current fall speed, until it's gone. */
+    magnetise(multiplier: number): void {
+        this.magnetSpeed ??= Math.abs(this.body.velocity.y) * multiplier;
+    }
+
+    /** Steers a magnetised object at (x, y). */
+    steerTowards(x: number, y: number): void {
+        if (this.magnetSpeed === null || this.grabbed) {
+            return;
+        }
+        const direction = new Phaser.Math.Vector2(x - this.x, y - this.y);
+        if (direction.lengthSq() > 0) {
+            direction.normalize().scale(this.magnetSpeed);
+            this.setVelocity(direction.x, direction.y);
+        }
+    }
+
+    /** A tentacle has it: it stops falling and is moved by the tentacle. */
+    grab(): void {
+        this.grabbed = true;
+        this.setVelocity(0, 0);
     }
 
     rect(): Rect {
