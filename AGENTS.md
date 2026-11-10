@@ -135,7 +135,7 @@ The playtest and `npm run lint:p5-globals` always use **Playwright's own Chromiu
 
 `.github/workflows/ci.yml` runs on pushes to `main` and on every PR: `npm ci`, `npm test`, then `npm run playtest` with the same Playwright Chromium as local runs, on the Node version in `.nvmrc`. Screenshots are uploaded as an artifact when it fails. Keep it green; a red check means a gate above failed.
 
-`.github/workflows/deploy-check.yml` runs after each push to `main`. It waits (up to 15 minutes) for Cloudflare's own **Cloudflare Pages** check on that commit to succeed, then runs `npm run check:live` against https://mimicfeeder.yest.dev/: the page loads with its CSP, p5 loads, the game reaches active play, and there are no CSP violations, errors, failed requests or HTTP errors. A failed deploy, a missing deploy, or a broken live site turns that run red. It is not a required check (it runs after merging). To verify a deploy, read that run's result rather than probing the site from the owner's Mac; there, a newly installed Playwright Chromium must first be approved in Little Snitch.
+`.github/workflows/deploy-check.yml` runs after each push to `main`. It waits (up to 15 minutes) for Cloudflare's own **Cloudflare Pages** check on that commit to succeed, then runs `npm run check:live` against https://mimicfeeder.yest.dev/: the page loads with its CSP, p5 loads, the game reaches active play, and there are no CSP violations, errors, failed requests or HTTP errors. A failed deploy, a missing deploy, or a broken live site turns that run red. It is not a required check (it runs after merging). To verify a deploy, read that run's result rather than probing the site locally.
 
 Work on short-lived branches off `main` (there is no `develop` branch). PRs are squash-merged: it is the only merge method enabled, the squash commit takes the PR title, and the head branch is deleted automatically after merging.
 
@@ -171,6 +171,7 @@ Handle them explicitly and narrowly, never by turning a rule off for the bundle:
 | Update smoke contracts when changing control contracts | Leave smoke asserting removed behavior |
 | Use bare globals in browser automation | Assume `window.gameState` etc. |
 | Fix or narrowly annotate lint findings | Disable ESLint rules for the game bundle or skip `npm test` |
+| Keep repo files, commits, PRs and comments about the project | Mention the owner's machine, OS, installed tools, network setup or other personal details anywhere public (the repo is public) |
 
 ## Deploy
 
