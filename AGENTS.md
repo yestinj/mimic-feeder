@@ -132,6 +132,8 @@ The playtest and `npm run lint:p5-globals` always use **Playwright's own Chromiu
 
 `.github/workflows/ci.yml` runs on pushes to `main` / `develop` and on every PR: `npm ci`, `npm test`, then `npm run playtest` with the same Playwright Chromium as local runs, on the Node version in `.nvmrc`. Screenshots are uploaded as an artifact when it fails. Keep it green; a red check means a gate above failed.
 
+`main` is protected by the **Protect main** repository ruleset (GitHub → Settings → Rules): changes arrive only through PRs (0 approvals required), the `Lint, build, smoke, playtest` check must pass, and force pushes and branch deletion are blocked. Repo admins can bypass it on a PR for emergencies (e.g. a cdnjs outage breaking CI); agents must never use or suggest the bypass. If you rename the CI job, update the ruleset's required check in the same change, or every PR to `main` will wait forever for the old check name.
+
 Dependabot (`.github/dependabot.yml`) opens weekly PRs: one grouped PR for minor/patch npm updates, separate PRs for npm majors, and one for GitHub Actions. CI tests each; after merging a Playwright bump locally, run `npm run playtest:install`.
 
 ### Lint false positives

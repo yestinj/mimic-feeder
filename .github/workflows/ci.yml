@@ -15,6 +15,8 @@ concurrency:
 
 jobs:
     test:
+        # Required status check in the "Protect main" ruleset: if you rename
+        # this job, update the ruleset (Settings -> Rules) in the same change.
         name: Lint, build, smoke, playtest
         runs-on: ubuntu-latest
         timeout-minutes: 20
