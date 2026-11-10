@@ -8,11 +8,10 @@ export type Rng = () => number;
 /** Chance per spawn tick of a hazard joining the normal spawn, once hazards have started. */
 export const HAZARD_CHANCE = 0.15;
 
-/**
- * Objects that can come up in the normal spawn roll. Everything so far is
- * available from the start; cats and dragons (M2) are gated by floor.
- */
-export const SPAWN_POOL: readonly ObjectDef[] = Object.values(OBJECTS).filter((def) => def.weight > 0);
+/** Objects that can come up in the normal spawn roll on a floor: cats from Floor 2, dragons from Floor 3. */
+export function spawnPool(floor: number): readonly ObjectDef[] {
+    return Object.values(OBJECTS).filter((def) => def.weight > 0 && floor >= (def.fromFloor ?? 1));
+}
 
 /** Weighted pick: each item's chance is its weight over the total. */
 export function pickWeighted<T extends { readonly weight: number }>(items: readonly T[], rng: Rng): T {
@@ -33,8 +32,8 @@ export function pickWeighted<T extends { readonly weight: number }>(items: reado
 }
 
 /** The object for this spawn tick. */
-export function pickObject(rng: Rng): ObjectKind {
-    return pickWeighted(SPAWN_POOL, rng).kind;
+export function pickObject(floor: number, rng: Rng): ObjectKind {
+    return pickWeighted(spawnPool(floor), rng).kind;
 }
 
 /** A hazard to add on this spawn tick, if any: bombs from Floor 1 Zone 3, and fireballs half the time from Floor 4. */

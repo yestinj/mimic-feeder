@@ -21,6 +21,10 @@ export interface GameView {
     readonly creaturesEaten: number;
     readonly shiniesCollected: number;
     readonly hazardsDetonated: number;
+    readonly catsRescued: number;
+    /** Dragons flying off right now. */
+    readonly flyingDragons: number;
+    readonly boss: { readonly health: number; readonly max: number; readonly phase: string } | null;
     /** Falling creatures' centres, lowest first (lets a test chase food). */
     readonly food: readonly { readonly x: number; readonly y: number }[];
 }
@@ -49,6 +53,10 @@ export interface DebugApi {
     spawn(kind: string, x?: number): void;
     /** Stops (and clears) or restarts the normal spawns, so a test controls what falls. */
     setSpawning(on: boolean): void;
+    /** Jumps to the next boss fight (Zone 5 of the next even floor). */
+    startBoss(): void;
+    /** Applies Shadow Bolt hits to the boss without aiming. */
+    damageBoss(hits: number): void;
 }
 
 export interface MimicFeederTestHook {

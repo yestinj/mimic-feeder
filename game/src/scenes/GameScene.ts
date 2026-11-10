@@ -1,23 +1,29 @@
 import * as Phaser from 'phaser';
-import { MUSIC, backgroundKey, floorBackground } from '../assets';
+import { ANIMATIONS, MUSIC, backgroundKey, firstFrame, floorBackground } from '../assets';
 import { MusicPlayer, playSound } from '../audio';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y, RUN_SCALE, SIZE_SCALE } from '../config';
+import { Boss } from '../game/Boss';
 import { FallingObject, objectWidth } from '../game/FallingObject';
 import { Mimic } from '../game/Mimic';
 import { ShadowBolts } from '../game/ShadowBolts';
 import { Tentacles } from '../game/Tentacles';
 import { GLOW_COLOURS, boltHit, explode, pointsPopup, shake, spawnGlow, splat } from '../game/effects';
 import { ABILITIES, Cooldowns, DoubleTap, nearestTargets, type Ability } from '../rules/abilities';
+import { BOSS } from '../rules/boss';
+import { CAT_FADE_MS, CAT_RESCUE_MS } from '../rules/cats';
+import { DRAGON, flight, shouldFlee } from '../rules/dragon';
 import { expand, overlaps, resolveContact, type Rect } from '../rules/contact';
-import { isCreature, isHazard, isPowerUp, isShiny, type ObjectKind, type PowerUpKind } from '../rules/objects';
+import { isCreature, isEdible, isHazard, isPowerUp, isShiny, type ObjectKind, type PowerUpKind } from '../rules/objects';
+import { CREATURES_PER_ZONE } from '../rules/progression';
 import { dropSpeed, musicForFloor, spawnInterval } from '../rules/progression';
 import { Run, type RunEvent } from '../rules/run';
 import { SpawnHistory, keepClearOf, pickObject, pickSpawnX, rollHazard } from '../rules/spawner';
 import { MIMIC, SPAWNING } from '../rules/tuning';
-import { firstIntroduction } from '../session';
+import { markIntroduced, wasIntroduced } from '../session';
 import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
 import { onKeyDown } from '../ui/keys';
 import { COLOURS, MOTION } from '../theme';
+import type { HudScene } from './HudScene';
 import { GAME_EVENTS } from './SystemScene';
 
 /** Events the game scene emits on its own `events`, for the HUD. */
@@ -30,9 +36,16 @@ export const RUN_EVENTS = {
     over: 'run-over',
     /** An ability unlocked that the player has been introduced to before (payload: the ability). */
     abilityNotice: 'ability-notice',
+    /** The boss's health changed (payload: { health, max }), or the boss is gone (payload: null). */
+    boss: 'boss',
 } as const;
 
-const DEPTH = { background: -10, ground: -9, glow: -1, objects: 0, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
+export interface BossHealth {
+    readonly health: number;
+    readonly max: number;
+}
+
+const DEPTH = { background: -10, ground: -9, glow: -1, objects: 0, boss: 0.25, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
 /** Dash distance from the p5 game (100 px), across the wider screen. */
 const DASH_DISTANCE = 100 * RUN_SCALE;
 /** Magnetised objects fly at the mimic at 5× their fall speed. */
@@ -40,6 +53,8 @@ const MAGNET_PULL = 5;
 /** How long the lid stays open after the tentacles lash out, and ajar after a cast (ms). */
 const TENTACLE_LID_MS = 1000;
 const CAST_LID_MS = 250;
+/** After a boss, new-ability cards wait at least this long into the next floor, and for its banners to finish. */
+const CARDS_AFTER_BOSS_MS = 1000;
 const POWER_UP_SOUNDS = { staff: 'wizardStaff', magnet: 'magnetism', potion: 'healthPotion' } as const satisfies Record<PowerUpKind, string>;
 
 export interface AbilityState {
@@ -60,6 +75,10 @@ export class GameScene extends Phaser.Scene {
     private objects!: Phaser.Physics.Arcade.Group;
     private bolts!: ShadowBolts;
     private tentacles!: Tentacles;
+    private boss: Boss | null = null;
+    private bossFireballs!: Phaser.Physics.Arcade.Group;
+    /** Normal music waits while the boss's death cue plays. */
+    private musicHeld = false;
     private cooldowns!: Cooldowns;
     private doubleTap!: DoubleTap;
     private history!: SpawnHistory;
@@ -75,6 +94,8 @@ export class GameScene extends Phaser.Scene {
     private pauseBlur: Phaser.Filters.Blur | null = null;
     /** Abilities unlocked for the first time, waiting to be introduced on a card. */
     private pendingCards: Ability[] = [];
+    /** After a boss: cards wait until this scene time and for the HUD's banners to finish. */
+    private cardsAfterBoss: number | null = null;
     /** Points scored at the mouth this frame, shown as one pop-up at the end of it. */
     private mouthPoints = { points: 0, treasure: false };
     private readonly random = Math.random;
@@ -97,6 +118,12 @@ export class GameScene extends Phaser.Scene {
         }));
     }
 
+    /** The boss's hitbox while it's here, so the HUD can fade what it flies behind. */
+    bossBounds(): Rect | null {
+        const body = this.boss?.body;
+        return body ? { x: body.x, y: body.y, width: body.width, height: body.height } : null;
+    }
+
     /** Where the mimic is, so the HUD can fade what it's standing behind. */
     mimicBounds(): Rect {
         const { x, y, displayWidth, displayHeight } = this.mimic.sprite;
@@ -114,7 +141,10 @@ export class GameScene extends Phaser.Scene {
         this.ending = false;
         this.pauseBlur = null;
         this.pendingCards = [];
+        this.cardsAfterBoss = null;
         this.mouthPoints = { points: 0, treasure: false };
+        this.boss = null;
+        this.musicHeld = false;
         this.shownBackground = '';
 
         this.physics.world.setBounds(0, 0, DESIGN_WIDTH, GROUND_Y);
@@ -122,9 +152,11 @@ export class GameScene extends Phaser.Scene {
         this.mimic = new Mimic(this, DESIGN_WIDTH / 2);
         this.mimic.sprite.setDepth(DEPTH.mimic);
         this.objects = this.physics.add.group();
-        // Grabbed objects belong to the tentacles until they reach the mouth.
+        // Grabbed objects belong to the tentacles until they reach the mouth; rescued cats are leaving.
         this.physics.add.overlap(this.mimic.hitbox, this.objects, (_mimic, object) => this.touch(object as FallingObject),
-            (_mimic, object) => !(object as FallingObject).grabbed);
+            (_mimic, object) => this.canTouch(object as FallingObject));
+        this.bossFireballs = this.physics.add.group();
+        this.physics.add.overlap(this.mimic.hitbox, this.bossFireballs, (_mimic, fireball) => this.burn(fireball as Phaser.Physics.Arcade.Sprite));
         this.bolts = new ShadowBolts(this, DEPTH.bolts);
         // Shadow Bolts pass through fireballs.
         this.physics.add.overlap(this.bolts.group, this.objects, (bolt, object) => this.boltHit(bolt as Phaser.Physics.Arcade.Sprite, object as FallingObject),
@@ -153,6 +185,12 @@ export class GameScene extends Phaser.Scene {
                     this.activeObjects().forEach((object) => object.destroy());
                 }
             },
+            startBoss: () => this.debugStartBoss(),
+            damageBoss: (hits) => {
+                for (let i = 0; i < hits && this.boss?.alive; i++) {
+                    this.hitBoss(this.boss.x, this.boss.y);
+                }
+            },
         });
         setGameView(() => ({
             score: this.run.score,
@@ -168,8 +206,11 @@ export class GameScene extends Phaser.Scene {
             creaturesEaten: this.run.creaturesEaten,
             shiniesCollected: this.run.shiniesCollected,
             hazardsDetonated: this.run.hazardsDetonated,
+            catsRescued: this.run.catsRescued,
+            flyingDragons: this.activeObjects().filter((object) => object.flightEndsAt !== null).length,
+            boss: this.boss ? { health: this.boss.health, max: this.boss.maxHealth, phase: this.boss.phase } : null,
             food: this.activeObjects()
-                .filter((object) => isCreature(object.kind))
+                .filter((object) => isEdible(object.kind) && object.landedAt === null)
                 .map((object) => ({ x: Math.round(object.x), y: Math.round(object.y) }))
                 .sort((a, b) => b.y - a.y),
         }));
@@ -193,10 +234,12 @@ export class GameScene extends Phaser.Scene {
         const interval = spawnInterval(this.run.gameLevel);
         if (this.spawnElapsed >= interval) {
             this.spawnElapsed -= interval;
-            if (this.spawning) {
+            // Nothing falls during a boss fight but its fireballs.
+            if (this.spawning && !this.run.inBossFight) {
                 this.spawn();
             }
         }
+        this.updateBoss(delta);
 
         this.cooldowns.tick(delta);
         this.bolts.update();
@@ -212,6 +255,12 @@ export class GameScene extends Phaser.Scene {
 
         for (const object of this.activeObjects()) {
             object.steerTowards(this.mimic.centerX, this.mimic.centerY);
+            if (object.kind === 'dragon') {
+                this.updateDragon(object);
+            } else if (object.landedAt !== null) {
+                this.updateWaitingCat(object);
+                continue;
+            }
             if (!object.grabbed && object.body.bottom >= GROUND_Y) {
                 this.land(object);
             }
@@ -223,9 +272,12 @@ export class GameScene extends Phaser.Scene {
             this.mouthPoints = { points: 0, treasure: false };
         }
 
-        // New abilities are introduced at the end of the frame, with the game paused.
-        if (this.pendingCards.length > 0 && !this.ending) {
-            this.openOverlay('unlock', { abilities: this.pendingCards.splice(0) });
+        // New abilities are introduced at the end of the frame, with the game paused,
+        // except from a boss's defeat until the next floor is under way.
+        if (this.pendingCards.length > 0 && !this.ending && this.cardsCanOpen()) {
+            const abilities = this.pendingCards.splice(0);
+            abilities.forEach(markIntroduced);
+            this.openOverlay('unlock', { abilities });
         }
     }
 
@@ -307,7 +359,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.run.hasAbility('tentacles') || !this.cooldowns.ready('tentacles')) {
             return;
         }
-        const creatures = this.activeObjects().filter((object) => isCreature(object.kind) && !object.grabbed);
+        const creatures = this.activeObjects().filter((object) => isEdible(object.kind) && !object.grabbed && !object.rescued);
         const targets = nearestTargets(this.mimic.centerX, this.mimic.centerY, creatures, this.run.tentacleReach);
         if (targets.length === 0 || !this.useAbility('tentacles')) {
             return;
@@ -354,7 +406,7 @@ export class GameScene extends Phaser.Scene {
     private spawn(): void {
         // A power-up that's due takes the place of the normal spawn.
         const onScreen = new Set(this.activeObjects().map((object) => object.kind));
-        const kind = this.run.offerPowerUp(onScreen, this.random) ?? pickObject(this.random);
+        const kind = this.run.offerPowerUp(onScreen, this.random) ?? pickObject(this.run.floor, this.random);
         this.addObject(kind, this.placeX(kind));
 
         const hazard = rollHazard(this.run.floor, this.run.zone, this.random);
@@ -395,6 +447,22 @@ export class GameScene extends Phaser.Scene {
         return this.activeObjects().some((object) => !isHazard(object.kind) && overlaps(reach, object.rect()));
     }
 
+    /**
+     * Whether a touch counts. Grabbed objects belong to the tentacles and
+     * rescued cats are leaving. A dragon that's about to be touched flies off
+     * instead, as in the p5 game, where it checked before anything else.
+     */
+    private canTouch(object: FallingObject): boolean {
+        if (object.grabbed || object.rescued) {
+            return false;
+        }
+        if (object.kind === 'dragon' && object.flightEndsAt === null && this.dragonShouldFlee(object)) {
+            this.startDragonFlight(object);
+            return false;
+        }
+        return true;
+    }
+
     /** Something touched the mimic: eaten, hit side-on, collected or set off. */
     private touch(object: FallingObject): void {
         if (this.ending || !object.active) {
@@ -404,10 +472,10 @@ export class GameScene extends Phaser.Scene {
         let events: RunEvent[] = [];
         switch (resolveContact(object.def.category, object.rect(), this.mimic.rect(), object.falling)) {
             case 'eat':
-                if (isCreature(kind)) {
+                if (isEdible(kind)) {
                     events = this.run.eat(kind);
                 }
-                playSound(this, 'collect');
+                playSound(this, kind === 'cat' ? 'catMeow' : 'collect');
                 break;
             case 'collect':
                 if (isShiny(kind)) {
@@ -421,9 +489,14 @@ export class GameScene extends Phaser.Scene {
                 }
                 break;
             case 'sideHit':
-                events = this.run.sideHit();
+                // A cat touched any way but through the mouth dies: no life lost, but it cries out.
+                if (kind === 'cat') {
+                    this.run.killCat();
+                } else {
+                    events = this.run.sideHit();
+                }
                 splat(this, object.x, object.y, object.displayWidth).setDepth(DEPTH.effects);
-                playSound(this, 'splat');
+                playSound(this, kind === 'cat' ? 'catHurt' : 'splat');
                 break;
             case 'detonate':
                 if (isHazard(kind)) {
@@ -441,6 +514,11 @@ export class GameScene extends Phaser.Scene {
     /** Something reached the floor. */
     private land(object: FallingObject): void {
         const kind = object.kind;
+        if (kind === 'cat') {
+            // Cats land safely and wait to be rescued.
+            object.land(GROUND_Y, this.time.now);
+            return;
+        }
         let events: RunEvent[] = [];
         if (isCreature(kind)) {
             events = this.run.miss();
@@ -462,10 +540,193 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         const kind = target.kind;
-        const events = isCreature(kind) ? this.run.eat(kind) : [];
-        playSound(this, 'collect');
+        const events = isEdible(kind) ? this.run.eat(kind) : [];
+        playSound(this, kind === 'cat' ? 'catMeow' : 'collect');
         target.destroy();
         this.apply(events, false);
+    }
+
+    /** A cat on the floor is rescued after a while, scores 100 and fades away. */
+    private updateWaitingCat(cat: FallingObject): void {
+        if (cat.rescued || cat.landedAt === null || this.time.now - cat.landedAt < CAT_RESCUE_MS) {
+            return;
+        }
+        cat.rescued = true;
+        playSound(this, 'catMeow');
+        this.apply(this.run.rescueCat(), false, { x: cat.x, y: cat.y - cat.displayHeight / 2 });
+        this.tweens.add({ targets: cat, alpha: 0, duration: CAT_FADE_MS, onComplete: () => cat.destroy() });
+    }
+
+    private dragonShouldFlee(dragon: FallingObject): boolean {
+        return shouldFlee(dragon.rect(), dragon.y, this.mimic.rect(), DRAGON.minHeight * SIZE_SCALE, DRAGON.range * SIZE_SCALE);
+    }
+
+    private startDragonFlight(dragon: FallingObject): void {
+        const { vx, vy, ms } = flight(DRAGON.flightSpeed * this.dropSpeed(), this.random);
+        dragon.fly(vx, vy, this.time.now + ms);
+    }
+
+    /** Dragons take fright when the mimic gets close, and fly off until their flight ends or they reach a wall. */
+    private updateDragon(dragon: FallingObject): void {
+        if (dragon.grabbed) {
+            return;
+        }
+        if (dragon.flightEndsAt === null) {
+            if (this.dragonShouldFlee(dragon)) {
+                this.startDragonFlight(dragon);
+            }
+            return;
+        }
+        const half = dragon.displayWidth / 2;
+        if (this.time.now >= dragon.flightEndsAt || dragon.x - half < 0 || dragon.x + half > DESIGN_WIDTH) {
+            dragon.endFlight(this.dropSpeed());
+        } else if (dragon.y - dragon.displayHeight / 2 < 0 && dragon.body.velocity.y < 0) {
+            // At the top it carries on sideways.
+            dragon.setVelocityY(0);
+        }
+    }
+
+    /**
+     * A boss fight begins (Zone 5 of an even floor): the board is cleared, a
+     * missing Staff is granted (only Shadow Bolts hurt the boss), and the boss
+     * arrives to its own music.
+     */
+    private startBossFight(): void {
+        this.clearBoard();
+        if (!this.run.hasStaff) {
+            this.apply(this.run.collectPowerUp('staff'), false);
+        }
+        const boss = new Boss(this, this.run.floor, this.random).setDepth(DEPTH.boss);
+        this.boss = boss;
+        // Bolts pass through the boss while it dies.
+        this.physics.add.overlap(boss, this.bolts.group, (_boss, bolt) => {
+            const sprite = bolt as Phaser.Physics.Arcade.Sprite;
+            if (sprite.active) {
+                sprite.destroy();
+                this.hitBoss(sprite.x, sprite.y);
+            }
+        }, () => boss.alive);
+        this.music.play('boss');
+        this.emitBossHealth();
+    }
+
+    /** Clears the board for the boss: creatures and cats splat, hazards go off, anything else vanishes. No lives are lost. */
+    private clearBoard(): void {
+        this.tentacles.clear();
+        for (const object of this.activeObjects()) {
+            if (isEdible(object.kind)) {
+                splat(this, object.x, object.y, object.displayWidth).setDepth(DEPTH.effects);
+                playSound(this, 'splat');
+            } else if (isHazard(object.kind)) {
+                explode(this, object.kind, object.x, object.y, object.displayWidth, object.displayHeight).setDepth(DEPTH.effects);
+                playSound(this, 'explode');
+            }
+            object.destroy();
+        }
+    }
+
+    private updateBoss(delta: number): void {
+        this.boss?.tick(delta, (x, y, speed) => this.fireBossFireball(x, y, speed), () => this.bossGone());
+        for (const fireball of this.bossFireballs.getChildren() as Phaser.Physics.Arcade.Sprite[]) {
+            if (fireball.active && fireball.body && fireball.body.bottom >= GROUND_Y) {
+                explode(this, 'fireball', fireball.x, GROUND_Y - fireball.displayHeight / 2, fireball.displayWidth, fireball.displayHeight).setDepth(DEPTH.effects);
+                playSound(this, 'explode');
+                fireball.destroy();
+            }
+        }
+    }
+
+    private fireBossFireball(x: number, y: number, speed: number): void {
+        const fireball = this.physics.add.sprite(x, y, firstFrame('bossFireball'));
+        // The frames point sideways; turned to fall nose first, as the p5 game drew them.
+        fireball.setScale((BOSS.fireballSize * SIZE_SCALE) / fireball.width).setAngle(90).setDepth(DEPTH.objects);
+        fireball.play(ANIMATIONS.bossFireball);
+        this.bossFireballs.add(fireball);
+        fireball.setVelocityY(speed);
+    }
+
+    /** A boss fireball hit the mimic. */
+    private burn(fireball: Phaser.Physics.Arcade.Sprite): void {
+        if (this.ending || !fireball.active) {
+            return;
+        }
+        explode(this, 'fireball', fireball.x, fireball.y, fireball.displayWidth, fireball.displayHeight).setDepth(DEPTH.effects);
+        playSound(this, 'explode');
+        fireball.destroy();
+        this.apply(this.run.burn(), false);
+    }
+
+    /** A Shadow Bolt struck the boss at (x, y). The last hit wins the fight: points, the death cue, then the next floor. */
+    private hitBoss(x: number, y: number): void {
+        const boss = this.boss;
+        if (this.ending || !boss?.alive) {
+            return;
+        }
+        boltHit(this, x, y).setDepth(DEPTH.effects);
+        playSound(this, 'boltHit');
+        if (boss.hit()) {
+            this.bossFireballs.clear(true, true);
+            this.music.stop();
+            // The floor's music comes back once the death cue has played.
+            const cue = playSound(this, 'bossDeath');
+            this.musicHeld = cue !== null;
+            cue?.once(Phaser.Sound.Events.COMPLETE, () => {
+                this.musicHeld = false;
+                if (!this.ending && !this.run.inBossFight) {
+                    this.music.play(musicForFloor(this.run.floor));
+                }
+            });
+            this.apply(this.run.defeatBoss(), true, { x: boss.x, y: boss.y });
+        }
+        this.emitBossHealth();
+    }
+
+    /** The boss's death animation is over: on to the next floor. Any new ability waits until it's under way. */
+    private bossGone(): void {
+        this.boss?.destroy();
+        this.boss = null;
+        this.emitBossHealth();
+        this.cardsAfterBoss = this.time.now + CARDS_AFTER_BOSS_MS;
+        this.apply(this.run.finishBossFloor(), false);
+    }
+
+    /**
+     * Whether a new-ability card may open now. Not while a beaten boss dies,
+     * and after one, not until the next floor has begun and the "Boss
+     * Defeated!" and new-floor banners have played.
+     */
+    private cardsCanOpen(): boolean {
+        if (this.boss !== null && !this.boss.alive) {
+            return false;
+        }
+        if (this.cardsAfterBoss === null) {
+            return true;
+        }
+        const hud = this.scene.get('hud') as HudScene;
+        if (this.time.now < this.cardsAfterBoss || hud.bannersBusy) {
+            return false;
+        }
+        this.cardsAfterBoss = null;
+        return true;
+    }
+
+    private emitBossHealth(): void {
+        const health: BossHealth | null = this.boss ? { health: Math.max(0, this.boss.health), max: this.boss.maxHealth } : null;
+        this.events.emit(RUN_EVENTS.boss, health);
+    }
+
+    /** Test mode only: jumps to the next boss fight through the normal path (eating the zone's last creature). */
+    private debugStartBoss(): void {
+        if (this.run.inBossFight) {
+            return;
+        }
+        if (this.run.floor % 2 === 1) {
+            this.run.floor += 1;
+            this.showFloorBackground(false);
+        }
+        this.run.zone = 4;
+        this.run.eatenInZone = CREATURES_PER_ZONE - 1;
+        this.apply(this.run.eat('goblin'), false);
     }
 
     /** A Shadow Bolt hit something: bombs go off (for points), everything else is destroyed. */
@@ -481,6 +742,10 @@ export class GameScene extends Phaser.Scene {
             explode(this, kind, object.x, object.y, object.displayWidth, object.displayHeight).setDepth(DEPTH.effects);
             playSound(this, 'explode');
             shake(this.cameras.main, 5);
+        } else if (kind === 'cat') {
+            this.run.shootCat();
+            boltHit(this, object.x, object.y).setDepth(DEPTH.effects);
+            playSound(this, 'catHurt');
         } else {
             this.run.shoot();
             boltHit(this, object.x, object.y).setDepth(DEPTH.effects);
@@ -514,7 +779,12 @@ export class GameScene extends Phaser.Scene {
                     this.activeObjects().forEach((object) => object.setDropSpeed(this.dropSpeed()));
                     if (event.newFloor) {
                         this.showFloorBackground(false);
-                        this.music.play(musicForFloor(event.floor));
+                        if (!this.musicHeld) {
+                            this.music.play(musicForFloor(event.floor));
+                        }
+                    }
+                    if (event.boss) {
+                        this.startBossFight();
                     }
                     break;
                 case 'extraLife':
@@ -525,8 +795,10 @@ export class GameScene extends Phaser.Scene {
                     break;
                 case 'unlock':
                     // The first time: a card that pauses the game. After that: a toast.
-                    if (firstIntroduction(event.ability)) {
-                        this.pendingCards.push(event.ability);
+                    if (!wasIntroduced(event.ability)) {
+                        if (!this.pendingCards.includes(event.ability)) {
+                            this.pendingCards.push(event.ability);
+                        }
                     } else {
                         this.events.emit(RUN_EVENTS.abilityNotice, event.ability);
                     }

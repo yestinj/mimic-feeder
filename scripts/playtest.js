@@ -274,6 +274,24 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('KeyX');
         await waitForSnapshot((s) => s.game.shiniesCollected > before.game.shiniesCollected);
         assert(true, '/next/ Magnetism pulls treasure to the mimic');
+
+        // Cats land safely and are rescued; dragons fly off when the mimic is beneath them.
+        before = await snapshot();
+        await debug('spawn', 'cat', awayX);
+        await waitForSnapshot((s) => s.game.catsRescued > before.game.catsRescued, 60000);
+        assert((await snapshot()).game.lives === before.game.lives, '/next/ a cat lands safely and is rescued');
+        await debug('spawn', 'dragon');
+        await waitForSnapshot((s) => s.game.flyingDragons > 0, 60000);
+        assert(true, '/next/ a dragon flies off when the mimic is beneath it');
+
+        // Zone 5 of an even floor is a boss fight; beating the boss moves on a floor.
+        await debug('startBoss');
+        const fight = await waitForSnapshot((s) => s.game.boss !== null);
+        assert(fight.game.floor % 2 === 0 && fight.game.zone === 5 && fight.game.objects === 0,
+            '/next/ Zone 5 of an even floor starts a boss fight on a cleared board');
+        await debug('damageBoss', fight.game.boss.max);
+        await waitForSnapshot((s) => s.game.boss === null && s.game.floor === fight.game.floor + 1 && s.game.zone === 1, 60000);
+        assert(true, '/next/ beating the boss moves on to the next floor');
         await debug('setSpawning', true);
 
         // Pause menu: Restart (fifth item) asks first; Cancel is the default.

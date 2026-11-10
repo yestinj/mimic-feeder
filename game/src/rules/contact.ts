@@ -39,7 +39,8 @@ export function isBite(food: Rect, mimic: Rect, falling: boolean): boolean {
 
 /**
  * - eat: a creature went into the mouth.
- * - sideHit: a creature hit the side of the chest and was destroyed (costs a life).
+ * - sideHit: a creature hit the side of the chest and was destroyed (costs a life;
+ *   a cat dies without costing one).
  * - collect: a shiny or power-up, on any contact.
  * - detonate: a hazard, on any contact.
  */
@@ -53,6 +54,7 @@ export function resolveContact(category: ObjectCategory, object: Rect, mimic: Re
         case 'powerUp':
             return 'collect';
         case 'creature':
+        case 'cat':
             return isBite(object, mimic, falling) ? 'eat' : 'sideHit';
     }
 }
