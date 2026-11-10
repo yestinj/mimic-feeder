@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Nine-slice keycap: 18 px corners stay fixed. The darker base shows below the face. -->
+  <defs>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#40342b"/>
+      <stop offset="1" stop-color="#2a221c"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="10" fill="#161210" stroke="#8f6d35" stroke-width="1.5"/>
+  <rect x="4" y="3" width="56" height="51" rx="8" fill="url(#face)"/>
+  <line x1="12" y1="5" x2="52" y2="5" stroke="#ffffff" stroke-opacity="0.12"/>
+</svg>

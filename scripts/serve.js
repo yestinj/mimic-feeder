@@ -67,14 +67,18 @@ function listDistFiles(dirPath, files = []) {
 }
 
 /**
- * Every URL path Cloudflare Pages would serve from dist/: `/` (index.html)
- * plus each file, minus `_headers` itself (Pages consumes it, never serves it).
+ * Every URL path Cloudflare Pages would serve from dist/: each file, minus
+ * `_headers` itself (Pages consumes it, never serves it), plus the directory
+ * path (`/`, `/next/`, ...) of every index.html.
  */
 function listServedPaths() {
     const filePaths = listDistFiles(DIST)
         .filter((filePath) => filePath !== HEADERS_FILE)
         .map((filePath) => '/' + path.relative(DIST, filePath).split(path.sep).join('/'));
-    return ['/', ...filePaths.sort()];
+    const directoryPaths = filePaths
+        .filter((urlPath) => urlPath.endsWith('/index.html'))
+        .map((urlPath) => urlPath.slice(0, -'index.html'.length));
+    return [...directoryPaths, ...filePaths].sort();
 }
 
 /**
@@ -127,7 +131,8 @@ function startStaticServer({ headerRules, host, port, cacheControlOverride, cach
             pagesHeaders['Cache-Control'] = cacheControlOverride;
         }
 
-        const safePath = urlPath === '/' ? '/index.html' : urlPath;
+        // Like Pages, a directory path serves that directory's index.html.
+        const safePath = urlPath.endsWith('/') ? `${urlPath}index.html` : urlPath;
         const filePath = path.normalize(path.join(DIST, safePath));
         if (!filePath.startsWith(DIST + path.sep)) {
             res.writeHead(403, pagesHeaders);

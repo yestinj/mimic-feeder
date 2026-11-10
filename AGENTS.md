@@ -10,6 +10,7 @@ Guidance for coding agents working in this repository.
 - **License:** CC BY-NC 4.0 (non-commercial)
 - **Status:** Playable beta / portfolio project — keep changes focused; avoid large refactors unless asked
 - **Not accepting external contributions** (see `CONTRIBUTING.md`); forks are fine under the license
+- **Rewrite in progress:** the game is being rebuilt in **Phaser 4 + TypeScript** in `game/`, served at `/next/` next to the live p5 game until it reaches parity and replaces it. The plan, decisions and milestones are in `docs/phaser-migration/plan.md`; `docs/phaser-migration/inventory.md` lists everything the p5 game does. New gameplay or UI work goes into `game/`; the p5 game only gets fixes.
 
 ## Stack
 
@@ -19,6 +20,7 @@ Guidance for coding agents working in this repository.
 | Rendering / audio | p5.js **1.11.13** + p5.sound (CDN) |
 | Build | Custom `build.js` (esbuild minifies the JS bundle and CSS; HTML is copied unminified) |
 | Deploy | Static **Cloudflare Pages** from `dist/` (GitHub integration) |
+| Rewrite (`game/`) | **Phaser 4** + **TypeScript** (strict), **Vite** builds into `dist/next/` (run by `build.js`); **Vitest** unit tests |
 | Backend | **None** — no Pages Functions or D1. **Cloudflare Web Analytics** is on through the domain's automatic setup (no code; the CSP allows it) |
 
 Do **not** reintroduce in-app track beacons, Pages Functions, or D1. Production is static-only: Cloudflare Pages builds `dist/` using the project's dashboard settings (build command, output directory `dist`, Node from `.nvmrc`). There is deliberately no `wrangler.toml`; adding one makes it the source of truth for the project's settings and bindings and locks them in the dashboard. Cloudflare Web Analytics is enabled through the yest.dev zone's automatic setup: Cloudflare adds its script to HTML responses for real browsers, so the repo has no analytics code, and the CSP allows `static.cloudflareinsights.com` and `cloudflareinsights.com` on purpose. Keep those CSP entries; this is not the removed client/D1 metrics pipeline.
@@ -32,6 +34,14 @@ src/
   _headers            # Cloudflare Pages headers (copied to dist; playtest applies them)
   js/                 # Game source (load order matters — see build.js)
   assets/             # Images, SFX, music (copied to dist; _unused/ skipped)
+game/                 # Phaser + TypeScript rewrite, built to dist/next/ (served at /next/)
+  vite.config.mts     # Vite build (base /next/, hashed output in /next/bundle/) + Vitest config
+  src/scenes/         # One Phaser scene per screen
+  src/rules/          # Game rules in plain TypeScript, no Phaser imports; unit-tested (*.test.ts)
+  src/ui/             # UI kit (generated SVGs in kit/), buttons, menus, keycaps, text
+  src/theme.ts        # Colours, fonts, type scale, spacing, timings
+  src/strings.ts      # All player-facing text
+docs/phaser-migration/  # Migration inventory and plan
 build.js              # Full build pipeline (exports JS_FILE_ORDER for lint)
 eslint.config.js      # ESLint flat config: Node tooling + concatenated game bundle
 .nvmrc                # Node major for local dev and CI (26, current LTS)
@@ -40,13 +50,13 @@ eslint.config.js      # ESLint flat config: Node tooling + concatenated game bun
   workflows/deploy-check.yml  # After each push to main: wait for Cloudflare, then live check
   dependabot.yml      # Weekly grouped npm + GitHub Actions update PRs
 scripts/
-  lint.js             # node --check + ESLint (tooling and the JS_FILE_ORDER bundle)
+  lint.js             # node --check + ESLint (tooling, game/ TypeScript and the JS_FILE_ORDER bundle)
   generate-p5-globals.js  # Regenerates p5-globals.json from the index.html p5 pins
   p5-globals.json     # Generated p5 + p5.sound global-mode names (commit it)
   smoke.js            # Static source contracts (no browser)
   serve.js            # Static server for dist/ with _headers (npm start; used by playtest)
-  playtest.js         # Playwright against dist/ served with _headers
-  live-check.js       # Read-only smoke check of the deployed site (npm run check:live)
+  playtest.js         # Playwright against dist/ served with _headers (p5 game and /next/)
+  live-check.js       # Read-only smoke check of the deployed site and /next/ (npm run check:live)
   pages-headers.js    # Cloudflare Pages _headers matching used by serve.js
 dist/                 # Build output (gitignored)
 playtest-output/      # Playtest screenshots (gitignored)
@@ -103,11 +113,14 @@ npm install
 npm run playtest:install # once (and after Playwright upgrades): Playwright's Chromium
 npm run build          # src → dist
 npm run dev            # watch src, rebuild on change (node --watch-path)
+npm run dev:next       # Vite dev server for the game/ rewrite (reloads on save; serves src/assets at /assets/)
+npm run typecheck      # tsc on game/ (strict)
+npm run test:unit      # Vitest unit tests for game/src/rules
 npm start              # serve dist with _headers (CSP etc.; Cache-Control: no-store)
 npm run lint           # node --check + ESLint (tooling + concatenated game bundle)
 npm run lint:p5-globals # regenerate scripts/p5-globals.json after a p5 pin change
 npm run smoke          # static contracts on source
-npm test               # lint + build + smoke
+npm test               # lint + typecheck + unit tests + build + smoke
 npm run playtest       # Playwright on dist/ with _headers applied (requires build first)
 npm run check          # npm test + playtest (what CI runs)
 npm run check:live     # smoke-test the live site (LIVE_URL overrides)
@@ -185,4 +198,5 @@ Handle them explicitly and narrowly, never by turning a rule off for the bundle:
 - `CONTRIBUTING.md` — fork workflow (not open contribution)
 - `reviews/` — dated code reviews (`develop-to-main-review-2026-11-09.md`; its follow-ups section records what is done and what is still open)
 - `archive/` — historical notes only (not living todos or current assessments): `plan.md` polish checklist, `tech-review.md` Feb 2026 tech review, `code-review-2026-07-09.md` superseded July 2026 review, `pre-merge-plan.md` the July 2026 develop→main checklist
+- `docs/phaser-migration/` — the Phaser + TypeScript rewrite: `plan.md` (decisions, approach, milestones) and `inventory.md` (everything the p5 game does)
 - GitHub issues — open follow-ups

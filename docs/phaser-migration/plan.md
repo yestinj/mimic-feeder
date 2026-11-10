@@ -26,7 +26,7 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
   - XP, boss and cooldown bars.
   - Icons: hearts, abilities, sound, achievement tiers.
   - Keycaps.
-- **Fonts:** two open-licence (SIL OFL) fonts, self-hosted: a display font for titles and a very readable one for text and numbers. They're chosen from a preview page in M0.
+- **Fonts:** two open-licence (SIL OFL) fonts, self-hosted: **Grenze Gotisch** (blackletter display font) for titles, headings and buttons, and **Barlow** for text and numbers. Chosen in M0 from a preview of three pairings.
 - **One theme module** for colours, type sizes, spacing and animation timings. **One strings module** for all player-facing text, so wording can be reviewed in one place.
 - **UI sounds,** generated in-repo and kept subtle: a quiet tick when moving between items, a firmer select, a softer back. They follow the effects volume.
 
@@ -231,7 +231,6 @@ The p5 game stays live and unchanged until M5. `AGENTS.md` gets a short note abo
 
 ## 6. Open items
 
-- **Font pairing:** chosen in M0 from a preview page.
 - **Final wording** for cause-of-death lines, banners, cards and secret achievements: reviewed with the owner in M4.
 - **The new secret achievements:** which ones exactly, decided in M3.
 - **The resume countdown:** kept or removed after trying it in M4.
