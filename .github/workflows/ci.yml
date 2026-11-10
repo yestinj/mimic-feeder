@@ -23,15 +23,12 @@ jobs:
 
             - uses: actions/setup-node@v7
               with:
-                  # Current Node LTS ("Lithium"); keep in step with local development.
-                  node-version: 26
+                  # .nvmrc holds the Node major for local and CI (26, current LTS).
+                  node-version-file: .nvmrc
                   cache: npm
 
             - name: Install dependencies
               run: npm ci
-              env:
-                  # The browser is installed explicitly below (Chromium only).
-                  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
             # ESLint (bundle + tooling) + syntax check, build, static smoke contracts.
             - name: npm test

@@ -1,0 +1,20 @@
+# Weekly dependency update PRs. CI runs on each one, so a Playwright bump is
+# tested against its new Chromium before merging.
+version: 2
+updates:
+    - package-ecosystem: npm
+      directory: /
+      schedule:
+          interval: weekly
+      groups:
+          # One PR for all minor/patch dev-tool updates; majors come separately.
+          dev-tools:
+              update-types: [minor, patch]
+
+    - package-ecosystem: github-actions
+      directory: /
+      schedule:
+          interval: weekly
+      groups:
+          actions:
+              patterns: ['*']

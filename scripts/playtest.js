@@ -23,15 +23,16 @@
  *   npm run build && npm run playtest
  *
  * Browser:
- *   Playwright's own Chromium, the same build CI uses (scripts/launch-chromium.js).
- *   Install it once, and again after a Playwright upgrade: npm run playtest:install
+ *   Playwright's own Chromium (the full build in new headless mode, via
+ *   channel 'chromium'), the same build CI uses. Install it once, and again
+ *   after a Playwright upgrade: npm run playtest:install
  */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { loadHeadersFile, resolveHeaders, toResponseHeaders } = require('./pages-headers.js');
-const { launchChromium } = require('./launch-chromium.js');
+const { chromium } = require('playwright');
 
 const PORT = Number(process.env.PLAYTEST_PORT || 4173);
 const HOST = '127.0.0.1';
@@ -239,7 +240,8 @@ async function main() {
     console.log(`Serving ${DIST} at ${BASE} with ${headerRules.length} _headers rules`);
 
     // Launch first so a missing browser fails before the server is listening.
-    const browser = await launchChromium({
+    const browser = await chromium.launch({
+        channel: 'chromium',
         args: ['--autoplay-policy=user-gesture-required'],
     });
     console.log(`Using browser: Playwright Chromium ${browser.version()}`);

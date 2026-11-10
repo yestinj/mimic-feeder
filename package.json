@@ -27,7 +27,7 @@
     "http-server": "^14.1.1",
     "jsdoc": "^4.0.5",
     "nodemon": "^3.1.14",
-    "playwright": "^1.61.1"
+    "playwright": "^1.65.0"
   },
   "description": "A fun little game where you control a dungeon mimic to collect food and shinies while avoiding bombs.",
   "main": "build.js",
