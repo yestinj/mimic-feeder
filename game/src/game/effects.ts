@@ -51,6 +51,12 @@ export function splat(scene: Phaser.Scene, x: number, y: number, objectWidth: nu
     return playOnce(scene, 'groundSplat', x, y, width, height);
 }
 
+/** A Shadow Bolt striking something: a burst the size it was in the p5 game (130 px). */
+export function boltHit(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Sprite {
+    const { width, height } = fit(scene, 'boltHit', 130 * SIZE_SCALE);
+    return playOnce(scene, 'boltHit', x, y, width, height);
+}
+
 /** "+N" rising from (x, y) and fading. Big and gold for treasure. */
 export function pointsPopup(scene: Phaser.Scene, x: number, y: number, points: number, big: boolean): Phaser.GameObjects.Text {
     const text = addText(scene, x, y, `+${points}`, big ? TYPE.heading : TYPE.body, {

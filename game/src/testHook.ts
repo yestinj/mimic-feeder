@@ -16,6 +16,11 @@ export interface GameView {
     readonly playTimeMs: number;
     readonly mimicX: number;
     readonly objects: number;
+    /** Abilities unlocked so far. */
+    readonly abilities: readonly string[];
+    readonly creaturesEaten: number;
+    readonly shiniesCollected: number;
+    readonly hazardsDetonated: number;
     /** Falling creatures' centres, lowest first (lets a test chase food). */
     readonly food: readonly { readonly x: number; readonly y: number }[];
 }
@@ -32,13 +37,32 @@ export interface GameSnapshot {
     readonly muted: boolean;
     /** A confirm dialog is open. */
     readonly dialog: boolean;
+    /** The new-ability card on screen, and whether it accepts its key yet. */
+    readonly card: { readonly ability: string; readonly ready: boolean } | null;
+}
+
+/** Shortcuts for the playtest, present only with ?test in the URL. */
+export interface DebugApi {
+    /** Unlocks an ability the way the game does (Staff, Magnet, or levelling up to 5 for tentacles). */
+    grant(ability: string): void;
+    /** Drops an object at x (default: above the mimic). */
+    spawn(kind: string, x?: number): void;
+    /** Stops (and clears) or restarts the normal spawns, so a test controls what falls. */
+    setSpawning(on: boolean): void;
 }
 
 export interface MimicFeederTestHook {
     /** Scene keys that have finished creating, in order. */
     readonly ready: string[];
     snapshot?: () => GameSnapshot;
+    debug?: DebugApi;
 }
+
+const query = new URLSearchParams(window.location.search);
+/** True when the page was opened with ?test: the debug shortcuts are available. */
+export const TEST_MODE = query.has('test');
+/** True with ?debug: physics bodies are outlined and frame times shown. */
+export const DEBUG_MODE = query.has('debug');
 
 declare global {
     interface Window {
@@ -56,10 +80,29 @@ export function markReady(sceneKey: string): void {
 }
 
 let gameView: (() => GameView) | null = null;
+
+/** The game scene provides the debug shortcuts while it exists (test mode only). */
+export function setDebugApi(api: DebugApi | null): void {
+    if (!TEST_MODE) {
+        return;
+    }
+    if (api) {
+        hook().debug = api;
+    } else {
+        delete hook().debug;
+    }
+}
 let dialogOpen = false;
 
 export function setDialogOpen(open: boolean): void {
     dialogOpen = open;
+}
+
+let card: (() => GameSnapshot['card']) | null = null;
+
+/** The unlock scene reports its card here; null when none is showing. */
+export function setCardView(view: (() => GameSnapshot['card']) | null): void {
+    card = view;
 }
 
 /** The game scene registers how to describe the run; null when it shuts down. */
@@ -78,6 +121,7 @@ export function installTestHook(game: Phaser.Game): void {
             audio: context ? context.state : 'none',
             muted: isMuted(),
             dialog: dialogOpen,
+            card: card ? card() : null,
         };
     };
 }

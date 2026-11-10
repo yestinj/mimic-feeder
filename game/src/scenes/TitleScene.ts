@@ -1,6 +1,7 @@
 import * as Phaser from 'phaser';
 import { TEXTURES, backgroundKey } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y } from '../config';
+import { warmUpRenderers } from '../game/warmUp';
 import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
@@ -29,6 +30,7 @@ export class TitleScene extends Phaser.Scene {
         this.addMimic();
         this.addMenu();
         this.addFooter();
+        warmUpRenderers(this);
         markReady('title');
     }
 

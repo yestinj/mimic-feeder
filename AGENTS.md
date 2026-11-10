@@ -42,7 +42,7 @@ game/                 # Phaser + TypeScript rewrite, built to dist/next/ (served
   src/ui/             # UI kit (generated SVGs in kit/), buttons, menus, HUD pieces, text; keys.ts for key input
   src/assets.ts       # Asset keys and files (shared src/assets, served at /assets/), animations
   src/audio.ts        # Sound effects, music and mute
-  src/testHook.ts     # window.__mimicFeeder: ready scenes and a state snapshot for the playtest
+  src/testHook.ts     # window.__mimicFeeder: ready scenes and a state snapshot for the playtest; with ?test, debug shortcuts (grant abilities, spawn objects)
   src/theme.ts        # Colours, fonts, type scale, spacing, timings
   src/strings.ts      # All player-facing text
 docs/phaser-migration/  # Migration inventory and plan
@@ -117,7 +117,7 @@ npm install
 npm run playtest:install # once (and after Playwright upgrades): Playwright's Chromium
 npm run build          # src → dist
 npm run dev            # watch src, rebuild on change (node --watch-path)
-npm run dev:next       # Vite dev server for the game/ rewrite (reloads on save; serves src/assets at /assets/; add ?debug to outline physics bodies)
+npm run dev:next       # Vite dev server for the game/ rewrite (reloads on save; serves src/assets at /assets/; add ?debug to outline physics bodies and show frame times)
 npm run typecheck      # tsc on game/ (strict)
 npm run test:unit      # Vitest unit tests for game/src/rules
 npm start              # serve dist with _headers (CSP etc.; Cache-Control: no-store)

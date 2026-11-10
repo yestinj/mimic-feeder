@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Tentacles: two chain links and a hook. -->
+  <g fill="none" stroke-linecap="round">
+    <rect x="10" y="6" width="16" height="26" rx="8" stroke="#0b0806" stroke-width="9" transform="rotate(-35 18 19)"/>
+    <rect x="10" y="6" width="16" height="26" rx="8" stroke="#c9c2b6" stroke-width="5" transform="rotate(-35 18 19)"/>
+    <rect x="22" y="22" width="16" height="26" rx="8" stroke="#0b0806" stroke-width="9" transform="rotate(-35 30 35)"/>
+    <rect x="22" y="22" width="16" height="26" rx="8" stroke="#e0b55a" stroke-width="5" transform="rotate(-35 30 35)"/>
+    <path d="M40 46 L48 54 Q56 60 58 50 Q59 44 53 44" stroke="#0b0806" stroke-width="9"/>
+    <path d="M40 46 L48 54 Q56 60 58 50 Q59 44 53 44" stroke="#c9c2b6" stroke-width="5"/>
+  </g>
+</svg>

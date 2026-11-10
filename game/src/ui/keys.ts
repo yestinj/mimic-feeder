@@ -17,7 +17,7 @@ export interface KeyOptions {
  * `keys` are Phaser key names (UP, W, ENTER, ESC…). Returns a function that
  * stops listening; Phaser also drops the listeners when the scene shuts down.
  */
-export function onKeyDown(scene: Phaser.Scene, keys: readonly string[], handler: () => void, options: KeyOptions = {}): () => void {
+export function onKeyDown(scene: Phaser.Scene, keys: readonly string[], handler: (event: KeyboardEvent) => void, options: KeyOptions = {}): () => void {
     const keyboard = scene.input.keyboard;
     if (!keyboard) {
         return () => {};
@@ -35,7 +35,7 @@ export function onKeyDown(scene: Phaser.Scene, keys: readonly string[], handler:
         if (event.repeat && !options.repeat) {
             return;
         }
-        handler();
+        handler(event);
     };
 
     scene.events.on(Phaser.Scenes.Events.RESUME, markActive);

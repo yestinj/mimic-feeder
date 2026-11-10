@@ -7,6 +7,9 @@ import type { Run, RunEvent } from '../rules/run';
 import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
+import type { Ability } from '../rules/abilities';
+import { overlaps } from '../rules/contact';
+import { AbilityBar } from '../ui/AbilityBar';
 import { Hearts } from '../ui/Hearts';
 import { Notifications } from '../ui/Notifications';
 import { ProgressBar } from '../ui/ProgressBar';
@@ -24,7 +27,9 @@ const XP_BAR_WIDTH = 300;
  * redraws when the game scene reports a change.
  */
 export class HudScene extends Phaser.Scene {
+    private playfield!: GameScene;
     private run!: Run;
+    private abilityBar!: AbilityBar;
     private scoreText!: Phaser.GameObjects.Text;
     private floorText!: Phaser.GameObjects.Text;
     private hearts!: Hearts;
@@ -44,6 +49,7 @@ export class HudScene extends Phaser.Scene {
 
     create(): void {
         const game = this.scene.get('game') as GameScene;
+        this.playfield = game;
         this.run = game.currentRun;
         this.shownScore = 0;
         this.shownLevel = this.run.level;
@@ -55,27 +61,38 @@ export class HudScene extends Phaser.Scene {
         this.addVitals();
         this.muteIcon = this.add.image(MARGIN + 22, 196, UI.soundOff).setVisible(isMuted());
         this.notifications = new Notifications(this);
+        this.abilityBar = new AbilityBar(this, MARGIN, DESIGN_HEIGHT - 84);
+        this.abilityBar.sync(game.abilityStates(), false);
 
         const onEvent = (event: RunEvent): void => this.onRunEvent(event);
         const onChanged = (): void => this.refresh(true);
         const onOver = (): void => this.showGameOver();
+        const onAbilityNotice = (ability: Ability): void => this.notifications.abilityToast(ability);
         const onMute = (muted: boolean): void => {
             this.muteIcon.setVisible(muted);
         };
         game.events.on(RUN_EVENTS.event, onEvent);
         game.events.on(RUN_EVENTS.changed, onChanged);
         game.events.on(RUN_EVENTS.over, onOver);
+        game.events.on(RUN_EVENTS.abilityNotice, onAbilityNotice);
         this.game.events.on(GAME_EVENTS.muteChanged, onMute);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             game.events.off(RUN_EVENTS.event, onEvent);
             game.events.off(RUN_EVENTS.changed, onChanged);
             game.events.off(RUN_EVENTS.over, onOver);
+            game.events.off(RUN_EVENTS.abilityNotice, onAbilityNotice);
             this.game.events.off(GAME_EVENTS.muteChanged, onMute);
         });
 
         this.refresh(false);
         this.notifications.banner(floorTitle(this.run.floor));
         markReady('hud');
+    }
+
+    override update(): void {
+        // Cooldowns change every frame; everything else waits for the game's events.
+        this.abilityBar.sync(this.playfield.abilityStates(), true);
+        this.abilityBar.setFaded(overlaps(this.playfield.mimicBounds(), this.abilityBar.bounds()));
     }
 
     /** Darkens the top of the screen a little so the HUD reads on any background. */
@@ -171,10 +188,13 @@ export class HudScene extends Phaser.Scene {
                 }
                 break;
             case 'levelUp':
-                this.notifications.toast(STRINGS.notices.levelUp(event.level), STRINGS.notices.levelUpDetail);
+                this.notifications.toast(STRINGS.notices.levelUp(event.level), STRINGS.notices.levelUpDetail, 'levelUp');
                 break;
             case 'extraLife':
                 this.notifications.toast(STRINGS.notices.extraLife, STRINGS.notices.extraLifeDetail);
+                break;
+            case 'tentaclesGrow':
+                this.notifications.toast(STRINGS.notices.tentaclesGrow, STRINGS.notices.tentaclesGrowDetail(event.reach), 'tentacles');
                 break;
             default:
                 break;

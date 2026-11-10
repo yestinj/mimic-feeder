@@ -28,6 +28,9 @@ export class Mimic {
     private jumps = 0;
     /** Scene time until which the lid stays open after reaching for food mid-jump. */
     private biteOpenUntil = 0;
+    /** Scene time until which the lid is held open (tentacles) or ajar (just cast a Shadow Bolt). */
+    private holdOpenUntil = 0;
+    private holdAjarUntil = 0;
     lid: Lid = 'closed';
 
     constructor(scene: Phaser.Scene, x: number) {
@@ -54,8 +57,17 @@ export class Mimic {
         return this.body.center.x;
     }
 
+    get centerY(): number {
+        return this.body.center.y;
+    }
+
     get top(): number {
         return this.body.top;
+    }
+
+    /** Where food goes in: the middle of the mouth. */
+    get mouth(): { x: number; y: number } {
+        return { x: this.body.center.x, y: this.body.top + this.body.height * 0.15 };
     }
 
     get onGround(): boolean {
@@ -80,6 +92,24 @@ export class Mimic {
         this.sprite.setScale(MIMIC.scale * SIZE_SCALE * growth.size);
     }
 
+    /** Holds the lid open until `time` (scene time). */
+    holdOpen(time: number): void {
+        this.holdOpenUntil = Math.max(this.holdOpenUntil, time);
+    }
+
+    /** Holds the lid ajar until `time` (scene time). */
+    holdAjar(time: number): void {
+        this.holdAjarUntil = Math.max(this.holdAjarUntil, time);
+    }
+
+    /** Moves instantly by `distance` (negative is left), stopping at the screen edges. */
+    dash(distance: number): void {
+        const half = this.body.width / 2;
+        const bounds = this.body.world.bounds;
+        this.zone.x = Phaser.Math.Clamp(this.zone.x + distance, bounds.left + half, bounds.right - half);
+        this.sprite.x = this.zone.x;
+    }
+
     /** Jumps if it can; returns which jump it was (1 or 2), or 0 if it couldn't. */
     jump(): number {
         if (this.jumps >= MIMIC.maxJumps) {
@@ -91,9 +121,10 @@ export class Mimic {
     }
 
     /**
-     * Moves in `direction` (-1, 0 or 1) and picks the lid: open when food is
-     * close (and for a moment after reaching for it mid-jump), ajar while moving
-     * or in the air, closed otherwise.
+     * Moves in `direction` (-1, 0 or 1) and picks the lid, in the p5 game's
+     * order: held open (tentacles), open for a moment after reaching for food
+     * mid-jump, ajar just after casting, open when food is close, ajar while
+     * moving or in the air, closed otherwise.
      */
     update(direction: number, foodNearby: boolean, time: number): void {
         this.body.setVelocityX(direction * MIMIC.runSpeed * RUN_SCALE * this.growth.speed);
@@ -102,11 +133,15 @@ export class Mimic {
         }
 
         const airborne = !this.onGround;
-        if (foodNearby && airborne) {
-            this.biteOpenUntil = time + MIMIC.jumpBiteOpenTime * 1000;
-        }
-        if (foodNearby || time < this.biteOpenUntil) {
+        if (time < this.holdOpenUntil || time < this.biteOpenUntil) {
             this.lid = 'open';
+        } else if (time < this.holdAjarUntil) {
+            this.lid = 'ajar';
+        } else if (foodNearby) {
+            this.lid = 'open';
+            if (airborne) {
+                this.biteOpenUntil = time + MIMIC.jumpBiteOpenTime * 1000;
+            }
         } else if (airborne || direction !== 0) {
             this.lid = 'ajar';
         } else {

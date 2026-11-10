@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Dash: two chevrons with speed lines. -->
+  <g stroke="#0b0806" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M22 16 L38 32 L22 48"/>
+    <path d="M36 16 L52 32 L36 48"/>
+  </g>
+  <g stroke="#ffd98a" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M22 16 L38 32 L22 48"/>
+    <path d="M36 16 L52 32 L36 48"/>
+  </g>
+  <g stroke="#e0b55a" stroke-opacity="0.7" stroke-width="3" stroke-linecap="round">
+    <path d="M6 24 L15 24"/>
+    <path d="M3 32 L15 32"/>
+    <path d="M6 40 L15 40"/>
+  </g>
+</svg>

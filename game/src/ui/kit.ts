@@ -2,6 +2,7 @@
 // (Phaser's own SVG loader creates blob: URLs, which the site's CSP blocks;
 // plain images work, and the SVGs carry their own pixel size.)
 import type * as Phaser from 'phaser';
+import abilitySlotUrl from './kit/ability-slot.svg?url';
 import badgeUrl from './kit/badge.svg?url';
 import bannerUrl from './kit/banner.svg?url';
 import barFillUrl from './kit/bar-fill.svg?url';
@@ -14,6 +15,9 @@ import edgeGlowUrl from './kit/edge-glow.svg?url';
 import glowUrl from './kit/glow.svg?url';
 import heartEmptyUrl from './kit/heart-empty.svg?url';
 import heartFullUrl from './kit/heart-full.svg?url';
+import iconDashUrl from './kit/icon-dash.svg?url';
+import iconMagnetUrl from './kit/icon-magnet.svg?url';
+import iconTentaclesUrl from './kit/icon-tentacles.svg?url';
 import keycapUrl from './kit/keycap.svg?url';
 import panelUrl from './kit/panel.svg?url';
 import soundOffUrl from './kit/sound-off.svg?url';
@@ -34,6 +38,10 @@ const KIT = {
     soundOff: ['ui-sound-off', soundOffUrl],
     glow: ['ui-glow', glowUrl],
     edgeGlow: ['ui-edge-glow', edgeGlowUrl],
+    abilitySlot: ['ui-ability-slot', abilitySlotUrl],
+    iconDash: ['ui-icon-dash', iconDashUrl],
+    iconTentacles: ['ui-icon-tentacles', iconTentaclesUrl],
+    iconMagnetism: ['ui-icon-magnetism', iconMagnetUrl],
 } as const;
 
 type KitName = keyof typeof KIT;
