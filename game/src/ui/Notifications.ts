@@ -3,7 +3,7 @@ import { DESIGN_WIDTH } from '../config';
 import type { Ability } from '../rules/abilities';
 import { STRINGS } from '../strings';
 import { MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
-import { ABILITY_ICONS } from './AbilityBar';
+import { addAbilityIcon } from './AbilityBar';
 import { Keycap } from './Keycap';
 import { SLICE, UI, addPanel } from './kit';
 import { addText } from './text';
@@ -123,7 +123,7 @@ export class Notifications {
         const width = SPACE.l * 2 + iconSize + SPACE.m + name.width + SPACE.m + keycap.width;
         const left = -width / 2 + SPACE.l;
         const slot = this.scene.add.image(left + iconSize / 2, 0, UI.abilitySlot).setDisplaySize(iconSize, iconSize);
-        const icon = this.scene.add.image(left + iconSize / 2, -2, ABILITY_ICONS[ability]).setDisplaySize(iconSize * 0.64, iconSize * 0.64);
+        const icon = addAbilityIcon(this.scene, left + iconSize / 2, -2, ability, iconSize * 0.64);
         name.x = left + iconSize + SPACE.m;
         keycap.x = name.x + name.width + SPACE.m + keycap.width / 2;
         const panel = addPanel(this.scene, 0, 0, width, 96);

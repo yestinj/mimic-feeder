@@ -4,7 +4,7 @@ import type { Ability } from '../rules/abilities';
 import { STRINGS } from '../strings';
 import { markReady, setCardView } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
-import { ABILITY_ICONS } from '../ui/AbilityBar';
+import { addAbilityIcon } from '../ui/AbilityBar';
 import { Button } from '../ui/Button';
 import { Keycap } from '../ui/Keycap';
 import { onKeyDown } from '../ui/keys';
@@ -91,7 +91,7 @@ export class UnlockScene extends Phaser.Scene {
         this.tweens.add({ targets: glow, alpha: 0.25, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
         parts.push(glow);
         parts.push(this.add.image(0, iconY, UI.abilitySlot).setDisplaySize(136, 136));
-        parts.push(this.add.image(0, iconY - 4, ABILITY_ICONS[ability]).setDisplaySize(88, 88));
+        parts.push(addAbilityIcon(this, 0, iconY - 4, ability, 88));
         parts.push(addText(this, 0, top + 284, info.name, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5));
 
         // "Press [Key] to …", centred as one line.

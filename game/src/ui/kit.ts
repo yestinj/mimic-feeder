@@ -17,7 +17,6 @@ import heartEmptyUrl from './kit/heart-empty.svg?url';
 import heartFullUrl from './kit/heart-full.svg?url';
 import iconDashUrl from './kit/icon-dash.svg?url';
 import iconMagnetUrl from './kit/icon-magnet.svg?url';
-import iconShadowBoltUrl from './kit/icon-shadow-bolt.svg?url';
 import iconTentaclesUrl from './kit/icon-tentacles.svg?url';
 import keycapUrl from './kit/keycap.svg?url';
 import panelUrl from './kit/panel.svg?url';
@@ -41,7 +40,6 @@ const KIT = {
     edgeGlow: ['ui-edge-glow', edgeGlowUrl],
     abilitySlot: ['ui-ability-slot', abilitySlotUrl],
     iconDash: ['ui-icon-dash', iconDashUrl],
-    iconShadowBolt: ['ui-icon-shadow-bolt', iconShadowBoltUrl],
     iconTentacles: ['ui-icon-tentacles', iconTentaclesUrl],
     iconMagnetism: ['ui-icon-magnetism', iconMagnetUrl],
 } as const;

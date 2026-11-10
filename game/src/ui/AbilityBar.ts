@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { firstFrame } from '../assets';
 import { ABILITIES, COOLDOWNS, type Ability } from '../rules/abilities';
 import type { Rect } from '../rules/contact';
 import type { AbilityState } from '../scenes/GameScene';
@@ -12,12 +13,24 @@ const GAP = 16;
 const ICON = 54;
 const FADED_ALPHA = 0.3;
 
-export const ABILITY_ICONS: Readonly<Record<Ability, string>> = {
+const KIT_ICONS: Readonly<Record<Exclude<Ability, 'shadowBolt'>, string>> = {
     dash: UI.iconDash,
-    shadowBolt: UI.iconShadowBolt,
     tentacles: UI.iconTentacles,
     magnetism: UI.iconMagnetism,
 };
+
+/**
+ * An ability's icon, `size` px tall. Shadow Bolt shows the bolt sprite itself,
+ * turned to fly upwards; the others use the generated kit icons.
+ */
+export function addAbilityIcon(scene: Phaser.Scene, x: number, y: number, ability: Ability, size: number): Phaser.GameObjects.Image {
+    if (ability === 'shadowBolt') {
+        const bolt = scene.add.image(x, y, firstFrame('shadowBolt')).setAngle(-90);
+        // The frame is wider than tall; turned upright, its width becomes the height.
+        return bolt.setScale(size / bolt.width);
+    }
+    return scene.add.image(x, y, KIT_ICONS[ability]).setDisplaySize(size, size);
+}
 
 interface Slot {
     readonly container: Phaser.GameObjects.Container;
@@ -75,7 +88,7 @@ export class AbilityBar extends Phaser.GameObjects.Container {
 
     private addSlot(ability: Ability, announce: boolean): void {
         const frame = this.scene.add.image(0, 0, UI.abilitySlot).setDisplaySize(SLOT, SLOT);
-        const icon = this.scene.add.image(0, -4, ABILITY_ICONS[ability]).setDisplaySize(ICON, ICON);
+        const icon = addAbilityIcon(this.scene, 0, -4, ability, ICON);
         const sweep = this.scene.add.graphics();
         const keycap = new Keycap(this.scene, 0, SLOT / 2 + 2, STRINGS.abilities[ability].key, 34);
         const container = this.scene.add.container(this.slots.size * (SLOT + GAP) + SLOT / 2, 0, [frame, icon, sweep, keycap]);
