@@ -18,8 +18,8 @@ export interface ScreenData {
     readonly from: ReturnTo;
     /** The floor to show behind the screen (from the results); none means Floor 1. */
     readonly floor?: number;
-    /** A high score to highlight (its date), from the results. */
-    readonly highlight?: string;
+    /** A high score to highlight as the latest (its date); null for none (a run from the results that didn't place). Left out, the newest entry. */
+    readonly highlight?: string | null;
 }
 
 /** Puts `scene` to sleep and opens a screen over it. */

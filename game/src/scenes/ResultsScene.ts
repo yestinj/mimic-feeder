@@ -7,7 +7,7 @@ import { ACHIEVEMENTS, TIER_POINTS } from '../rules/achievements';
 import { floorTitle } from '../rules/floors';
 import { formatPlayTime, formatScore } from '../rules/format';
 import type { GuideKey } from '../rules/guide';
-import { CREATURE_KINDS } from '../rules/objects';
+import { CREATURE_KINDS, type HazardKind } from '../rules/objects';
 import type { DeathCause, RunSummary } from '../rules/run';
 import { DEFAULT_NAME, NAME_CHARACTER, NAME_MAX_LENGTH, nameMimic, type BestKind, type Totals } from '../rules/save';
 import { STRINGS } from '../strings';
@@ -33,8 +33,9 @@ export interface ResultsData extends RunSummary {
     readonly bestBefore: number;
     /** When the run ended (ISO); it identifies the run's high-score entry. */
     readonly date: string;
-    /** The run's own counts, for the tally. */
+    /** The run's own counts, for the tally, and the hazards set off by kind. */
     readonly totals: Totals;
+    readonly detonated: Readonly<Record<HazardKind, number>>;
     /** How much the mimic grew: its size at the end, where it started at 1. */
     readonly size: number;
     /** Highlights: the bests it beat (none on a first run), achievements unlocked, and creatures, items and the boss met for the first time. */
@@ -62,8 +63,6 @@ const CHEST_MAX = 150;
 /** The pace of the staged reveal. */
 const STEP_MS = 120;
 const COUNT_MS = 450;
-/** Highlights shown before the rest are summed up as "+N more". */
-const MAX_HIGHLIGHTS = 8;
 
 const BEST_ICONS: Record<BestKind, string> = { score: UI.iconScore, floor: UI.iconFloor, level: UI.iconLevel, playTimeMs: UI.iconTime };
 
@@ -158,7 +157,8 @@ export class ResultsScene extends Phaser.Scene {
         const others = [
             { key: 'crown' as GuideKey, count: results.totals.collected.crown, label: labels.crown },
             { key: 'diamond' as GuideKey, count: results.totals.collected.diamond, label: labels.diamond },
-            { key: 'bomb' as GuideKey, count: results.totals.hazardsDetonated, label: labels.detonated },
+            { key: 'bomb' as GuideKey, count: results.detonated.bomb, label: labels.detonated },
+            { key: 'fireball' as GuideKey, count: results.detonated.fireball, label: labels.burst },
             { key: 'cat' as GuideKey, count: results.totals.catsRescued, label: labels.rescued },
             { key: 'boss' as GuideKey, count: results.totals.bossesDefeated, label: labels.defeated },
         ].filter(({ count }) => count > 0);
@@ -280,28 +280,36 @@ export class ResultsScene extends Phaser.Scene {
             this.fadeIn(addText(this, cx, top + 112, text.noHighlights, TYPE.body, { colour: TEXT_COLOURS.muted }).setOrigin(0.5), at + 150);
             return;
         }
-        const shown = chips.length > MAX_HIGHLIGHTS ? chips.slice(0, MAX_HIGHLIGHTS - 1) : chips;
-        const built = shown.map(({ icon, label }) => this.highlightChip(icon, label));
-        if (shown.length < chips.length) {
-            built.push(this.highlightChip(null, text.more(chips.length - shown.length)));
-        }
-        // Flow into rows as wide as the panel, each row centred.
+        // Flow into the panel's two rows, each centred; whatever doesn't fit is summed up as "+N more".
         const maxWidth = HIGHLIGHTS_WIDTH - 2 * SPACE.l;
-        const rows: Phaser.GameObjects.Container[][] = [];
-        let rowWidth = 0;
+        const built = chips.map(({ icon, label }) => this.highlightChip(icon, label));
+        const rows: Phaser.GameObjects.Container[][] = [[], []];
+        const width = (row: readonly Phaser.GameObjects.Container[]): number => row.reduce((sum, chip) => sum + chip.width, 0) + SPACE.s * Math.max(0, row.length - 1);
+        let placed = 0;
         for (const chip of built) {
-            const row = rows[rows.length - 1];
-            if (row && rowWidth + SPACE.s + chip.width <= maxWidth) {
-                row.push(chip);
-                rowWidth += SPACE.s + chip.width;
-            } else {
-                rows.push([chip]);
-                rowWidth = chip.width;
+            const row = rows.find((candidate) => width([...candidate, chip]) <= maxWidth && (candidate === rows[0] ? rows[1]?.length === 0 : true));
+            if (!row) {
+                break;
             }
+            row.push(chip);
+            placed += 1;
         }
-        rows.forEach((row, r) => {
-            const width = row.reduce((sum, chip) => sum + chip.width, 0) + SPACE.s * (row.length - 1);
-            let x = cx - width / 2;
+        if (placed < built.length) {
+            const last = rows[1] ?? [];
+            let more = this.highlightChip(null, text.more(built.length - placed));
+            while (last.length > 0 && width([...last, more]) > maxWidth) {
+                last.pop();
+                placed -= 1;
+                more.destroy();
+                more = this.highlightChip(null, text.more(built.length - placed));
+            }
+            built.slice(placed).forEach((chip) => chip.destroy());
+            built.length = placed;
+            last.push(more);
+            built.push(more);
+        }
+        rows.filter((row) => row.length > 0).forEach((row, r) => {
+            let x = cx - width(row) / 2;
             row.forEach((chip) => {
                 chip.setPosition(x + chip.width / 2, top + 92 + r * 58);
                 x += chip.width + SPACE.s;
@@ -497,7 +505,8 @@ export class ResultsScene extends Phaser.Scene {
         const playAgain = new Button(this, cx - 420, ACTIONS_Y, STRINGS.gameOver.playAgain, { width, onSelect: () => this.leave('game') });
         const highScores = new Button(this, cx, ACTIONS_Y, STRINGS.gameOver.highScores, {
             width,
-            onSelect: () => openScreen(this, 'highScores', { from: 'results', floor: this.results.floor, ...(this.results.rank !== null ? { highlight: this.results.date } : {}) }),
+            // The run's entry, if it made the board; otherwise nothing is "Latest".
+            onSelect: () => openScreen(this, 'highScores', { from: 'results', floor: this.results.floor, highlight: this.results.rank !== null ? this.results.date : null }),
         });
         const menu = new Button(this, cx + 420, ACTIONS_Y, STRINGS.gameOver.menu, { width, onSelect: () => this.leave('title') });
         new Menu(this, [playAgain, highScores, menu], { horizontal: true });

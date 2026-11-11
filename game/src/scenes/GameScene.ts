@@ -196,6 +196,7 @@ export class GameScene extends Phaser.Scene {
             bestBefore: before.bests.score,
             date,
             totals: record.totals,
+            detonated: { ...this.run.detonated },
             size: this.run.growth.size,
             bestsBeaten: bestsBeaten(before.bests, before.totals.runs, record),
             achievements: [...this.unlockedThisRun],

@@ -11,6 +11,7 @@ import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from '../ui/Button';
 import { TIER_COLOURS, TIER_TEXT_COLOURS } from '../ui/Medal';
 import { Menu } from '../ui/Menu';
+import { addTag } from '../ui/NewTag';
 import { UI, addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
 import { closeScreen, startScreen, type ScreenData } from '../ui/screens';
@@ -64,7 +65,8 @@ export class HighScoresScene extends Phaser.Scene {
         addText(this, DESIGN_WIDTH / 2, 80, STRINGS.highScores.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
 
         const scores = profile().highScores;
-        const latest = data.highlight ?? scores.reduce((newest, entry) => (entry.date > newest ? entry.date : newest), '');
+        // From the results, the run's own entry (or none, if it didn't place); otherwise the newest.
+        const latest = data.highlight === undefined ? scores.reduce((newest, entry) => (entry.date > newest ? entry.date : newest), '') : data.highlight;
         PODIUM.forEach((spot, i) => this.addPodiumCard(spot, scores[spot.place - 1] ?? null, latest, i));
         if (scores.length === 0) {
             addText(this, DESIGN_WIDTH / 2, TABLE_TOP + 120, STRINGS.highScores.empty, TYPE.body, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
@@ -83,7 +85,7 @@ export class HighScoresScene extends Phaser.Scene {
     }
 
     /** A place on the podium: its medal with the place on it, then the name, score and run; "Unclaimed" while it's empty. */
-    private addPodiumCard(spot: (typeof PODIUM)[number], entry: HighScore | null, latest: string, order: number): void {
+    private addPodiumCard(spot: (typeof PODIUM)[number], entry: HighScore | null, latest: string | null, order: number): void {
         const { x, top, width, height, tier, place } = spot;
         const first = place === 1;
         const parts: Phaser.GameObjects.GameObject[] = [addPanel(this, 0, height / 2, width, height)];
@@ -114,7 +116,7 @@ export class HighScoresScene extends Phaser.Scene {
             parts.push(addText(this, 0, height - 54, details, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5));
             parts.push(addText(this, 0, height - 28, formatDate(entry.date), TYPE.tiny, { colour: TEXT_COLOURS.dim }).setOrigin(0.5));
             if (isLatest) {
-                parts.push(...this.latestTag(width / 2 - 70, 30));
+                parts.push(addTag(this, width / 2 - 70, 30, STRINGS.highScores.latest));
             }
         } else {
             parts.push(addText(this, 0, height / 2 + 20, STRINGS.highScores.unclaimed, TYPE.body, { colour: TEXT_COLOURS.dim }).setOrigin(0.5));
@@ -124,16 +126,8 @@ export class HighScoresScene extends Phaser.Scene {
         this.tweens.add({ targets: card, alpha: 1, duration: MOTION.normal, delay: order * 60 });
     }
 
-    /** A small "Latest" pill. */
-    private latestTag(x: number, y: number): Phaser.GameObjects.GameObject[] {
-        const label = addText(this, x, y, STRINGS.highScores.latest, TYPE.tiny, { bold: true, colour: TEXT_COLOURS.shadow, shadow: false }).setOrigin(0.5);
-        const width = label.width + 22;
-        const pill = this.add.graphics().fillStyle(COLOURS.goldBright, 1).fillRoundedRect(x - width / 2, y - 13, width, 26, 13);
-        return [pill, label];
-    }
-
     /** Places 4 to 10, as a table. */
-    private addTable(entries: readonly HighScore[], latest: string): void {
+    private addTable(entries: readonly HighScore[], latest: string | null): void {
         addPanel(this, DESIGN_WIDTH / 2, TABLE_TOP + TABLE_HEIGHT / 2, TABLE_WIDTH, TABLE_HEIGHT);
         const s = STRINGS.highScores;
         const headings: [keyof typeof COLUMNS, string][] = [

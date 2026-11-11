@@ -209,7 +209,7 @@ export const STRINGS = {
         alongTheWay: 'Along the way',
         nothingElse: 'Nothing else to report.',
         /** Under the counts along the way. */
-        tallyLabels: { crown: 'crowns', diamond: 'diamonds', detonated: 'set off', rescued: 'rescued', defeated: 'defeated' },
+        tallyLabels: { crown: 'crowns', diamond: 'diamonds', detonated: 'set off', burst: 'burst', rescued: 'rescued', defeated: 'defeated' },
         grew: (times: string) => `Grew to ${times}\u00d7 its starting size`,
         levelAndTime: (level: number, time: string) => `Level ${level}   \u00b7   ${time}`,
         highlights: 'Highlights',
