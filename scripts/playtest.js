@@ -388,10 +388,10 @@ async function checkNextBuild(browser) {
         assert(named.save.name === 'Chomper' && named.save.named && named.save.scores.length === 1 && named.save.scores[0].name === 'Chomper',
             '/next/ the name typed is saved, with the score');
 
-        // Play Again is focused on the results.
-        await page.keyboard.press('Enter');
+        // R plays again straight away (Play Again, focused, does the same with Enter).
+        await page.keyboard.press('KeyR');
         await waitForSnapshot((s) => s.running.includes('game') && s.game && s.game.lives === 3 && s.game.playTimeMs > 0);
-        assert(true, '/next/ Play Again starts a new run');
+        assert(true, '/next/ R on the results starts a new run');
 
         // The Ninefold Judgment: ten cats shot bring it on. Standing still, its fire ends the run.
         await debug('setSpawning', false);

@@ -29,6 +29,8 @@ export interface ResultsData extends RunSummary {
     readonly rank: number | null;
     /** It beat the best score so far. */
     readonly newBest: boolean;
+    /** The best score before this run (0 if there wasn't one). */
+    readonly bestBefore: number;
     /** When the run ended (ISO); it identifies the run's high-score entry. */
     readonly date: string;
     /** The run's own counts, for the tally. */
@@ -115,8 +117,13 @@ export class ResultsScene extends Phaser.Scene {
         const title = addText(this, cx, 78, STRINGS.gameOver.title, TYPE.banner, { role: 'display', bold: true, colour: '#ffffff', letterSpacing: 2 }).setOrigin(0.5);
         title.setTint(COLOURS.goldBright, COLOURS.goldBright, COLOURS.gold, COLOURS.gold);
         this.cause = describeCause(results.causeOfDeath);
-        if (this.cause) {
-            addText(this, cx, 148, this.cause, TYPE.body, { colour: TEXT_COLOURS.primary }).setOrigin(0.5);
+        if (this.cause && results.causeOfDeath) {
+            // What got you, beside the words: the creature let go, the bomb, the fireball, the boss, or the dungeon's eye.
+            const line = addText(this, cx, 148, this.cause, TYPE.body, { colour: TEXT_COLOURS.primary }).setOrigin(0.5);
+            const iconSize = 44;
+            const shift = (iconSize + SPACE.s) / 2;
+            line.setX(cx + shift);
+            this.causeIcon(results.causeOfDeath, cx + shift - line.width / 2 - SPACE.s - iconSize / 2, 148, iconSize);
         }
         addText(this, cx, this.cause ? 186 : 156, STRINGS.gameOver.endedOn(floorTitle(results.floor)), TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => setResultsView(null));
@@ -192,11 +199,17 @@ export class ResultsScene extends Phaser.Scene {
         const score = addText(this, cx, top + 118, '0', TYPE.hero, { bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         this.reveal(at, () => this.countUp(score, results.score, formatScore, 900, () => this.bump(score)), () => score.setText(formatScore(results.score)).setScale(1));
 
-        const ribbon = results.newBest ? text.newBest : results.rank !== null ? text.onBoard(results.rank) : null;
-        if (ribbon) {
-            this.pop([addText(this, cx, top + 196, ribbon, TYPE.body, { bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5)], at + 950);
+        // "New best!", or its place on the board; and short of a new best, the best so far to measure it by.
+        const placed = results.rank !== null ? text.onBoard(results.rank) : null;
+        let lineY = top + 192;
+        if (results.newBest || placed) {
+            this.pop([addText(this, cx, lineY, results.newBest ? text.newBest : (placed ?? ''), TYPE.body, { bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5)], at + 950);
+            lineY += 34;
         }
-        this.add.rectangle(cx, top + 236, SCORE_WIDTH - 2 * SPACE.xl, 2, COLOURS.goldDim, 0.5);
+        if (!results.newBest && results.bestBefore > 0) {
+            this.pop([addText(this, cx, lineY, text.best(formatScore(results.bestBefore)), TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5)], at + 1000);
+        }
+        this.add.rectangle(cx, top + 250, SCORE_WIDTH - 2 * SPACE.xl, 2, COLOURS.goldDim, 0.5);
 
         // The mimic at the start of the run, and at the end.
         const baseline = top + 330;
@@ -210,6 +223,23 @@ export class ResultsScene extends Phaser.Scene {
             this.tweens.add({ targets: end, scale: endScale, duration: 600, delay: MOTION.normal, ease: 'Back.Out' });
         }, () => end.setScale(endScale));
         this.fadeIn(start, at + 1100, 0.6);
+    }
+
+    /** A picture of what cost the last heart. */
+    private causeIcon(cause: DeathCause, x: number, y: number, size: number): void {
+        switch (cause.type) {
+            case 'wasted':
+                addEntrySprite(this, x, y, cause.creature, size);
+                return;
+            case 'bomb':
+            case 'fireball':
+            case 'boss':
+                addEntrySprite(this, x, y, cause.type, size);
+                return;
+            case 'judgment':
+                fitTo(this.add.image(x, y, UI.iconEye), size);
+                return;
+        }
     }
 
     /** The closed chest, `height` tall, standing on `baseline`. */
@@ -409,6 +439,8 @@ export class ResultsScene extends Phaser.Scene {
                 this.leave('title');
             }
         });
+        // R goes again straight away (not while a name is being typed: leave() waits for it).
+        onKeyDown(this, ['R'], () => this.leave('game'));
         // "Name your mimic" is asked once, the first time a score makes the board.
         if (this.results.rank !== null && !profile().named) {
             this.askName();
@@ -469,6 +501,7 @@ export class ResultsScene extends Phaser.Scene {
         });
         const menu = new Button(this, cx + 420, ACTIONS_Y, STRINGS.gameOver.menu, { width, onSelect: () => this.leave('title') });
         new Menu(this, [playAgain, highScores, menu], { horizontal: true });
+        addText(this, cx, DESIGN_HEIGHT - 34, STRINGS.gameOver.actionsHint, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
     }
 
     /** Under the buttons: the name the score was saved under, and after naming, where to change it. */

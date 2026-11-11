@@ -193,6 +193,7 @@ export class GameScene extends Phaser.Scene {
             ...this.run.summary(),
             rank,
             newBest: this.run.score > 0 && this.run.score > before.bests.score,
+            bestBefore: before.bests.score,
             date,
             totals: record.totals,
             size: this.run.growth.size,
