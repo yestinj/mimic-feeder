@@ -176,8 +176,8 @@ export const STRINGS = {
             dash_phantom: { name: 'Dash Phantom', description: 'Dash 300 times' },
             hazard_warden: { name: 'Hazard Warden', description: 'Detonate 60 hazards' },
             // The secrets also have a hint, shown in place of the description until they're earned.
-            feline_felon: { name: 'Feline Felon', description: 'Bring the Ninefold Judgment on yourself', hint: 'The dungeon keeps count of every cat.' },
-            hot_snack: { name: 'Hot Snack', description: 'Pull a bomb into your mouth with Magnetism', hint: 'A magnet doesn\u2019t care what it pulls in.' },
+            feline_felon: { name: 'Feline Felon', description: 'Bring the Ninefold Judgment on yourself', hint: 'Some lives are not yours to take.' },
+            hot_snack: { name: 'Hot Snack', description: 'Pull a bomb into your mouth with Magnetism', hint: 'Some meals bite back.' },
             hanging_by_a_thread: { name: 'Hanging by a Thread', description: 'Reach a new floor with one heart left', hint: 'One heart is all it takes to go deeper.' },
             judged_and_spared: { name: 'Judged and Spared', description: 'Survive the Ninefold Judgment', hint: 'Some sentences can be survived.' },
             flawless_hunt: { name: 'Flawless Hunt', description: 'Defeat a boss without losing a heart', hint: 'Hunt the hunter without a scratch.' },
