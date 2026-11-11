@@ -1,14 +1,17 @@
 import * as Phaser from 'phaser';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { profile } from '../profile';
-import { ACHIEVEMENTS, TIER_POINTS, progress, showsProgress, unlockedCount, type Achievement, type Tier } from '../rules/achievements';
+import { ACHIEVEMENTS, TIER_POINTS, pointsEarned, progress, showsProgress, unlockedCount, type Achievement, type Tier } from '../rules/achievements';
 import { formatDate, formatPlayTime, formatScore } from '../rules/format';
 import { addTotals, bestsWith } from '../rules/save';
 import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
 import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from '../ui/Button';
+import { addMedal, addTabMedal, TIER_COLOURS, TIER_TEXT_COLOURS } from '../ui/Medal';
 import { Menu } from '../ui/Menu';
+import { ProgressBar } from '../ui/ProgressBar';
+import { addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
 import { closeScreen, startScreen, type ScreenData } from '../ui/screens';
 import { addText } from '../ui/text';
@@ -17,19 +20,25 @@ import type { GameScene } from './GameScene';
 type Tab = Tier | 'secret';
 const TABS: readonly Tab[] = ['bronze', 'silver', 'gold', 'secret'];
 
-/** Frame and medal colours by tier. */
-export const TIER_COLOURS: Record<Tier, number> = { bronze: 0xc07a43, silver: 0xc9ced3, gold: COLOURS.gold };
-
-const TAB_Y = 236;
+const SUMMARY_Y = 146;
+const SUMMARY_BAR_Y = 188;
+const SUMMARY_BAR_WIDTH = 640;
+const TAB_Y = 252;
 const TAB_WIDTH = 300;
+const TAB_MEDAL = 40;
 const COLUMNS = 3;
 const CARD_WIDTH = 580;
-const CARD_HEIGHT = 150;
+const CARD_HEIGHT = 144;
 const CARD_GAP_X = 30;
-const CARD_GAP_Y = 14;
-const CARDS_TOP = 296;
-const MEDAL_RADIUS = 42;
-const BAR_WIDTH = 150;
+const CARD_GAP_Y = 12;
+const CARDS_TOP = 306;
+const CARD_PADDING = 20;
+const CARD_RADIUS = 14;
+const MEDAL_SIZE = 104;
+/** Room for a progress count ("6,200 / 20,000") at the end of a card's bar, so the bars line up. */
+const COUNT_WIDTH = 140;
+/** Where a card's text starts, from its left edge. */
+const TEXT_INSET = CARD_PADDING + MEDAL_SIZE + 22;
 
 /** The achievements on a tab: the secret ones have their own, whatever their tier. */
 function onTab(tab: Tab): Achievement[] {
@@ -37,16 +46,17 @@ function onTab(tab: Tab): Achievement[] {
 }
 
 /**
- * The achievements: a grid of badge cards, a tab per tier and one for the
- * secrets, with overall progress in the header. Unlocked cards show their
- * date; locked ones are dimmed and, where they count something, show how far
- * along they are. Secrets show as "???" until earned.
+ * The achievements: a grid of medal cards, a tab per tier and one for the
+ * secrets, with overall progress in the header. Earned medals are in their
+ * tier's metal, with the date they were earned; locked ones are dark iron
+ * and, where they count something, show how far along they are. Secrets
+ * show as "???" until earned.
  */
 export class AchievementsScene extends Phaser.Scene {
     private screen!: ScreenData;
     private leaving = false;
     private tab: Tab = 'bronze';
-    private tabLabels: Phaser.GameObjects.Text[] = [];
+    private tabs: { label: Phaser.GameObjects.Text; medal: Phaser.GameObjects.Container }[] = [];
     private tabUnderline!: Phaser.GameObjects.Rectangle;
     private cards: Phaser.GameObjects.Container[] = [];
 
@@ -62,8 +72,8 @@ export class AchievementsScene extends Phaser.Scene {
         startScreen(this, data);
 
         const unlocked = profile().achievements;
-        addText(this, DESIGN_WIDTH / 2, 95, STRINGS.achievements.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
-        addText(this, DESIGN_WIDTH / 2, 160, STRINGS.achievements.header(unlockedCount(unlocked), ACHIEVEMENTS.length), TYPE.body, { bold: true }).setOrigin(0.5);
+        addText(this, DESIGN_WIDTH / 2, 80, STRINGS.achievements.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
+        this.addSummary(unlocked);
         this.addTabs(unlocked);
         this.showTab(this.tab);
 
@@ -78,20 +88,35 @@ export class AchievementsScene extends Phaser.Scene {
         markReady('achievements');
     }
 
-    /** The tab row: each tier's name and how many of it are unlocked. */
+    /** How many are unlocked, the score they've earned, and a bar for the whole set. */
+    private addSummary(unlocked: Readonly<Record<string, string>>): void {
+        const count = unlockedCount(unlocked);
+        addText(this, DESIGN_WIDTH / 2, SUMMARY_Y, STRINGS.achievements.header(count, ACHIEVEMENTS.length, pointsEarned(unlocked)), TYPE.body, { bold: true })
+            .setOrigin(0.5);
+        new ProgressBar(this, DESIGN_WIDTH / 2, SUMMARY_BAR_Y, SUMMARY_BAR_WIDTH, COLOURS.gold).setProgress(count / ACHIEVEMENTS.length, false);
+    }
+
+    /** The tab row: each tier's medal, name and how many of it are unlocked. */
     private addTabs(unlocked: Readonly<Record<string, string>>): void {
         const left = DESIGN_WIDTH / 2 - (TABS.length * TAB_WIDTH) / 2;
-        this.tabLabels = TABS.map((tab, i) => {
+        this.tabs = TABS.map((tab, i) => {
             const list = onTab(tab);
             const done = list.filter(({ id }) => id in unlocked).length;
-            const label = addText(this, left + TAB_WIDTH * (i + 0.5), TAB_Y, `${STRINGS.achievements.tabs[tab]}  ${done}/${list.length}`, TYPE.button, { role: 'display', bold: true })
-                .setOrigin(0.5)
-                .setInteractive({ useHandCursor: true });
-            label.on(Phaser.Input.Events.POINTER_UP, () => this.showTab(tab));
-            return label;
+            const centre = left + TAB_WIDTH * (i + 0.5);
+            const label = addText(this, 0, TAB_Y, `${STRINGS.achievements.tabs[tab]}  ${done}/${list.length}`, TYPE.button, { role: 'display', bold: true })
+                .setOrigin(0, 0.5);
+            // The medal and label are centred together in the tab.
+            const gap = 12;
+            const start = centre - (TAB_MEDAL + gap + label.width) / 2;
+            const medal = addTabMedal(this, start + TAB_MEDAL / 2, TAB_Y, tab, TAB_MEDAL);
+            label.setX(start + TAB_MEDAL + gap);
+            this.add.zone(centre, TAB_Y, TAB_WIDTH, 60)
+                .setInteractive({ useHandCursor: true })
+                .on(Phaser.Input.Events.POINTER_UP, () => this.showTab(tab));
+            return { label, medal };
         });
-        this.add.rectangle(left, TAB_Y + 30, TABS.length * TAB_WIDTH, 2, COLOURS.goldDim, 0.5).setOrigin(0, 0.5);
-        this.tabUnderline = this.add.rectangle(0, TAB_Y + 30, TAB_WIDTH - 40, 4, COLOURS.gold).setOrigin(0.5);
+        this.add.rectangle(left, TAB_Y + 34, TABS.length * TAB_WIDTH, 2, COLOURS.goldDim, 0.5).setOrigin(0, 0.5);
+        this.tabUnderline = this.add.rectangle(left + TAB_WIDTH / 2, TAB_Y + 34, TAB_WIDTH - 40, 4, COLOURS.gold).setOrigin(0.5);
     }
 
     private stepTab(step: 1 | -1): void {
@@ -102,11 +127,13 @@ export class AchievementsScene extends Phaser.Scene {
     private showTab(tab: Tab): void {
         this.tab = tab;
         const index = TABS.indexOf(tab);
-        this.tabLabels.forEach((label, i) => label.setColor(i === index ? TEXT_COLOURS.gold : TEXT_COLOURS.muted));
-        const active = this.tabLabels[index];
-        if (active) {
-            this.tweens.add({ targets: this.tabUnderline, x: active.x, duration: MOTION.fast, ease: MOTION.ease });
-        }
+        this.tabs.forEach(({ label, medal }, i) => {
+            label.setColor(i === index ? TEXT_COLOURS.gold : TEXT_COLOURS.muted);
+            medal.setAlpha(i === index ? 1 : 0.55);
+        });
+        const left = DESIGN_WIDTH / 2 - (TABS.length * TAB_WIDTH) / 2;
+        this.tweens.add({ targets: this.tabUnderline, x: left + TAB_WIDTH * (index + 0.5), duration: MOTION.fast, ease: MOTION.ease });
+
         this.cards.forEach((card) => card.destroy());
         const save = profile();
         // Opened during a run, progress includes the run so far (it's saved when the run ends).
@@ -127,53 +154,66 @@ export class AchievementsScene extends Phaser.Scene {
         const hidden = achievement.secret === true && !unlocked;
         const text = STRINGS.achievements;
         const tierColour = TIER_COLOURS[achievement.tier];
+        const tierText = TIER_TEXT_COLOURS[achievement.tier];
         const left = -CARD_WIDTH / 2;
-        const textX = left + 2 * MEDAL_RADIUS + 44;
+        const right = CARD_WIDTH / 2;
+        const top = -CARD_HEIGHT / 2;
+        const textX = left + TEXT_INSET;
+        const parts: Phaser.GameObjects.GameObject[] = [addPanel(this, 0, 0, CARD_WIDTH, CARD_HEIGHT)];
 
-        const frame = this.add.graphics()
-            .fillStyle(COLOURS.stone, 0.96)
-            .fillRoundedRect(left, -CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT, 14)
-            .lineStyle(3, unlocked ? tierColour : COLOURS.iron, 1)
-            .strokeRoundedRect(left, -CARD_HEIGHT / 2, CARD_WIDTH, CARD_HEIGHT, 14);
-        const medalX = left + 22 + MEDAL_RADIUS;
-        const medal = this.add.circle(medalX, 0, MEDAL_RADIUS, unlocked ? tierColour : COLOURS.stoneLight).setStrokeStyle(3, unlocked ? COLOURS.ink : tierColour, unlocked ? 0.6 : 0.8);
-        const medalText = addText(this, medalX, 0, hidden ? '?' : text.points(TIER_POINTS[achievement.tier]), TYPE.small, {
-            bold: true,
-            colour: unlocked ? '#1a1411' : TEXT_COLOURS.muted,
-            shadow: !unlocked,
-        }).setOrigin(0.5);
-
-        const name = addText(this, textX, -46, hidden ? text.secretName : (text.list[achievement.id]?.name ?? achievement.id), TYPE.body, {
-            bold: true,
-            colour: unlocked ? TEXT_COLOURS.gold : TEXT_COLOURS.primary,
-        }).setOrigin(0, 0.5);
-        const description = addText(this, textX, -26, hidden ? text.secretDescription : (text.list[achievement.id]?.description ?? ''), TYPE.small, {
-            colour: TEXT_COLOURS.muted,
-            wrapWidth: CARD_WIDTH / 2 - textX - 20,
-        });
-        const parts: Phaser.GameObjects.GameObject[] = [frame, medal, medalText, name, description];
-
-        const footY = 46;
         if (unlocked) {
-            parts.push(addText(this, textX, footY, text.unlockedOn(formatDate(unlockedOn)), TYPE.tiny, { bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0, 0.5));
+            // Earned: framed in its tier's metal.
+            parts.push(this.add.graphics().lineStyle(3, tierColour, 1).strokeRoundedRect(left + 1.5, top + 1.5, CARD_WIDTH - 3, CARD_HEIGHT - 3, CARD_RADIUS));
+        } else {
+            // Not yet: the card sinks back into the dark.
+            parts.push(this.add.graphics().fillStyle(COLOURS.ink, 0.45).fillRoundedRect(left, top, CARD_WIDTH, CARD_HEIGHT, CARD_RADIUS));
+        }
+        parts.push(addMedal(this, left + CARD_PADDING + MEDAL_SIZE / 2, 0, achievement, unlocked ? 'unlocked' : hidden ? 'hidden' : 'locked', MEDAL_SIZE));
+
+        // The score it's worth, in a tag at the top right.
+        const nameY = top + 30;
+        const points = addText(this, right - CARD_PADDING - 12, nameY, text.points(TIER_POINTS[achievement.tier]), TYPE.tiny, {
+            bold: true,
+            colour: unlocked ? tierText : TEXT_COLOURS.dim,
+            shadow: false,
+        }).setOrigin(1, 0.5);
+        const tagWidth = points.width + 24;
+        const tag = this.add.graphics()
+            .fillStyle(COLOURS.ink, 0.7)
+            .fillRoundedRect(right - CARD_PADDING - tagWidth, nameY - 14, tagWidth, 28, 14)
+            .lineStyle(1.5, unlocked ? tierColour : COLOURS.iron, 1)
+            .strokeRoundedRect(right - CARD_PADDING - tagWidth, nameY - 14, tagWidth, 28, 14);
+        parts.push(tag, points);
+
+        const name = addText(this, textX, nameY, hidden ? text.secretName : (text.list[achievement.id]?.name ?? achievement.id), TYPE.body, {
+            bold: true,
+            colour: unlocked ? tierText : TEXT_COLOURS.primary,
+        }).setOrigin(0, 0.5);
+        const description = addText(this, textX, nameY + 18, hidden ? text.secretDescription : (text.list[achievement.id]?.description ?? ''), TYPE.small, {
+            colour: TEXT_COLOURS.muted,
+            wrapWidth: right - CARD_PADDING - textX,
+        });
+        if (!unlocked) {
+            name.setAlpha(0.8);
+        }
+        parts.push(name, description);
+
+        const footY = CARD_HEIGHT / 2 - 30;
+        if (unlocked) {
+            parts.push(addText(this, textX, footY, text.unlockedOn(formatDate(unlockedOn)), TYPE.tiny, { bold: true, colour: tierText }).setOrigin(0, 0.5));
         } else if (showsProgress(achievement)) {
             const format = achievement.stat === 'longestRun' ? formatPlayTime : formatScore;
-            parts.push(addText(this, textX, footY, text.progress(text.stats[achievement.stat], format(value), format(achievement.goal)), TYPE.tiny, { colour: TEXT_COLOURS.primary }).setOrigin(0, 0.5));
-            const barX = CARD_WIDTH / 2 - 24 - BAR_WIDTH;
-            parts.push(this.add.rectangle(barX, footY, BAR_WIDTH, 10, COLOURS.iron).setOrigin(0, 0.5));
-            if (value > 0) {
-                parts.push(this.add.rectangle(barX, footY, BAR_WIDTH * (value / achievement.goal), 10, tierColour).setOrigin(0, 0.5));
-            }
+            const count = addText(this, right - CARD_PADDING, footY, text.progress(format(value), format(achievement.goal)), TYPE.tiny, { bold: true })
+                .setOrigin(1, 0.5);
+            const barWidth = right - CARD_PADDING - COUNT_WIDTH - textX;
+            const bar = new ProgressBar(this, textX + barWidth / 2, footY, barWidth, tierColour);
+            bar.setProgress(value / achievement.goal, false);
+            parts.push(bar, count);
         } else {
             parts.push(addText(this, textX, footY, text.locked, TYPE.tiny, { colour: TEXT_COLOURS.dim }).setOrigin(0, 0.5));
         }
 
-        const card = this.add.container(x, y, parts);
-        if (!unlocked) {
-            // Locked cards are dimmed, but stay readable.
-            [medal, medalText, name, description].forEach((part) => part.setAlpha(0.7));
-        }
-        return card;
+        return this.add.container(x, y, parts);
     }
 
     private close(): void {

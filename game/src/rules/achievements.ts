@@ -168,3 +168,8 @@ export function newlyEarned(unlocked: Readonly<Record<string, string>>, totals: 
 export function unlockedCount(unlocked: Readonly<Record<string, string>>): number {
     return ACHIEVEMENTS.filter((achievement) => achievement.id in unlocked).length;
 }
+
+/** Score earned from achievements so far, for the screen's header. */
+export function pointsEarned(unlocked: Readonly<Record<string, string>>): number {
+    return ACHIEVEMENTS.reduce((total, achievement) => total + (achievement.id in unlocked ? TIER_POINTS[achievement.tier] : 0), 0);
+}

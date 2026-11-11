@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACHIEVEMENTS, TIER_POINTS, newlyEarned, progress, showsProgress, unlockedCount } from './achievements';
+import { ACHIEVEMENTS, TIER_POINTS, newlyEarned, pointsEarned, progress, showsProgress, unlockedCount } from './achievements';
 import { Run } from './run';
 import { addTotals, bestsWith, defaultSave, emptyTotals, type Bests, type Totals } from './save';
 import { STRINGS } from '../strings';
@@ -48,6 +48,7 @@ describe('achievements', () => {
         expect(ids(newlyEarned({}, totals, noBests))).toEqual(['first_blood']);
         expect(newlyEarned({ first_blood: '2026-11-11T00:00:00.000Z' }, totals, noBests)).toEqual([]);
         expect(unlockedCount({ first_blood: 'x', not_an_achievement: 'y' })).toBe(1);
+        expect(pointsEarned({ first_blood: 'x', boss_hunter: 'x', flawless_hunt: 'x', not_an_achievement: 'y' })).toBe(25 + 50 + 100);
     });
 
     it('caps progress at the goal and only shows it for counted, non-secret ones', () => {

@@ -67,7 +67,8 @@ export function addFloorBackdrop(scene: Phaser.Scene, floor: number | undefined,
  */
 function addScreenBackdrop(scene: Phaser.Scene, data: ScreenData): void {
     if (data.from === 'pause' || data.from === 'game') {
-        scene.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.8).setOrigin(0);
+        // Dark enough that the HUD and banners underneath don't compete with the screen.
+        scene.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.94).setOrigin(0);
     } else {
         addFloorBackdrop(scene, data.floor, 0.7);
     }
