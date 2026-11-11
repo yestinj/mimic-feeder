@@ -36,8 +36,7 @@ export class PauseScene extends Phaser.Scene {
         super('pause');
     }
 
-    /** `show: 'achievements'`: K was pressed during play, so the achievements open straight over the menu. */
-    create(data?: { show?: 'achievements' }): void {
+    create(): void {
         this.dialog = null;
         this.leaving = false;
         const run = (this.scene.get('game') as GameScene).currentRun;
@@ -60,9 +59,6 @@ export class PauseScene extends Phaser.Scene {
 
         this.cameras.main.fadeIn(MOTION.fast, 0, 0, 0);
         markReady('pause');
-        if (data?.show === 'achievements') {
-            this.openAchievements();
-        }
     }
 
     private addMenu(): void {

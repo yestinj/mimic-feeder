@@ -17,7 +17,7 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
     private readonly variation: number;
     /** Set by Magnetism: the speed it flies at the mimic (5× its fall speed when pulled). */
     magnetSpeed: number | null = null;
-    /** Held by a tentacle until it's pulled into the mouth: no contact or floor checks. */
+    /** Claimed by a tentacle until it's pulled into the mouth: no contact or floor checks. */
     grabbed = false;
     /** A dragon flying off: when its flight ends (scene time), or null while it falls. */
     flightEndsAt: number | null = null;
@@ -78,6 +78,11 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
     /** A cat lands on the floor at `groundY` and waits there. */
     land(groundY: number, time: number): void {
         this.landedAt = time;
+        this.settle(groundY);
+    }
+
+    /** Stops it resting on the floor at `groundY`. */
+    settle(groundY: number): void {
         this.setVelocity(0, 0);
         this.y = groundY - this.displayHeight / 2;
     }
@@ -99,10 +104,12 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
         }
     }
 
-    /** A tentacle has it: it stops where it is, and the tentacle moves it from now on. */
+    /**
+     * A tentacle is reaching for it: it carries on as it was, but nothing
+     * touches it and it can't land, until the tentacle reels it in.
+     */
     grab(): void {
         this.grabbed = true;
-        this.setVelocity(0, 0);
     }
 
     rect(): Rect {

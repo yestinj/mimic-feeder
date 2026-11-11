@@ -263,16 +263,24 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.save.achievements.includes('staff_initiate'));
         assert(true, '/next/ finding the Staff unlocks the Staff Initiate achievement, and saves it');
 
-        // K opens the achievements over the pause menu; Esc goes back to the menu, then to the run.
+        // K opens the achievements straight over the run, and Esc goes back to it.
         await page.keyboard.press('KeyK');
         await waitForSnapshot((s) => s.running.includes('achievements') && !s.running.includes('pause') && s.paused.includes('game'));
         await page.waitForTimeout(400);
         await page.screenshot({ path: path.join(OUT_DIR, 'next-achievements.png') });
         await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('game') && s.running.includes('hud') && !s.running.includes('achievements'));
+        assert((await snapshot()).running.every((key) => key !== 'pause'), '/next/ K opens the achievements over the run, and Esc goes straight back to it');
+        // Opened from the pause menu (K there too), Esc goes back to the menu, then to the run.
+        await page.keyboard.press('KeyP');
+        await waitForSnapshot((s) => s.running.includes('pause'));
+        await page.keyboard.press('KeyK');
+        await waitForSnapshot((s) => s.running.includes('achievements') && !s.running.includes('pause'));
+        await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('achievements'));
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause'));
-        assert(true, '/next/ K opens the achievements over the pause menu, and Esc goes back to the run');
+        assert(true, '/next/ the achievements opened from the pause menu go back to it');
         for (const [ability, key] of [['tentacles', 'KeyZ'], ['magnetism', 'KeyX']]) {
             await debug('grant', ability);
             await waitForSnapshot((s) => s.card && s.card.ability === ability && s.card.ready);

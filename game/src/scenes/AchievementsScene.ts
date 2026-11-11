@@ -109,8 +109,9 @@ export class AchievementsScene extends Phaser.Scene {
         }
         this.cards.forEach((card) => card.destroy());
         const save = profile();
-        // Over the pause menu, progress includes the run in progress (it's saved when the run ends).
-        const run = this.screen.from === 'pause' ? (this.scene.get('game') as GameScene).currentRun.record() : null;
+        // Opened during a run, progress includes the run so far (it's saved when the run ends).
+        const duringRun = this.screen.from === 'pause' || this.screen.from === 'game';
+        const run = duringRun ? (this.scene.get('game') as GameScene).currentRun.record() : null;
         const totals = run ? addTotals(save.totals, run.totals) : save.totals;
         const bests = run ? bestsWith(save.bests, run) : save.bests;
         const gridLeft = DESIGN_WIDTH / 2 - (COLUMNS * CARD_WIDTH + (COLUMNS - 1) * CARD_GAP_X) / 2;

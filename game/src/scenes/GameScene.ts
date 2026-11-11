@@ -395,7 +395,7 @@ export class GameScene extends Phaser.Scene {
         onKeyDown(this, ['UP', 'W'], () => this.jump());
         onKeyDown(this, ['P', 'ESC'], () => this.openOverlay('pause'));
         // K opens the achievements, over the pause menu.
-        onKeyDown(this, ['K'], () => this.openOverlay('pause', { show: 'achievements' }));
+        onKeyDown(this, ['K'], () => this.openOverlay('achievements', { from: 'game' }));
         onKeyDown(this, ['LEFT', 'A'], (event) => this.tryDash(-1, event.timeStamp));
         onKeyDown(this, ['RIGHT', 'D'], (event) => this.tryDash(1, event.timeStamp));
         onKeyDown(this, ['SPACE'], () => this.castShadowBolt());
@@ -1035,7 +1035,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card). */
-    private openOverlay(key: 'pause' | 'unlock', data: object = {}): void {
+    private openOverlay(key: 'pause' | 'unlock' | 'achievements', data: object = {}): void {
         if (this.ending || !this.scene.isActive()) {
             return;
         }
@@ -1043,8 +1043,7 @@ export class GameScene extends Phaser.Scene {
         this.sound.pauseAll();
         this.scene.pause();
         this.scene.pause('hud');
-        // Always some data: launched without any, Phaser hands the scene its previous launch's data
-        // (so a pause after K would open the achievements again).
+        // Always some data: launched without any, Phaser hands the scene its previous launch's data.
         this.scene.launch(key, data);
     }
 
