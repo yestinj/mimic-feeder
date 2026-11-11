@@ -12,13 +12,8 @@ import { Menu } from '../ui/Menu';
 import { addPanel } from '../ui/kit';
 import { openScreen } from '../ui/screens';
 import { addText } from '../ui/text';
-import { showToast } from '../ui/toast';
 
-/**
- * Title screen. Play starts a run, and Achievements, High Scores and
- * Settings open over it; the other screens arrive in later milestones, and selecting them shows
- * a "coming later" note for now.
- */
+/** Title screen. Play starts a run; How to Play, Achievements, High Scores, Settings and Credits open over it. */
 export class TitleScene extends Phaser.Scene {
     private leaving = false;
     private profileText!: Phaser.GameObjects.Text;
@@ -69,14 +64,13 @@ export class TitleScene extends Phaser.Scene {
     }
 
     private addMenu(): void {
-        const soon = (label: string) => () => showToast(this, STRINGS.comingLater(label));
         const items: { label: string; action: () => void }[] = [
             { label: STRINGS.menu.play, action: () => this.play() },
-            { label: STRINGS.menu.howToPlay, action: soon(STRINGS.menu.howToPlay) },
+            { label: STRINGS.menu.howToPlay, action: () => openScreen(this, 'howToPlay', { from: 'title' }) },
             { label: STRINGS.menu.achievements, action: () => openScreen(this, 'achievements', { from: 'title' }) },
             { label: STRINGS.menu.highScores, action: () => openScreen(this, 'highScores', { from: 'title' }) },
             { label: STRINGS.menu.settings, action: () => openScreen(this, 'settings', { from: 'title' }) },
-            { label: STRINGS.menu.credits, action: soon(STRINGS.menu.credits) },
+            { label: STRINGS.menu.credits, action: () => openScreen(this, 'credits', { from: 'title' }) },
         ];
         const top = 390;
         const step = 84;

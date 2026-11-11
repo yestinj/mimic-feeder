@@ -1,15 +1,16 @@
-// Menu screens opened over another one (Settings, High Scores and
-// Achievements, from the title, the pause menu or the results). The screen
-// underneath sleeps, so it keeps its state (focus, an animation half done)
-// and wakes up as it was. The achievements can also open straight over the
-// run (K), which is paused underneath and resumes when they close.
+// Menu screens opened over another one (How to Play, Achievements, High
+// Scores, Settings and Credits, from the title, the pause menu or the
+// results). The screen underneath sleeps, so it keeps its state (focus, an
+// animation half done) and wakes up as it was. How to Play and the
+// achievements can also open straight over the run (H and K), which is
+// paused underneath and resumes when they close.
 import * as Phaser from 'phaser';
 import { backgroundKey, floorBackground } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import type { GameScene } from '../scenes/GameScene';
 import { COLOURS, MOTION } from '../theme';
 
-export type ScreenKey = 'settings' | 'highScores' | 'achievements';
+export type ScreenKey = 'howToPlay' | 'achievements' | 'highScores' | 'settings' | 'credits';
 export type ReturnTo = 'title' | 'pause' | 'results' | 'game';
 
 export interface ScreenData {

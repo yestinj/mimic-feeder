@@ -48,6 +48,7 @@ describe('save', () => {
             discoveries: ['goblin', 'goblin', 3],
             introduced: ['shadowBolt', 'teleport'],
             achievementsSeen: ['first_blood', 7],
+            discoveriesSeen: ['goblin', null],
         }), false);
         expect(save).not.toBeNull();
         expect(save?.name).toBe('Dr Chompers');
@@ -60,6 +61,7 @@ describe('save', () => {
         expect(save?.discoveries).toEqual(['goblin']);
         expect(save?.introduced).toEqual(['shadowBolt']);
         expect(save?.achievementsSeen).toEqual(['first_blood']);
+        expect(save?.discoveriesSeen).toEqual(['goblin']);
     });
 
     it('cleans names: letters, digits and spaces, 12 at most, never empty', () => {

@@ -40,7 +40,7 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
   - The first key press or click also unlocks audio.
   - **It has life:** the mimic idles there, its lid creaking open now and then, with dust drifting through the torchlight.
 - **Pause menu** (P or Esc):
-  - Items: Resume, How to Play, Achievements, Settings, Restart, Quit to menu. K stays a shortcut to Achievements.
+  - Items: Resume, How to Play, Achievements, Settings, Restart, Quit to menu. K stays a shortcut to Achievements, and H opens How to Play (agreed in M3c). During play both open straight over the run, and closing them goes back to play.
   - A "This run" panel shows floor and zone, time, level, and speed, size, drop-speed and spawn-rate percentages.
   - Restart and Quit ask "Abandon this run?", with Cancel selected by default.
 - **The same controls on every screen:** arrows or W/S to move, Enter to select, Esc to go back, and full mouse support. The selected item is clearly highlighted. Multi-page screens use tabs.
@@ -94,8 +94,8 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
 - **How to Play tabs:**
   - **Basics:** goal, eating from the top, lives and potions, growing stronger. Light on exact numbers.
   - **Controls:** keycaps. Abilities not yet unlocked show as "???".
-  - **Creatures & Items:** cards with sprite, name, points and one line of behaviour. The health potion is included. The cat card hints at letting cats land, cryptically. The Ninefold Judgment is never mentioned anywhere.
-  - **Abilities:** one card each, locked until first unlocked.
+  - **Creatures & Items:** cards with sprite, name, points and one line of behaviour. The health potion is included, and so is the boss (agreed in M3c). The cat card hints at letting cats land, cryptically. The Ninefold Judgment is never mentioned anywhere (a unit test checks).
+  - **Abilities:** one card each, locked until first unlocked in any run. A locked one shows "???" with a vague hint at how it's found (agreed in M3c).
 - **Discovery:** creatures and items never encountered show as silhouettes with "???" until first met. Discoveries are saved.
 - **Credits:** game by Yestin, alpha-tester thanks, version, beta note, open-licence attributions.
 

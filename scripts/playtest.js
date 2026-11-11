@@ -277,6 +277,20 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('KeyK');
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('achievements'));
         assert(true, '/next/ K closes the achievements too');
+        // H opens How to Play straight over the run, on Creatures & Items since this run has met new things,
+        // which marks them seen (they stay tagged "New" for this visit); H closes it again.
+        // A crown, dropped away from the mimic (missing one costs nothing), is the thing just met.
+        const crownX = (await snapshot()).game.mimicX > 960 ? 300 : 1620;
+        await debug('spawn', 'crown', crownX);
+        const met = (await waitForSnapshot((s) => s.save.newDiscoveries.includes('crown'))).save.newDiscoveries;
+        assert(true, '/next/ meeting something marks it new for How to Play');
+        await page.keyboard.press('KeyH');
+        const opened = await waitForSnapshot((s) => s.running.includes('howToPlay') && s.paused.includes('game') && s.howToPlay && s.howToPlay.tab === 'bestiary');
+        assert(met.every((key) => opened.howToPlay.fresh.includes(key)) && opened.save.newDiscoveries.length === 0,
+            '/next/ H opens How to Play over the run on what is new, and marks it seen');
+        await page.keyboard.press('KeyH');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('howToPlay') && s.howToPlay === null);
+        assert(true, '/next/ H goes back to play');
         // Opened from the pause menu (K there too), Esc goes back to the menu, then to the run.
         await page.keyboard.press('KeyP');
         await waitForSnapshot((s) => s.running.includes('pause'));
@@ -428,20 +442,42 @@ async function checkNextBuild(browser) {
         '/next/ settings, the name and the high scores survive a reload');
         assert(reloaded.save.achievements.includes('staff_initiate'), '/next/ achievements survive a reload');
 
-        // Achievements (third on the title menu) open from the title too.
-        for (let i = 0; i < 2; i++) {
-            await page.keyboard.press('ArrowDown');
-        }
+        // How to Play (second on the title menu): what this run met is shown, and the abilities it unlocked.
+        // From the title it opens on Basics: the goblin met since H was pressed stays new until Creatures & Items is shown.
+        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press('Enter');
+        const basics = await waitForSnapshot((s) => s.running.includes('howToPlay') && !s.running.includes('title') && s.howToPlay && s.howToPlay.tab === 'basics');
+        assert(basics.save.newDiscoveries.includes('goblin'), '/next/ How to Play opens on Basics from the title, leaving new things unseen');
+        await page.keyboard.press('ArrowRight');
+        await page.keyboard.press('ArrowRight');
+        const shown = await waitForSnapshot((s) => s.howToPlay && s.howToPlay.tab === 'bestiary');
+        const guide = shown.howToPlay;
+        assert(!guide.hidden.includes('goblin') && !guide.hidden.includes('bomb') && guide.lockedAbilities.length === 0
+            && guide.fresh.includes('goblin') && shown.save.newDiscoveries.length === 0,
+            '/next/ Creatures & Items shows what has been met and unlocked, tags what is new, and marks it seen');
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('howToPlay'));
+
+        // Achievements (third on the title menu, one below How to Play) open from the title too.
+        await page.keyboard.press('ArrowDown');
         await page.keyboard.press('Enter');
         await waitForSnapshot((s) => s.running.includes('achievements') && !s.running.includes('title'));
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('achievements'));
         assert(true, '/next/ Achievements opens from the title menu and Esc returns to it');
 
-        // Erase save data (ninth row) asks first, then starts over. Settings is two below Achievements.
-        for (let i = 0; i < 2; i++) {
+        // Credits (last on the title menu, three below Achievements).
+        for (let i = 0; i < 3; i++) {
             await page.keyboard.press('ArrowDown');
         }
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('credits') && !s.running.includes('title'));
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('credits'));
+        assert(true, '/next/ Credits opens from the title menu and Esc returns to it');
+
+        // Erase save data (ninth row) asks first, then starts over. Settings is one above Credits.
+        await page.keyboard.press('ArrowUp');
         await page.keyboard.press('Enter');
         await waitForSnapshot((s) => s.running.includes('settings'));
         for (let i = 0; i < 8; i++) {

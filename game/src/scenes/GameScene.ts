@@ -396,7 +396,8 @@ export class GameScene extends Phaser.Scene {
         keyboard.addCapture([Phaser.Input.Keyboard.KeyCodes.UP, Phaser.Input.Keyboard.KeyCodes.DOWN, Phaser.Input.Keyboard.KeyCodes.SPACE]);
         onKeyDown(this, ['UP', 'W'], () => this.jump());
         onKeyDown(this, ['P', 'ESC'], () => this.openOverlay('pause'));
-        // K opens the achievements straight over the run; closing them goes back to play.
+        // H and K open How to Play and the achievements straight over the run; closing them goes back to play.
+        onKeyDown(this, ['H'], () => this.openOverlay('howToPlay', { from: 'game' }));
         onKeyDown(this, ['K'], () => this.openOverlay('achievements', { from: 'game' }));
         onKeyDown(this, ['LEFT', 'A'], (event) => this.tryDash(-1, event.timeStamp));
         onKeyDown(this, ['RIGHT', 'D'], (event) => this.tryDash(1, event.timeStamp));
@@ -1043,8 +1044,8 @@ export class GameScene extends Phaser.Scene {
         this.scene.resume('hud');
     }
 
-    /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card, achievements); resumePlay undoes it. */
-    private openOverlay(key: 'pause' | 'unlock' | 'achievements', data: object = {}): void {
+    /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card, How to Play, achievements); resumePlay undoes it. */
+    private openOverlay(key: 'pause' | 'unlock' | 'howToPlay' | 'achievements', data: object = {}): void {
         if (this.ending || !this.scene.isActive()) {
             return;
         }

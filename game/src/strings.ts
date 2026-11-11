@@ -4,11 +4,12 @@
 export const STRINGS = {
     gameTitle: 'Mimic Feeder',
     tagline: 'Feed the mimic. Hoard the shinies. Mind the bombs.',
+    /** On something earned or met since the player last looked. */
+    newTag: 'New',
     loading: 'Waking the mimic…',
     pressToContinue: 'Press any key',
     keyHints: '← → move   ·   ↑ jump   ·   Esc menu',
     previewNotice: 'Preview of the new version. Work in progress.',
-    comingLater: (item: string) => `${item}: coming in a later milestone`,
     /** The title screen's line for a returning player. */
     profileLine: (name: string, best: string | null) => (best === null ? name : `${name}   ·   Best ${best}`),
     menu: {
@@ -136,8 +137,6 @@ export const STRINGS = {
         locked: 'Locked',
         secretName: '???',
         points: (points: number) => `+${points}`,
-        /** On a card unlocked since the screen was last opened. */
-        new: 'New',
         progress: (value: string, goal: string) => `${value} / ${goal}`,
         hint: '← → change tab   ·   Esc back',
         back: 'Back',
@@ -212,5 +211,92 @@ export const STRINGS = {
         nameHint: 'Enter save   ·   Esc skip',
         savedAs: (name: string) => `Saved as ${name}`,
         renameHint: 'You can change the name in Settings',
+    },
+    /**
+     * How to Play (plan §3.4). Light on exact numbers, and the Ninefold
+     * Judgment is never mentioned (a test checks). Drafts for the M4 text review.
+     */
+    howToPlay: {
+        title: 'How to Play',
+        tabs: { basics: 'Basics', controls: 'Controls', bestiary: 'Creatures & Items', abilities: 'Abilities' },
+        /** How many of the Creatures & Items have been met, after the tab's name. */
+        count: (met: number, total: number) => `${met}/${total}`,
+        hint: '← → change tab   ·   Esc back',
+        back: 'Back',
+        basics: [
+            { title: 'Eat from above', text: 'Creatures fall from the top of the dungeon. Catch them in your open mouth: stand beneath them, or jump to meet them.' },
+            { title: 'Waste nothing', text: 'A creature that hits the floor, or bumps into the side of the chest, costs you a heart. Lose them all and the run is over.' },
+            { title: 'Treasure', text: 'Crowns and diamonds are worth more than any creature. Any touch takes them, and nothing is lost if they shatter.' },
+            { title: 'Hazards', text: 'Bombs, and later worse, cost a heart if they touch you. Dodge them, or find a way to blast them first.' },
+            { title: 'Grow stronger', text: 'Every meal brings experience. Level up to grow bigger and faster and to gain new powers. Potions restore a heart.' },
+            { title: 'Go deeper', text: 'Clear each zone by eating, then go deeper. The dungeon gets faster, and stranger, the further down you go.' },
+        ],
+        controls: {
+            moving: 'Moving',
+            menus: 'Menus and more',
+            or: 'or',
+            move: 'Move',
+            jump: 'Jump (again in the air to double jump)',
+            dash: 'Dash',
+            dashKeys: 'Double-tap',
+            pause: 'Pause',
+            howToPlay: 'How to Play',
+            achievements: 'Achievements',
+            mute: 'Mute',
+            fullscreen: 'Fullscreen',
+            inMenus: 'In menus',
+            menuMove: 'Choose',
+            menuSelect: 'Select',
+            menuBack: 'Back',
+            locked: '???',
+        },
+        /** Card categories on the Creatures & Items tab. */
+        categories: { creature: 'Creature', treasure: 'Treasure', hazard: 'Hazard', powerUp: 'Power-up', boss: 'Boss' },
+        unknownName: '???',
+        unknownText: 'Not met yet. Keep exploring.',
+        points: (points: number) => `+${points}`,
+        /** One line for each, shown once it's been met. */
+        entries: {
+            goblin: { name: 'Goblin', text: 'The dungeon’s most common snack.' },
+            dwarf: { name: 'Dwarf', text: 'Sturdier fare, and there’s plenty of it.' },
+            wraith: { name: 'Wraith', text: 'Rarer, and worth a little more.' },
+            human: { name: 'Human', text: 'Adventurers. Eat enough of them and you’ll grow an extra heart.' },
+            elf: { name: 'Elf', text: 'Rare and well worth catching.' },
+            dragon: { name: 'Dragon', text: 'Flies off when you get close. Corner it, or meet it with a jump.' },
+            cat: { name: 'Cat', text: 'Cats always land on their feet. Let them.' },
+            crown: { name: 'Crown', text: 'Glints as it falls. Treasure for the taking.' },
+            diamond: { name: 'Diamond', text: 'The finest treasure in the dungeon.' },
+            bomb: { name: 'Bomb', text: 'Costs a heart if it touches you. A Shadow Bolt sets it off safely.' },
+            fireball: { name: 'Fireball', text: 'Falls fast and burns. Shadow Bolts pass straight through it.' },
+            potion: { name: 'Health Potion', text: 'Restores a heart.' },
+            staff: { name: 'Wizard Staff', text: 'Grants the Shadow Bolt.' },
+            magnet: { name: 'Magnet', text: 'Grants Magnetism.' },
+            boss: { name: 'The Flying Demon', text: 'Only its fireballs hurt you. Only Shadow Bolts hurt it.' },
+        } as Record<string, { readonly name: string; readonly text: string }>,
+        /** The Abilities tab: what each does, and a vague hint while it's still locked. */
+        abilities: {
+            dash: { text: 'A burst of speed to either side. Double-tap a direction.', hint: '' },
+            shadowBolt: { text: 'Fires a bolt straight up. It destroys what it hits and sets off bombs.', hint: 'Lies somewhere in the dungeon.' },
+            tentacles: { text: 'Chains grab the nearest creatures and reel them in. They reach more as you grow.', hint: 'Grows with experience.' },
+            magnetism: { text: 'Pulls in the treasure on screen… and any bombs. Use it with care.', hint: 'Lies deeper in the dungeon.' },
+        },
+        lockedName: '???',
+    },
+    credits: {
+        title: 'Credits',
+        by: 'A game by Yestin',
+        thanksTitle: 'Special thanks',
+        thanks: ['Rob M', 'hypn', 'benefit'],
+        thanksNote: 'Alpha testers',
+        version: (version: string) => `Version ${version}`,
+        beta: 'A playable beta: a portfolio and learning project, updated when time allows.',
+        builtTitle: 'Made with',
+        built: [
+            'Phaser (MIT licence)',
+            'Grenze Gotisch and Barlow fonts (SIL Open Font Licence)',
+            'Art, sound and music: original, public domain, or under free licences',
+        ],
+        hint: 'Esc back',
+        back: 'Back',
     },
 } as const;
