@@ -332,6 +332,21 @@ export function addTotals(a: Totals, b: Totals): Totals {
     };
 }
 
+/** A personal best a run can beat. */
+export type BestKind = keyof Bests;
+
+/**
+ * The bests a run beat, for the results' highlights. None on the very first
+ * run (`runsBefore` 0), when everything would count.
+ */
+export function bestsBeaten(before: Bests, runsBefore: number, run: RunRecord): BestKind[] {
+    if (runsBefore === 0) {
+        return [];
+    }
+    const now = bestsWith(before, run);
+    return (['score', 'floor', 'level', 'playTimeMs'] as const).filter((kind) => now[kind] > before[kind]);
+}
+
 /** The bests, counting a run (in progress or finished). */
 export function bestsWith(bests: Bests, run: RunRecord): Bests {
     return {

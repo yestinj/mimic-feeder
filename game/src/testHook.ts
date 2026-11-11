@@ -52,8 +52,8 @@ export interface GameSnapshot {
     readonly card: { readonly ability: string; readonly ready: boolean } | null;
     /** How to Play, while it's open: the tab shown, what's marked "New", the creatures and items not met yet, and the abilities not unlocked yet. */
     readonly howToPlay: { readonly tab: string; readonly fresh: readonly string[]; readonly hidden: readonly string[]; readonly lockedAbilities: readonly string[] } | null;
-    /** The results screen, while it's showing: the cause of death, the place on the board, and whether it's asking for a name. */
-    readonly results: { readonly cause: string | null; readonly rank: number | null; readonly naming: boolean } | null;
+    /** The results screen, while it's showing: the cause of death, the place on the board, whether it has finished telling the run (or been skipped), and whether it's asking for a name. */
+    readonly results: { readonly cause: string | null; readonly rank: number | null; readonly staged: boolean; readonly naming: boolean } | null;
     /** What the save holds. */
     readonly save: {
         readonly name: string;
@@ -88,6 +88,8 @@ export interface DebugApi {
     shootCats(count: number): void;
     /** Adds points (and XP), so a test run can make the high scores. */
     bonus(points: number): void;
+    /** Ends the run at once, as if bombs took every heart. */
+    die(): void;
 }
 
 export interface MimicFeederTestHook {

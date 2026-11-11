@@ -116,8 +116,10 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
   - **The mimic's growth:** its final size next to its starting size, plus level and time played.
   - **Highlights:** personal bests broken, achievements unlocked this run, new discoveries.
   - Any key skips the animation. Buttons: Play again (default), High Scores, Menu.
+  - Built in M4a. Bests don't count as highlights on a first run (everything would), and a new best score shows on its ribbon rather than as a highlight. The soft ticks come with the UI sounds in M4b.
+- **The game-over moment** slows play to a stop rather than freezing it (it stops at once with reduced motion).
 - **Names:** "Name your mimic" is asked once, the first time a score makes the board. Later scores save automatically ("Saved as …"), and the name can be changed in Settings.
-- **High Scores screen:** top 10 with gold, silver and bronze for the top three; name, score, floor and zone, level, time and date; the latest entry highlighted.
+- **High Scores screen:** top 10 with gold, silver and bronze for the top three; name, score, floor and zone, level, time and date; the latest entry highlighted. Since M4a the top three stand on a podium with their medals, and the rest are in a table below.
 
 ### 3.6 Achievements
 

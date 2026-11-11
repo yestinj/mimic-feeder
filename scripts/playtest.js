@@ -388,10 +388,10 @@ async function checkNextBuild(browser) {
         assert(named.save.name === 'Chomper' && named.save.named && named.save.scores.length === 1 && named.save.scores[0].name === 'Chomper',
             '/next/ the name typed is saved, with the score');
 
-        // Play Again is focused on the results.
-        await page.keyboard.press('Enter');
+        // R plays again straight away (Play Again, focused, does the same with Enter).
+        await page.keyboard.press('KeyR');
         await waitForSnapshot((s) => s.running.includes('game') && s.game && s.game.lives === 3 && s.game.playTimeMs > 0);
-        assert(true, '/next/ Play Again starts a new run');
+        assert(true, '/next/ R on the results starts a new run');
 
         // The Ninefold Judgment: ten cats shot bring it on. Standing still, its fire ends the run.
         await debug('setSpawning', false);
@@ -404,7 +404,12 @@ async function checkNextBuild(browser) {
         assert((await snapshot()).game.boltsCast === judged.game.boltsCast, '/next/ Shadow Bolts are blocked during the Judgment');
         await waitForSnapshot((s) => s.results !== null, 120000);
         assert((await snapshot()).results.cause === 'Judged by the dungeon', '/next/ dying to the Judgment shows as the cause of death');
-        assert(!(await snapshot()).results.naming, '/next/ the name is only asked for once');
+        // Any key skips the story of the run to the end (it takes a few seconds otherwise).
+        await page.waitForTimeout(500);
+        await page.keyboard.press('Space');
+        await waitForSnapshot((s) => s.results && s.results.staged, 1500);
+        assert(!(await snapshot()).results.naming, '/next/ any key skips the results to the end, and the name is only asked for once');
+        await page.waitForTimeout(200);
 
         // High Scores (second button) opens over the results, and Esc goes back to them.
         await page.keyboard.press('ArrowRight');

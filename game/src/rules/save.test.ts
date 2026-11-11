@@ -4,6 +4,7 @@ import {
     DEFAULT_NAME,
     HIGH_SCORE_COUNT,
     SAVE_VERSION,
+    bestsBeaten,
     cleanName,
     defaultSave,
     emptyTotals,
@@ -148,5 +149,12 @@ describe('save', () => {
         expect(record.totals.eaten.dragon).toBe(1);
         expect(record.totals.collected).toMatchObject({ crown: 1, staff: 1 });
         expect(record.totals.uses.dash).toBe(1);
+    });
+
+    it('names the bests a run beat, but none on the very first run', () => {
+        const before = { score: 500, floor: 2, level: 4, playTimeMs: 90_000 };
+        expect(bestsBeaten(before, 3, run(800, { floor: 3, level: 4, playTimeMs: 60_000 }))).toEqual(['score', 'floor']);
+        expect(bestsBeaten(before, 3, run(100))).toEqual([]);
+        expect(bestsBeaten({ score: 0, floor: 0, level: 0, playTimeMs: 0 }, 0, run(800))).toEqual([]);
     });
 });
