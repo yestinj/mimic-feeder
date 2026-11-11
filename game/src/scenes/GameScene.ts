@@ -152,7 +152,8 @@ export class GameScene extends Phaser.Scene {
                 this.events.emit(RUN_EVENTS.achievement, achievement);
             }
         }
-        if (announce) {
+        // During the Ninefold Judgment the notice waits for it to end, and so does its sound (it would play over the dungeon's voice).
+        if (announce && !this.judgment) {
             playSound(this, 'playerLevelUp');
         }
         this.events.emit(RUN_EVENTS.changed);
@@ -395,7 +396,7 @@ export class GameScene extends Phaser.Scene {
         keyboard.addCapture([Phaser.Input.Keyboard.KeyCodes.UP, Phaser.Input.Keyboard.KeyCodes.DOWN, Phaser.Input.Keyboard.KeyCodes.SPACE]);
         onKeyDown(this, ['UP', 'W'], () => this.jump());
         onKeyDown(this, ['P', 'ESC'], () => this.openOverlay('pause'));
-        // K opens the achievements, over the pause menu.
+        // K opens the achievements straight over the run; closing them goes back to play.
         onKeyDown(this, ['K'], () => this.openOverlay('achievements', { from: 'game' }));
         onKeyDown(this, ['LEFT', 'A'], (event) => this.tryDash(-1, event.timeStamp));
         onKeyDown(this, ['RIGHT', 'D'], (event) => this.tryDash(1, event.timeStamp));
@@ -653,7 +654,8 @@ export class GameScene extends Phaser.Scene {
 
     /** A cat on the floor is rescued after a while, scores 100 and fades away. */
     private updateWaitingCat(cat: FallingObject): void {
-        if (cat.rescued || cat.landedAt === null || this.time.now - cat.landedAt < CAT_RESCUE_MS) {
+        // A cat a tentacle has hold of is on its way to the mouth, not waiting to be rescued.
+        if (cat.rescued || cat.grabbed || cat.landedAt === null || this.time.now - cat.landedAt < CAT_RESCUE_MS) {
             return;
         }
         cat.rescued = true;
@@ -1035,7 +1037,13 @@ export class GameScene extends Phaser.Scene {
         }
     }
 
-    /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card). */
+    /** Play carries on after an overlay closes: the game and HUD resume (the blur and sounds follow, see onResume). */
+    resumePlay(): void {
+        this.scene.resume();
+        this.scene.resume('hud');
+    }
+
+    /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card, achievements); resumePlay undoes it. */
     private openOverlay(key: 'pause' | 'unlock' | 'achievements', data: object = {}): void {
         if (this.ending || !this.scene.isActive()) {
             return;

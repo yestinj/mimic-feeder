@@ -37,6 +37,8 @@ const SUMMARY_BAR_Y = 188;
 const SUMMARY_BAR_WIDTH = 640;
 const TAB_Y = 252;
 const TAB_WIDTH = 300;
+/** The tab row's left edge (it's centred). */
+const TABS_LEFT = DESIGN_WIDTH / 2 - (TABS.length * TAB_WIDTH) / 2;
 const TAB_MEDAL = 40;
 const COLUMNS = 3;
 const CARD_WIDTH = 580;
@@ -104,7 +106,8 @@ export class AchievementsScene extends Phaser.Scene {
         addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 28, STRINGS.achievements.hint, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
         onKeyDown(this, ['LEFT', 'A'], () => this.stepTab(-1), { repeat: true });
         onKeyDown(this, ['RIGHT', 'D'], () => this.stepTab(1), { repeat: true });
-        onKeyDown(this, ['ESC', 'BACKSPACE'], () => this.close());
+        // K too, since it opens them.
+        onKeyDown(this, ['ESC', 'BACKSPACE', 'K'], () => this.close());
 
         this.cameras.main.fadeIn(MOTION.fast, 0, 0, 0);
         markReady('achievements');
@@ -120,7 +123,7 @@ export class AchievementsScene extends Phaser.Scene {
 
     /** The tab row: each tier's medal, name and how many of it are unlocked. */
     private addTabs(unlocked: Readonly<Record<string, string>>): void {
-        const left = DESIGN_WIDTH / 2 - (TABS.length * TAB_WIDTH) / 2;
+        const left = TABS_LEFT;
         this.tabs = TABS.map((tab, i) => {
             const list = onTab(tab);
             const done = list.filter(({ id }) => id in unlocked).length;
@@ -163,8 +166,7 @@ export class AchievementsScene extends Phaser.Scene {
                 dot?.setVisible(false);
             }
         });
-        const left = DESIGN_WIDTH / 2 - (TABS.length * TAB_WIDTH) / 2;
-        this.tweens.add({ targets: this.tabUnderline, x: left + TAB_WIDTH * (index + 0.5), duration: MOTION.fast, ease: MOTION.ease });
+        this.tweens.add({ targets: this.tabUnderline, x: TABS_LEFT + TAB_WIDTH * (index + 0.5), duration: MOTION.fast, ease: MOTION.ease });
 
         this.pulses.forEach((pulse) => pulse.remove());
         this.pulses = [];

@@ -129,8 +129,7 @@ export class PauseScene extends Phaser.Scene {
             return;
         }
         this.leaving = true;
-        this.scene.resume('game');
-        this.scene.resume('hud');
+        (this.scene.get('game') as GameScene).resumePlay();
         this.scene.stop();
     }
 

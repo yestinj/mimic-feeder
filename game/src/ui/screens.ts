@@ -6,6 +6,7 @@
 import * as Phaser from 'phaser';
 import { backgroundKey, floorBackground } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
+import type { GameScene } from '../scenes/GameScene';
 import { COLOURS, MOTION } from '../theme';
 
 export type ScreenKey = 'settings' | 'highScores' | 'achievements';
@@ -42,8 +43,7 @@ export function closeScreen(scene: Phaser.Scene, data: ScreenData): void {
     scene.cameras.main.fadeOut(MOTION.fast, 0, 0, 0);
     scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
         if (data.from === 'game') {
-            scene.scene.resume('game');
-            scene.scene.resume('hud');
+            (scene.scene.get('game') as GameScene).resumePlay();
         } else {
             scene.scene.wake(data.from);
         }

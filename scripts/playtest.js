@@ -272,6 +272,11 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('game') && s.running.includes('hud') && !s.running.includes('achievements'));
         assert((await snapshot()).running.every((key) => key !== 'pause'), '/next/ K opens the achievements over the run, and Esc goes straight back to it');
+        await page.keyboard.press('KeyK');
+        await waitForSnapshot((s) => s.running.includes('achievements'));
+        await page.keyboard.press('KeyK');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('achievements'));
+        assert(true, '/next/ K closes the achievements too');
         // Opened from the pause menu (K there too), Esc goes back to the menu, then to the run.
         await page.keyboard.press('KeyP');
         await waitForSnapshot((s) => s.running.includes('pause'));
