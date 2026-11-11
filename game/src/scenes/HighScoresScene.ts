@@ -10,7 +10,7 @@ import { Button } from '../ui/Button';
 import { Menu } from '../ui/Menu';
 import { addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
-import { addScreenBackdrop, closeScreen, type ScreenData } from '../ui/screens';
+import { closeScreen, startScreen, type ScreenData } from '../ui/screens';
 import { addText } from '../ui/text';
 
 const PANEL_WIDTH = 1500;
@@ -59,7 +59,7 @@ export class HighScoresScene extends Phaser.Scene {
     create(data: ScreenData): void {
         this.screen = data;
         this.leaving = false;
-        addScreenBackdrop(this, data);
+        startScreen(this, data);
         addText(this, DESIGN_WIDTH / 2, 100, STRINGS.highScores.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         addPanel(this, DESIGN_WIDTH / 2, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
 

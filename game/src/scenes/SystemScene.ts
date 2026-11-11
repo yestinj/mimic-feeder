@@ -14,8 +14,6 @@ const WORST_WINDOW_MS = 5000;
 
 /** Game-wide events, emitted on `game.events`. */
 export const GAME_EVENTS = {
-    /** Sound was muted or unmuted (payload: muted). */
-    muteChanged: 'mute-changed',
     /** A background-loaded file arrived (payload: its key). */
     deferredLoaded: 'deferred-loaded',
 } as const;
@@ -59,7 +57,7 @@ export class SystemScene extends Phaser.Scene {
         // Not while a name is being typed: M and F are letters then.
         onKeyDown(this, ['M'], () => {
             if (!isTyping()) {
-                this.game.events.emit(GAME_EVENTS.muteChanged, toggleMute(this.game));
+                toggleMute(this.game);
             }
         });
         onKeyDown(this, ['F'], () => {

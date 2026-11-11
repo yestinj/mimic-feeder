@@ -1,6 +1,5 @@
 import * as Phaser from 'phaser';
-import { floorBackground } from '../assets';
-import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
+import { DESIGN_WIDTH } from '../config';
 import { floorTitle } from '../rules/floors';
 import { formatPlayTime, formatScore } from '../rules/format';
 import type { RunSummary } from '../rules/run';
@@ -15,7 +14,7 @@ import { Menu } from '../ui/Menu';
 import { onKeyDown } from '../ui/keys';
 import { addPanel } from '../ui/kit';
 import { TextField } from '../ui/TextField';
-import { openScreen } from '../ui/screens';
+import { addFloorBackdrop, openScreen } from '../ui/screens';
 import { addText } from '../ui/text';
 
 const PANEL_WIDTH = 1000;
@@ -56,7 +55,7 @@ export class ResultsScene extends Phaser.Scene {
         this.results = results;
         this.nameField = null;
         this.namePrompt = [];
-        this.addBackdrop(results.floor);
+        addFloorBackdrop(this, results.floor, 0.55);
 
         const cx = DESIGN_WIDTH / 2;
         const title = addText(this, cx, 170, STRINGS.gameOver.title, TYPE.hero, { role: 'display', bold: true, colour: '#ffffff', letterSpacing: 2 }).setOrigin(0.5);
@@ -86,6 +85,9 @@ export class ResultsScene extends Phaser.Scene {
             this.askName();
         } else {
             this.addActions();
+            if (results.rank !== null) {
+                this.addSavedNote(profile().name, false);
+            }
         }
         this.report();
 
@@ -153,13 +155,13 @@ export class ResultsScene extends Phaser.Scene {
         this.namePrompt.forEach((object) => object.destroy());
         this.namePrompt = [];
         this.nameField = null;
-        this.addActions(STRINGS.gameOver.renameHint);
-        this.showSavedAs(name);
+        this.addActions();
+        this.addSavedNote(name, true);
         this.report();
     }
 
-    /** Play Again (focused), High Scores and Menu, and where the score was saved. */
-    private addActions(note?: string): void {
+    /** Play Again (focused), High Scores and Menu. */
+    private addActions(): void {
         const cx = DESIGN_WIDTH / 2;
         const width = 380;
         const playAgain = new Button(this, cx - 420, ACTIONS_Y, STRINGS.gameOver.playAgain, { width, onSelect: () => this.leave('game') });
@@ -169,29 +171,19 @@ export class ResultsScene extends Phaser.Scene {
         });
         const menu = new Button(this, cx + 420, ACTIONS_Y, STRINGS.gameOver.menu, { width, onSelect: () => this.leave('title') });
         new Menu(this, [playAgain, highScores, menu], { horizontal: true });
-        if (this.results.rank !== null && note === undefined) {
-            this.showSavedAs(profile().name);
-        }
-        if (note !== undefined) {
-            addText(this, cx, ACTIONS_Y + 110, note, TYPE.small, { colour: TEXT_COLOURS.dim }).setOrigin(0.5);
-        }
     }
 
-    private showSavedAs(name: string): void {
-        addText(this, DESIGN_WIDTH / 2, ACTIONS_Y + 72, STRINGS.gameOver.savedAs(name), TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
+    /** Under the buttons: the name the score was saved under, and after naming, where to change it. */
+    private addSavedNote(name: string, justNamed: boolean): void {
+        const cx = DESIGN_WIDTH / 2;
+        addText(this, cx, ACTIONS_Y + 72, STRINGS.gameOver.savedAs(name), TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
+        if (justNamed) {
+            addText(this, cx, ACTIONS_Y + 110, STRINGS.gameOver.renameHint, TYPE.small, { colour: TEXT_COLOURS.dim }).setOrigin(0.5);
+        }
     }
 
     private report(): void {
         setResultsView({ cause: this.cause, rank: this.results.rank, naming: this.nameField !== null });
-    }
-
-    /** The floor where the run ended, blurred and darkened. */
-    private addBackdrop(floor: number): void {
-        const background = this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT, floorBackground(this.textures, floor)).setOrigin(0.5, 1);
-        background.setScale(Math.max(DESIGN_WIDTH / background.width, DESIGN_HEIGHT / background.height));
-        background.enableFilters();
-        background.filters?.internal.addBlur(1, 2, 2, 1.5);
-        this.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.55).setOrigin(0);
     }
 
     private leave(scene: 'game' | 'title'): void {

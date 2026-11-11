@@ -94,7 +94,9 @@ export class TitleScene extends Phaser.Scene {
             this.profileText.setText(save.named || best !== null ? STRINGS.profileLine(save.name, best) : '');
         };
         refresh();
+        // The scene's event emitter outlives the scene, so the listener goes when it shuts down.
         this.events.on(Phaser.Scenes.Events.WAKE, refresh);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.WAKE, refresh));
     }
 
     private addFooter(): void {

@@ -65,6 +65,15 @@ describe('profile', () => {
         expect(profile().name).toBe('Full');
     });
 
+    it('leaves a save from a newer version alone', () => {
+        const storage = new FakeStorage();
+        const newer = JSON.stringify({ version: 99, name: 'Future' });
+        storage.setItem(SAVE_KEY, newer);
+        loadProfile(storage);
+        updateProfile((save) => ({ ...save, name: 'Now' }));
+        expect(storage.getItem(SAVE_KEY)).toBe(newer);
+    });
+
     it('erases everything', () => {
         const storage = new FakeStorage();
         loadProfile(storage);

@@ -34,6 +34,20 @@ abstract class Row extends Phaser.GameObjects.Container implements Focusable {
         this.paintRow();
     }
 
+    /** True if the pointer was pressed down on this row (so a release over it, or a drag, belongs to it). */
+    protected pressedHere(pointer: Phaser.Input.Pointer): boolean {
+        return Math.abs(pointer.downX - this.x) <= this.rowWidth / 2 && Math.abs(pointer.downY - this.y) <= ROW_HEIGHT / 2;
+    }
+
+    /** Runs `action` on a click: pressed and released on this row. */
+    protected onClick(action: () => void): void {
+        this.on(Phaser.Input.Events.POINTER_UP, (pointer: Phaser.Input.Pointer) => {
+            if (this.pressedHere(pointer)) {
+                action();
+            }
+        });
+    }
+
     /** The control's right edge, in the row's own coordinates. */
     protected get right(): number {
         return this.rowWidth / 2 - INSET;
@@ -89,7 +103,7 @@ export class SliderRow extends Row {
         this.valueText = addText(scene, this.right, 0, '', TYPE.body, { bold: true }).setOrigin(1, 0.5);
         this.add([this.track, this.valueText]);
         const fromPointer = (pointer: Phaser.Input.Pointer): void => {
-            if (pointer.isDown) {
+            if (pointer.isDown && this.pressedHere(pointer)) {
                 this.setFromX(pointer.x - this.x);
             }
         };
@@ -176,7 +190,7 @@ export class ToggleRow extends Row {
         this.switchArt = scene.add.graphics();
         this.stateText = addText(scene, this.right - SWITCH_WIDTH - 18, 0, '', TYPE.body, { bold: true }).setOrigin(1, 0.5);
         this.add([this.switchArt, this.stateText]);
-        this.on(Phaser.Input.Events.POINTER_UP, () => this.select());
+        this.onClick(() => this.select());
         this.paint();
     }
 
@@ -218,7 +232,7 @@ export class ActionRow extends Row {
     constructor(scene: Phaser.Scene, x: number, y: number, width: number, text: string, private readonly action: () => void, options: RowOptions = {}) {
         super(scene, x, y, width, text, options);
         this.add(addText(scene, this.right, 0, '›', TYPE.heading, { bold: true, colour: TEXT_COLOURS.muted }).setOrigin(1, 0.55));
-        this.on(Phaser.Input.Events.POINTER_UP, () => this.select());
+        this.onClick(() => this.select());
     }
 
     select(): void {
@@ -238,7 +252,7 @@ export class TextRow extends Row {
         this.field = new TextField(scene, 0, 0, value, { ...field, width: FIELD_WIDTH });
         this.field.x = this.right - FIELD_WIDTH / 2;
         this.add(this.field);
-        this.on(Phaser.Input.Events.POINTER_UP, () => {
+        this.onClick(() => {
             if (!this.field.isEditing) {
                 this.select();
             }

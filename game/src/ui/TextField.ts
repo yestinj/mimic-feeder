@@ -12,6 +12,9 @@ export interface TextFieldOptions {
     readonly allowed: RegExp;
 }
 
+/** Emitted by a TextField (payload: whether it's now editing). */
+export const TEXT_FIELD_EVENTS = { editing: 'editing' } as const;
+
 const HEIGHT = 48;
 const PADDING = 16;
 
@@ -76,6 +79,7 @@ export class TextField extends Phaser.GameObjects.Container {
         setTyping(true);
         this.caretBlink.resume();
         this.redraw();
+        this.emit(TEXT_FIELD_EVENTS.editing, true);
     }
 
     /** Stops editing and keeps what was typed. */
@@ -95,6 +99,7 @@ export class TextField extends Phaser.GameObjects.Container {
         setTyping(false);
         this.caretBlink.pause();
         this.redraw();
+        this.emit(TEXT_FIELD_EVENTS.editing, false);
     }
 
     private readonly onKey = (event: KeyboardEvent): void => {

@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { isMuted, playSound, setMuted } from '../audio';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
-import { eraseProfile, profile, systemPrefersReducedMotion, updateProfile } from '../profile';
+import { eraseProfile, onProfileChange, profile, systemPrefersReducedMotion, updateProfile } from '../profile';
 import { DEFAULT_NAME, NAME_CHARACTER, NAME_MAX_LENGTH, defaultSettings, nameMimic, type Settings } from '../rules/save';
 import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
@@ -10,12 +10,12 @@ import { Button } from '../ui/Button';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Menu, type Focusable } from '../ui/Menu';
 import { ActionRow, SliderRow, TextRow, ToggleRow } from '../ui/Row';
+import { TEXT_FIELD_EVENTS } from '../ui/TextField';
 import { addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
-import { addScreenBackdrop, closeScreen, type ScreenData } from '../ui/screens';
+import { closeScreen, startScreen, type ScreenData } from '../ui/screens';
 import { addText } from '../ui/text';
 import { showToast } from '../ui/toast';
-import { GAME_EVENTS } from './SystemScene';
 
 const PANEL_WIDTH = 820;
 const PANEL_HEIGHT = 600;
@@ -52,7 +52,7 @@ export class SettingsScene extends Phaser.Scene {
         this.screen = data;
         this.dialog = null;
         this.leaving = false;
-        addScreenBackdrop(this, data);
+        startScreen(this, data);
         addText(this, DESIGN_WIDTH / 2, 110, STRINGS.settings.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
 
         addPanel(this, LEFT_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
@@ -62,19 +62,20 @@ export class SettingsScene extends Phaser.Scene {
         this.menu = new Menu(this, [...items, back]);
 
         this.hint = addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 70, STRINGS.settings.hint, TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
-        this.events.on(Phaser.Scenes.Events.UPDATE, () => {
-            this.hint.setText(this.nameRow.capturing ? STRINGS.settings.typingHint : STRINGS.settings.hint);
+        this.nameRow.field.on(TEXT_FIELD_EVENTS.editing, (editing: boolean) => {
+            this.hint.setText(editing ? STRINGS.settings.typingHint : STRINGS.settings.hint);
         });
 
         onKeyDown(this, ['ESC'], () => this.back());
         // A click anywhere else while typing a name saves it, as leaving a text box does.
-        this.input.on(Phaser.Input.Events.POINTER_DOWN, (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+        const saveNameOnClickElsewhere = (_pointer: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]): void => {
             if (this.nameRow.capturing && !over.includes(this.nameRow)) {
                 this.nameRow.select();
             }
-        });
+        };
+        this.input.on(Phaser.Input.Events.POINTER_DOWN, saveNameOnClickElsewhere);
         // M and F work everywhere; keep the switches in step.
-        const onMute = (muted: boolean): void => this.mute.setValue(muted);
+        const stopFollowingMute = onProfileChange((save) => this.mute.setValue(save.settings.muted));
         const onFullscreen = (): void => this.fullscreen.setValue(this.scale.isFullscreen);
         // The browser can refuse fullscreen; the switch then goes back to Off.
         const fullscreenEvents = [
@@ -83,10 +84,10 @@ export class SettingsScene extends Phaser.Scene {
             Phaser.Scale.Events.FULLSCREEN_FAILED,
             Phaser.Scale.Events.FULLSCREEN_UNSUPPORTED,
         ];
-        this.game.events.on(GAME_EVENTS.muteChanged, onMute);
         fullscreenEvents.forEach((event) => this.scale.on(event, onFullscreen));
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-            this.game.events.off(GAME_EVENTS.muteChanged, onMute);
+            stopFollowingMute();
+            this.input.off(Phaser.Input.Events.POINTER_DOWN, saveNameOnClickElsewhere);
             fullscreenEvents.forEach((event) => this.scale.off(event, onFullscreen));
         });
 
@@ -108,10 +109,7 @@ export class SettingsScene extends Phaser.Scene {
             this.changeSettings({ effectsVolume: value });
             playSound(this, 'collect');
         });
-        this.mute = new ToggleRow(this, LEFT_X, PANEL_TOP + 242, ROW_WIDTH, s.mute, isMuted(), onOff, (muted) => {
-            setMuted(this.game, muted);
-            this.game.events.emit(GAME_EVENTS.muteChanged, muted);
-        });
+        this.mute = new ToggleRow(this, LEFT_X, PANEL_TOP + 242, ROW_WIDTH, s.mute, isMuted(), onOff, (muted) => setMuted(this.game, muted));
 
         this.addHeading(LEFT_X, PANEL_TOP + 318, s.display);
         this.fullscreen = new ToggleRow(this, LEFT_X, PANEL_TOP + 380, ROW_WIDTH, s.fullscreen, this.scale.isFullscreen, onOff, (on) => {
@@ -163,7 +161,6 @@ export class SettingsScene extends Phaser.Scene {
     private applySaved(): void {
         const save = profile();
         setMuted(this.game, save.settings.muted);
-        this.game.events.emit(GAME_EVENTS.muteChanged, save.settings.muted);
         this.music.setValue(save.settings.musicVolume);
         this.effects.setValue(save.settings.effectsVolume);
         this.shake.setValue(save.settings.screenShake);
@@ -210,6 +207,7 @@ export class SettingsScene extends Phaser.Scene {
             return;
         }
         this.leaving = true;
+        this.menu.setEnabled(false);
         closeScreen(this, this.screen);
     }
 }

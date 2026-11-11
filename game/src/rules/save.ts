@@ -14,8 +14,8 @@ export const OLD_KEYS = ['mimicFeederHighScores', 'mimicFeederLastUsedName', 'mi
 export const HIGH_SCORE_COUNT = 10;
 export const NAME_MAX_LENGTH = 12;
 export const DEFAULT_NAME = 'Mimic';
-/** What a name can be typed with: letters (any language), digits and spaces. */
-export const NAME_CHARACTER = /^[\p{L}\p{N} ]$/u;
+/** What a name can be typed with: letters (any language, with their accents and vowel signs), digits and spaces. */
+export const NAME_CHARACTER = /^[\p{L}\p{M}\p{N} ]$/u;
 
 export interface Settings {
     /** 0–1, on top of each track's own level. */
@@ -122,10 +122,30 @@ export function defaultSave(systemPrefersReducedMotion: boolean): SaveData {
     };
 }
 
-/** Letters, digits and spaces only, trimmed and at most NAME_MAX_LENGTH long; empty becomes the default. */
+/**
+ * Letters (with their marks), digits and spaces only, trimmed and at most
+ * NAME_MAX_LENGTH characters (counted as the text field counts them, so a
+ * character outside the basic plane is never cut in half); empty becomes the
+ * default.
+ */
 export function cleanName(name: string): string {
-    const cleaned = name.replace(/[^\p{L}\p{N} ]/gu, '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX_LENGTH).trim();
-    return cleaned || DEFAULT_NAME;
+    const kept = name.replace(/[^\p{L}\p{M}\p{N} ]/gu, '').replace(/\s+/g, ' ').trim();
+    const cleaned = [...kept].slice(0, NAME_MAX_LENGTH).join('').trim();
+    // A name of marks alone has nothing to show.
+    return /[\p{L}\p{N}]/u.test(cleaned) ? cleaned : DEFAULT_NAME;
+}
+
+/** True if `raw` is a save from a newer version of the game, which this one must not overwrite. */
+export function isNewerSave(raw: string | null): boolean {
+    if (!raw) {
+        return false;
+    }
+    try {
+        const data: unknown = JSON.parse(raw);
+        return isObject(data) && typeof data.version === 'number' && data.version > SAVE_VERSION;
+    } catch {
+        return false;
+    }
 }
 
 type Unknown = Record<string, unknown>;

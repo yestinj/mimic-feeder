@@ -7,6 +7,7 @@ import {
     cleanName,
     defaultSave,
     emptyTotals,
+    isNewerSave,
     nameMimic,
     parseSave,
     recordRun,
@@ -64,6 +65,19 @@ describe('save', () => {
         expect(cleanName('Ünïcødé 42')).toBe('Ünïcødé 42');
         expect(cleanName('abcdefghijklmnop')).toBe('abcdefghijkl');
         expect(cleanName('!!!')).toBe(DEFAULT_NAME);
+        // Accents typed as separate marks, and vowel signs, are part of the name.
+        expect(cleanName('Rene\u0301')).toBe('Rene\u0301');
+        expect(cleanName('नमस्ते')).toBe('नमस्ते');
+        // Twelve characters, never half of one.
+        expect(cleanName('𝒜'.repeat(13))).toBe('𝒜'.repeat(12));
+        expect(cleanName('\u0301\u0301')).toBe(DEFAULT_NAME);
+    });
+
+    it('recognises a save from a newer version', () => {
+        expect(isNewerSave(JSON.stringify({ version: SAVE_VERSION + 1 }))).toBe(true);
+        expect(isNewerSave(JSON.stringify({ version: SAVE_VERSION }))).toBe(false);
+        expect(isNewerSave('{oops')).toBe(false);
+        expect(isNewerSave(null)).toBe(false);
     });
 
     it('ranks scores on a top-10 board', () => {
