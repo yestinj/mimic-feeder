@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Best score: a trophy cup. -->
+  <g stroke="#0b0806" stroke-width="4" stroke-linejoin="round">
+    <path d="M18 14 C6 14 6 32 22 34" fill="none" stroke-width="9" stroke-linecap="round"/>
+    <path d="M46 14 C58 14 58 32 42 34" fill="none" stroke-width="9" stroke-linecap="round"/>
+    <path d="M18 14 C6 14 6 32 22 34" fill="none" stroke="#e0b55a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M46 14 C58 14 58 32 42 34" fill="none" stroke="#e0b55a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M16 8 H48 V20 C48 32 40 40 32 40 C24 40 16 32 16 20 Z" fill="#e0b55a"/>
+    <path d="M28 40 H36 V48 H28 Z" fill="#c09447"/>
+    <path d="M18 48 H46 V58 H18 Z" fill="#8f6d35"/>
+  </g>
+  <path d="M22 14 V22" stroke="#fff0c4" stroke-opacity="0.8" stroke-width="3" stroke-linecap="round"/>
+</svg>

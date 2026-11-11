@@ -1,6 +1,7 @@
 // The player's save, held in memory and written to localStorage on every
 // change. Storage can be blocked (private windows, strict settings) or hold
 // junk; either way the game carries on with defaults and just doesn't save.
+import { unlockEarned } from './rules/achievements';
 import { OLD_KEYS, SAVE_KEY, defaultSave, isNewerSave, parseSave, type SaveData } from './rules/save';
 
 /**
@@ -70,7 +71,12 @@ export function loadProfile(from: SaveStorage | null = browserStorage(), deleteO
         console.warn('The save is from a newer version; progress in this one won\u2019t be saved.');
         storage = null;
     }
-    current = parseSave(raw, systemReducedMotion) ?? defaultSave(systemReducedMotion);
+    const loaded = parseSave(raw, systemReducedMotion) ?? defaultSave(systemReducedMotion);
+    // Anything already earned but not unlocked (played before achievements existed) unlocks now, quietly.
+    current = unlockEarned(loaded, new Date().toISOString());
+    if (current !== loaded) {
+        write();
+    }
     return current;
 }
 
@@ -81,13 +87,17 @@ export function profile(): SaveData {
 /** Changes the save, writes it, and tells anyone listening (settings screens, audio). */
 export function updateProfile(change: (save: SaveData) => SaveData): SaveData {
     current = change(current);
+    write();
+    listeners.forEach((listener) => listener(current));
+    return current;
+}
+
+function write(): void {
     try {
         storage?.setItem(SAVE_KEY, JSON.stringify(current));
     } catch (error) {
         console.warn('Could not write the save.', error);
     }
-    listeners.forEach((listener) => listener(current));
-    return current;
 }
 
 /** Erases everything: a fresh save with the system's defaults. */

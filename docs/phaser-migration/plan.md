@@ -121,11 +121,19 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
 
 ### 3.6 Achievements
 
-- **Screen:** a grid of badge cards by tier (bronze, silver and gold frames). The header shows overall progress ("14 / 32 · 44%"). Unlocked cards show the date; locked ones are dimmed.
-- **Progress** is shown on locked measurable achievements ("Dragons eaten: 6 / 10").
+- **Screen:** a grid of medal cards by tier. Each medal shows what it's for (the game's own sprite where there is one), in its tier's metal once earned and dark iron before, with the score it's worth in a tag. The header shows how many are unlocked, the points they've earned and a bar for the whole set. Unlocked cards show the date; locked ones sink back.
+- **Progress** is shown on locked measurable achievements, as a bar and a count ("6 / 10").
 - **Grind achievements count across all runs:** bolts, dashes, Tentacle uses, hazards detonated, cats rescued, dragons eaten, bosses, total collected, and similar. Milestones (floor, score, level, time survived) stay per run.
-- **Secret achievements** show as "???" until earned, for example surviving the Ninefold Judgment. A couple of new ones get added.
+- **Secret achievements** show as "???", with a cryptic hint, until earned. Five new ones, on their own tab (agreed in M3b; names and hints are drafts for the M4 text review):
+  - Judged and Spared (gold): survive the Ninefold Judgment.
+  - Flawless Hunt (gold): defeat a boss without losing a heart during the fight.
+  - Hanging by a Thread (silver): reach a new floor with one heart left.
+  - Hot Snack (bronze): pull a bomb into the mouth with Magnetism.
+  - Feline Felon (bronze): bring the Ninefold Judgment on yourself.
+- **Tabs:** Bronze, Silver and Gold (the p5 game's Early, Mid and Late tiers), and Secret. The thresholds stay as they were, so the grind ones come sooner now that they count across runs. The screen opens from the title and pause menus, and with K straight over the run (closing it goes back to play).
 - **The score reward stays** (+25, +50 or +100).
+- **Unlocking:** a notice with the medal, its name and points. Anything unlocked since the screen was last opened is marked "New" there, with a dot on its tab, and the screen opens on the first tab with something new. A save that has already earned achievements it doesn't have (from runs played before they existed, or after a goal is lowered) unlocks them quietly when it loads, without notices or points.
+- **Left for M4:** tune the grind goals once they've been played across runs, and show what was unlocked in the run on the results screen.
 
 ### 3.7 Settings
 
@@ -237,5 +245,4 @@ The p5 game stays live and unchanged until M5. `AGENTS.md` gets a short note abo
 ## 6. Open items
 
 - **Final wording** for cause-of-death lines, banners, cards and secret achievements: reviewed with the owner in M4.
-- **The new secret achievements:** which ones exactly, decided in M3.
 - **The resume countdown:** kept or removed after trying it in M4.

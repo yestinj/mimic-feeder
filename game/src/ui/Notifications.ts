@@ -1,11 +1,13 @@
 import * as Phaser from 'phaser';
 import { DESIGN_WIDTH } from '../config';
 import type { Ability } from '../rules/abilities';
+import { TIER_POINTS, type Achievement } from '../rules/achievements';
 import { STRINGS } from '../strings';
 import { MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { addAbilityIcon } from './AbilityBar';
 import { Keycap } from './Keycap';
 import { SLICE, UI, addPanel } from './kit';
+import { TIER_TEXT_COLOURS, addMedal } from './Medal';
 import { addText } from './text';
 
 const BANNER_Y = 300;
@@ -25,6 +27,8 @@ interface Notice {
     readonly key?: string;
     /** An ability toast: its icon, name and key. */
     readonly ability?: Ability;
+    /** An achievement toast: its medal, name and points. */
+    readonly achievement?: Achievement;
     /** A banner in the Ninefold Judgment's colours, with a line under the title. */
     readonly judgment?: boolean;
 }
@@ -64,6 +68,12 @@ export class Notifications {
     /** An ability unlocking again (in a later run): a toast with its icon, name and key. */
     abilityToast(ability: Ability): void {
         this.enqueue(this.toasts, this.toastShowing, { title: STRINGS.abilities[ability].name, ability }, () => this.nextToast());
+    }
+
+    /** An achievement unlocked: a toast with its medal, name and points. */
+    achievementToast(achievement: Achievement): void {
+        const name = STRINGS.achievements.list[achievement.id]?.name ?? achievement.id;
+        this.enqueue(this.toasts, this.toastShowing, { title: STRINGS.achievements.unlocked, detail: name, achievement }, () => this.nextToast());
     }
 
     /** The dungeon's warning after five cats: a judgment-coloured banner. */
@@ -190,6 +200,10 @@ export class Notifications {
             this.showAbilityToast(notice.ability);
             return;
         }
+        if (notice.achievement) {
+            this.showAchievementToast(notice.achievement);
+            return;
+        }
         const title = addText(this.scene, 0, notice.detail ? -22 : 0, notice.title, TYPE.heading, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         const parts: Phaser.GameObjects.GameObject[] = [];
         let width = title.width;
@@ -216,6 +230,27 @@ export class Notifications {
         keycap.x = name.x + name.width + SPACE.m + keycap.width / 2;
         const panel = addPanel(this.scene, 0, 0, width, 96);
         this.show([panel, slot, icon, name, keycap], this.toastY, TOAST_HOLD_MS, -24, () => this.nextToast(), 'toast');
+    }
+
+    /** [medal] "Achievement Unlocked!" over its name and points, in the toast spot. */
+    private showAchievementToast(achievement: Achievement): void {
+        const medalSize = 84;
+        const tierText = TIER_TEXT_COLOURS[achievement.tier];
+        const heading = addText(this.scene, 0, -24, STRINGS.achievements.unlocked, TYPE.small, { bold: true, colour: TEXT_COLOURS.muted, letterSpacing: 1 })
+            .setOrigin(0, 0.5);
+        const name = addText(this.scene, 0, 16, STRINGS.achievements.list[achievement.id]?.name ?? achievement.id, TYPE.heading, { role: 'display', bold: true, colour: tierText })
+            .setOrigin(0, 0.5);
+        const points = addText(this.scene, 0, 18, STRINGS.achievements.points(TIER_POINTS[achievement.tier]), TYPE.body, { bold: true, colour: tierText })
+            .setOrigin(0, 0.5);
+        const textWidth = Math.max(heading.width, name.width + SPACE.s + points.width);
+        const width = SPACE.l * 2 + medalSize + SPACE.m + textWidth;
+        const left = -width / 2 + SPACE.l;
+        const medal = addMedal(this.scene, left + medalSize / 2, 0, achievement, 'unlocked', medalSize);
+        heading.x = left + medalSize + SPACE.m;
+        name.x = heading.x;
+        points.x = name.x + name.width + SPACE.s;
+        const panel = addPanel(this.scene, 0, 0, width, 124);
+        this.show([panel, medal, heading, name, points], this.toastY + 14, TOAST_HOLD_MS + 500, -24, () => this.nextToast(), 'toast');
     }
 
     /** Fades a notice in (sliding by `slide`), holds it, fades it out, then calls `done`. */

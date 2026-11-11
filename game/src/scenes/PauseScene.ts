@@ -55,6 +55,7 @@ export class PauseScene extends Phaser.Scene {
             }
         };
         onKeyDown(this, ['ESC', 'P'], back);
+        onKeyDown(this, ['K'], () => this.openAchievements());
 
         this.cameras.main.fadeIn(MOTION.fast, 0, 0, 0);
         markReady('pause');
@@ -64,7 +65,7 @@ export class PauseScene extends Phaser.Scene {
         const items: { label: string; action: () => void }[] = [
             { label: STRINGS.pause.resume, action: () => this.resumeGame() },
             { label: STRINGS.menu.howToPlay, action: () => showToast(this, STRINGS.comingLater(STRINGS.menu.howToPlay)) },
-            { label: STRINGS.menu.achievements, action: () => showToast(this, STRINGS.comingLater(STRINGS.menu.achievements)) },
+            { label: STRINGS.menu.achievements, action: () => this.openAchievements() },
             { label: STRINGS.menu.settings, action: () => openScreen(this, 'settings', { from: 'pause' }) },
             { label: STRINGS.pause.restart, action: () => this.confirmAbandon(STRINGS.confirm.restart, () => this.restart()) },
             { label: STRINGS.pause.quit, action: () => this.confirmAbandon(STRINGS.confirm.quit, () => this.quit()) },
@@ -103,6 +104,12 @@ export class PauseScene extends Phaser.Scene {
         });
     }
 
+    private openAchievements(): void {
+        if (!this.dialog && !this.leaving) {
+            openScreen(this, 'achievements', { from: 'pause' });
+        }
+    }
+
     private confirmAbandon(confirmLabel: string, onConfirm: () => void): void {
         this.menu.setEnabled(false);
         this.dialog = new ConfirmDialog(this, {
@@ -122,8 +129,7 @@ export class PauseScene extends Phaser.Scene {
             return;
         }
         this.leaving = true;
-        this.scene.resume('game');
-        this.scene.resume('hud');
+        (this.scene.get('game') as GameScene).resumePlay();
         this.scene.stop();
     }
 

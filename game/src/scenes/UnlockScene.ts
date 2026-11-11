@@ -10,6 +10,7 @@ import { Keycap } from '../ui/Keycap';
 import { onKeyDown } from '../ui/keys';
 import { addPanel, UI } from '../ui/kit';
 import { addText } from '../ui/text';
+import type { GameScene } from './GameScene';
 
 /** Phaser key names for the keys that close each ability's card. */
 const CLOSE_KEYS: Partial<Record<Ability, string>> = {
@@ -64,8 +65,7 @@ export class UnlockScene extends Phaser.Scene {
         const ability = this.queue.shift();
         if (!ability) {
             this.showing = null;
-            this.scene.resume('game');
-            this.scene.resume('hud');
+            (this.scene.get('game') as GameScene).resumePlay();
             this.scene.stop();
             return;
         }

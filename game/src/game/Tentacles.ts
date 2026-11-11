@@ -1,15 +1,16 @@
 import * as Phaser from 'phaser';
 import { TEXTURES } from '../assets';
-import { SIZE_SCALE } from '../config';
+import { GROUND_Y, SIZE_SCALE } from '../config';
 import type { FallingObject } from './FallingObject';
 
 /**
- * Chains reach their targets in 0.5 s, then pull them into the mouth over 1 s
- * (inventory §6). Targets are held from the moment the chain is sent, so
- * using the tentacles can't cost a life (in the p5 game a target kept falling
- * until the chain arrived, and could land or hit the side of the chest).
+ * Chains reach their targets in 0.18 s, then pull them into the mouth over
+ * 1 s. Targets keep falling while the chain reaches them, but from the moment
+ * it's sent nothing touches them and they can't land, so using the tentacles
+ * can't cost a life. (In the p5 game the chain took 0.5 s, and a target could
+ * land or hit the side of the chest before it arrived.)
  */
-const REACH_MS = 500;
+const REACH_MS = 180;
 const PULL_MS = 1000;
 /** The chain art drawn at a quarter of its width, as in the p5 game. */
 const CHAIN_SCALE = 0.25 * SIZE_SCALE;
@@ -61,7 +62,13 @@ export class Tentacles {
             if (!grab.pullFrom) {
                 grab.reach = Math.min(1, grab.reach + delta / REACH_MS);
                 length = grab.reach;
+                if (target.body.bottom >= GROUND_Y) {
+                    // It can't land while claimed: it waits on the floor for the chain.
+                    target.settle(GROUND_Y);
+                }
                 if (grab.reach >= 1) {
+                    // From here the chain moves it.
+                    target.setVelocity(0, 0);
                     grab.pullFrom = { x: target.x, y: target.y };
                 }
             } else {

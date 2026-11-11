@@ -16,9 +16,19 @@ import glowUrl from './kit/glow.svg?url';
 import heartEmptyUrl from './kit/heart-empty.svg?url';
 import heartFullUrl from './kit/heart-full.svg?url';
 import iconDashUrl from './kit/icon-dash.svg?url';
+import iconEyeUrl from './kit/icon-eye.svg?url';
+import iconFloorUrl from './kit/icon-floor.svg?url';
+import iconLevelUrl from './kit/icon-level.svg?url';
 import iconMagnetUrl from './kit/icon-magnet.svg?url';
+import iconScoreUrl from './kit/icon-score.svg?url';
+import iconStaffUrl from './kit/icon-staff.svg?url';
 import iconTentaclesUrl from './kit/icon-tentacles.svg?url';
+import iconTimeUrl from './kit/icon-time.svg?url';
 import keycapUrl from './kit/keycap.svg?url';
+import medalBronzeUrl from './kit/medal-bronze.svg?url';
+import medalGoldUrl from './kit/medal-gold.svg?url';
+import medalLockedUrl from './kit/medal-locked.svg?url';
+import medalSilverUrl from './kit/medal-silver.svg?url';
 import panelJudgmentUrl from './kit/panel-judgment.svg?url';
 import panelUrl from './kit/panel.svg?url';
 import soundOffUrl from './kit/sound-off.svg?url';
@@ -44,6 +54,16 @@ const KIT = {
     iconDash: ['ui-icon-dash', iconDashUrl],
     iconTentacles: ['ui-icon-tentacles', iconTentaclesUrl],
     iconMagnetism: ['ui-icon-magnetism', iconMagnetUrl],
+    iconFloor: ['ui-icon-floor', iconFloorUrl],
+    iconLevel: ['ui-icon-level', iconLevelUrl],
+    iconScore: ['ui-icon-score', iconScoreUrl],
+    iconTime: ['ui-icon-time', iconTimeUrl],
+    iconStaff: ['ui-icon-staff', iconStaffUrl],
+    iconEye: ['ui-icon-eye', iconEyeUrl],
+    medalBronze: ['ui-medal-bronze', medalBronzeUrl],
+    medalSilver: ['ui-medal-silver', medalSilverUrl],
+    medalGold: ['ui-medal-gold', medalGoldUrl],
+    medalLocked: ['ui-medal-locked', medalLockedUrl],
 } as const;
 
 type KitName = keyof typeof KIT;

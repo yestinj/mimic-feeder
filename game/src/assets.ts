@@ -102,6 +102,11 @@ export function firstFrame(name: AnimationName): string {
     return frameKey(name, SEQUENCES[name].first);
 }
 
+/** The `index`th frame of an animation (from 0), as a still image. */
+export function animationFrame(name: AnimationName, index: number): string {
+    return frameKey(name, SEQUENCES[name].first + index);
+}
+
 /** Falling objects that animate while they fall. */
 export const OBJECT_ANIMATIONS: Partial<Record<ObjectKind, AnimationName>> = {
     fireball: 'fireball',

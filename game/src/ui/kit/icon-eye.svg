@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- The Ninefold Judgment: the dungeon's watching eye. -->
+  <path d="M4 32 C14 16 50 16 60 32 C50 48 14 48 4 32 Z" fill="#f3e6c8" stroke="#0b0806" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="11" fill="#9a5bd6" stroke="#0b0806" stroke-width="3"/>
+  <ellipse cx="32" cy="32" rx="3" ry="8" fill="#0b0806"/>
+  <circle cx="36" cy="27" r="2.5" fill="#ffffff" fill-opacity="0.8"/>
+</svg>

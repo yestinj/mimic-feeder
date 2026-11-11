@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Deepest floor: stone stairs going down. -->
+  <path d="M6 14 H22 V28 H36 V42 H50 V56 H6 Z" fill="#c9c2b6" stroke="#0b0806" stroke-width="4" stroke-linejoin="round"/>
+  <g stroke="#0b0806" stroke-opacity="0.45" stroke-width="2">
+    <line x1="8" y1="28" x2="22" y2="28"/>
+    <line x1="8" y1="42" x2="36" y2="42"/>
+  </g>
+  <path d="M44 10 V26 M38 20 L44 26 L50 20" fill="none" stroke="#0b0806" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 10 V26 M38 20 L44 26 L50 20" fill="none" stroke="#e0b55a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

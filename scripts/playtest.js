@@ -260,6 +260,33 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('Space');
         await waitForSnapshot((s) => !s.card && s.running.includes('game'));
         assert(true, "/next/ the ability's own key closes the card and play resumes");
+        await waitForSnapshot((s) => s.save.achievements.includes('staff_initiate') && s.save.newAchievements.includes('staff_initiate'));
+        assert(true, '/next/ finding the Staff unlocks the Staff Initiate achievement, saves it and marks it new');
+
+        // K opens the achievements straight over the run (which marks what's new as seen), and Esc goes back to it.
+        await page.keyboard.press('KeyK');
+        await waitForSnapshot((s) => s.running.includes('achievements') && !s.running.includes('pause') && s.paused.includes('game'));
+        assert((await snapshot()).save.newAchievements.length === 0, '/next/ opening the achievements marks new ones as seen');
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-achievements.png') });
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('game') && s.running.includes('hud') && !s.running.includes('achievements'));
+        assert((await snapshot()).running.every((key) => key !== 'pause'), '/next/ K opens the achievements over the run, and Esc goes straight back to it');
+        await page.keyboard.press('KeyK');
+        await waitForSnapshot((s) => s.running.includes('achievements'));
+        await page.keyboard.press('KeyK');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('achievements'));
+        assert(true, '/next/ K closes the achievements too');
+        // Opened from the pause menu (K there too), Esc goes back to the menu, then to the run.
+        await page.keyboard.press('KeyP');
+        await waitForSnapshot((s) => s.running.includes('pause'));
+        await page.keyboard.press('KeyK');
+        await waitForSnapshot((s) => s.running.includes('achievements') && !s.running.includes('pause'));
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('achievements'));
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause'));
+        assert(true, '/next/ the achievements opened from the pause menu go back to it');
         for (const [ability, key] of [['tentacles', 'KeyZ'], ['magnetism', 'KeyX']]) {
             await debug('grant', ability);
             await waitForSnapshot((s) => s.card && s.card.ability === ability && s.card.ready);
@@ -399,9 +426,20 @@ async function checkNextBuild(browser) {
         assert(reloaded.save.settings.musicVolume === 0.7 && reloaded.save.settings.screenShake === false
             && reloaded.save.name === 'Chomper' && reloaded.save.scores.length >= 1,
         '/next/ settings, the name and the high scores survive a reload');
+        assert(reloaded.save.achievements.includes('staff_initiate'), '/next/ achievements survive a reload');
 
-        // Erase save data (ninth row) asks first, then starts over.
-        for (let i = 0; i < 4; i++) {
+        // Achievements (third on the title menu) open from the title too.
+        for (let i = 0; i < 2; i++) {
+            await page.keyboard.press('ArrowDown');
+        }
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.running.includes('achievements') && !s.running.includes('title'));
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('achievements'));
+        assert(true, '/next/ Achievements opens from the title menu and Esc returns to it');
+
+        // Erase save data (ninth row) asks first, then starts over. Settings is two below Achievements.
+        for (let i = 0; i < 2; i++) {
             await page.keyboard.press('ArrowDown');
         }
         await page.keyboard.press('Enter');
@@ -414,7 +452,8 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('ArrowRight');
         await page.keyboard.press('Enter');
         const erased = await waitForSnapshot((s) => !s.dialog && s.save.scores.length === 0);
-        assert(erased.save.name === 'Mimic' && !erased.save.named && erased.save.runs === 0 && erased.save.settings.musicVolume === 1,
+        assert(erased.save.name === 'Mimic' && !erased.save.named && erased.save.runs === 0 && erased.save.settings.musicVolume === 1
+            && erased.save.achievements.length === 0,
             '/next/ Erase save data asks first, then clears everything');
 
         if (cspViolations.length) {
