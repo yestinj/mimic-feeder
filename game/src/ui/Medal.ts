@@ -13,39 +13,53 @@ export const TIER_TEXT_COLOURS: Record<Tier, string> = { bronze: '#eaa877', silv
 
 const MEDALS: Record<Tier, string> = { bronze: UI.medalBronze, silver: UI.medalSilver, gold: UI.medalGold };
 
+interface Icon {
+    readonly key: string;
+    /** For sprites with a lot of empty space round them: drawn larger to fill the medal like the rest. */
+    readonly zoom?: number;
+    /**
+     * For sprites whose figure isn't in the middle of the image: moved right
+     * and down by these fractions of its drawn size, so it looks centred.
+     */
+    readonly nudge?: { readonly x: number; readonly y: number };
+}
+
+/** The boss's frames have room round it for its wings and attacks. */
+const BOSS: Icon = { key: firstFrame('bossIdle'), zoom: 1.9, nudge: { x: 0.05, y: 0.06 } };
+/** The cat sits left of the middle, with its tail out to the right; it's tall and thin, so a little larger too. */
+const CAT: Icon = { key: objectTexture('cat'), zoom: 1.15, nudge: { x: 0.07, y: 0 } };
+const BOMB: Icon = { key: objectTexture('bomb') };
+
 /**
  * What each medal shows: the game's own sprite where there is one, otherwise
  * a kit icon (the Staff and Magnet sprites are square tiles, which don't sit
  * in a round medal).
  */
-const ICONS: Record<Stat, string> = {
-    humansEaten: objectTexture('human'),
-    dragonsEaten: objectTexture('dragon'),
-    crowns: objectTexture('crown'),
-    diamonds: objectTexture('diamond'),
-    everythingCollected: TEXTURES.chestOpen,
-    staffs: UI.iconStaff,
-    magnets: UI.iconMagnetism,
-    catsRescued: objectTexture('cat'),
-    detonations: objectTexture('bomb'),
-    destroyed: animationFrame('bombExplosion', 2),
-    bosses: firstFrame('bossIdle'),
-    bolts: firstFrame('shadowBolt'),
-    tentacles: UI.iconTentacles,
-    dashes: UI.iconDash,
-    bestFloor: UI.iconFloor,
-    bestLevel: UI.iconLevel,
-    bestScore: UI.iconScore,
-    longestRun: UI.iconTime,
-    judgmentsSurvived: UI.iconEye,
-    judgmentsCalled: objectTexture('cat'),
-    flawlessBosses: firstFrame('bossIdle'),
-    hotSnacks: objectTexture('bomb'),
-    lastHeartFloors: UI.heartFull,
+const ICONS: Record<Stat, Icon> = {
+    humansEaten: { key: objectTexture('human') },
+    dragonsEaten: { key: objectTexture('dragon') },
+    crowns: { key: objectTexture('crown') },
+    diamonds: { key: objectTexture('diamond') },
+    everythingCollected: { key: TEXTURES.chestOpen },
+    staffs: { key: UI.iconStaff },
+    magnets: { key: UI.iconMagnetism },
+    catsRescued: CAT,
+    detonations: BOMB,
+    destroyed: { key: animationFrame('bombExplosion', 2) },
+    bosses: BOSS,
+    bolts: { key: firstFrame('shadowBolt'), nudge: { x: -0.07, y: 0 } },
+    tentacles: { key: UI.iconTentacles },
+    dashes: { key: UI.iconDash },
+    bestFloor: { key: UI.iconFloor },
+    bestLevel: { key: UI.iconLevel },
+    bestScore: { key: UI.iconScore },
+    longestRun: { key: UI.iconTime },
+    judgmentsSurvived: { key: UI.iconEye },
+    judgmentsCalled: CAT,
+    flawlessBosses: BOSS,
+    hotSnacks: BOMB,
+    lastHeartFloors: { key: UI.heartFull },
 };
-
-/** Sprites with a lot of empty space round them, drawn larger to fill the medal like the rest. */
-const ICON_ZOOM: Partial<Record<Stat, number>> = { bosses: 1.9, flawlessBosses: 1.9 };
 
 /** A locked medal's icon is a dark silhouette of it. */
 const SILHOUETTE = 0x5c4f44;
@@ -68,9 +82,13 @@ export function addMedal(scene: Phaser.Scene, x: number, y: number, achievement:
     if (state === 'hidden') {
         parts.push(addText(scene, 0, 0, '?', Math.round(size * 0.42), { role: 'display', bold: true, colour: TEXT_COLOURS.dim }).setOrigin(0.5));
     } else {
-        const icon = scene.add.image(0, 0, ICONS[achievement.stat]);
-        const box = size * ICON_SIZE * (ICON_ZOOM[achievement.stat] ?? 1);
+        const { key, zoom = 1, nudge } = ICONS[achievement.stat];
+        const icon = scene.add.image(0, 0, key);
+        const box = size * ICON_SIZE * zoom;
         icon.setScale(Math.min(box / icon.width, box / icon.height));
+        if (nudge) {
+            icon.setPosition(icon.displayWidth * nudge.x, icon.displayHeight * nudge.y);
+        }
         if (state === 'locked') {
             icon.setTint(SILHOUETTE).setTintMode(Phaser.TintModes.FILL);
         }
