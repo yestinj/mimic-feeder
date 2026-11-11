@@ -152,7 +152,7 @@ export const SOUNDS = {
     uiMove: { file: 'ui_move.mp3', volume: 0.25 },
     /** A button or menu item chosen (Interface Sounds: select_001). */
     uiSelect: { file: 'ui_select.mp3', volume: 0.4 },
-    /** Back, Esc, closing a screen (Interface Sounds: back_002). */
+    /** Back, Esc, closing a screen (UI Audio: switch26). */
     uiBack: { file: 'ui_back.mp3', volume: 0.35 },
     /** A tab changing (UI Audio: switch13). */
     uiTab: { file: 'ui_tab.mp3', volume: 0.35 },
@@ -166,8 +166,8 @@ export const SOUNDS = {
     tallyScore: { file: 'tally_score.mp3', volume: 0.45 },
     /** "New best!" mid-run (Interface Sounds: confirmation_001). */
     newBest: { file: 'new_best.mp3', volume: 0.45 },
-    /** The dash (RPG Audio: cloth2). */
-    dashWhoosh: { file: 'dash_whoosh.mp3', volume: 0.4 },
+    /** The dash (Digital Audio: phaseJump2). */
+    dashWhoosh: { file: 'dash_whoosh.mp3', volume: 0.3 },
     /** A boss arriving (Sci-Fi Sounds: lowFrequency_explosion_001). */
     bossRumble: { file: 'boss_rumble.mp3', volume: 0.6 },
 } as const;
