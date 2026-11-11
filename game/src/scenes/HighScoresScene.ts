@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import { DESIGN_WIDTH } from '../config';
 import { profile } from '../profile';
-import { formatPlayTime, formatScore } from '../rules/format';
+import { formatDate, formatPlayTime, formatScore } from '../rules/format';
 import type { HighScore } from '../rules/save';
 import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
@@ -35,14 +35,6 @@ const COLUMNS = {
     time: { x: 1140, origin: 0.5 },
     date: { x: INNER_WIDTH - 16, origin: 1 },
 } as const;
-
-const dateFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-
-/** The day a score was set, in the player's own format ('' if the save holds something odd). */
-function formatDate(iso: string): string {
-    const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? '' : dateFormat.format(date);
-}
 
 /**
  * The top 10: gold, silver and bronze for the first three; name, score,

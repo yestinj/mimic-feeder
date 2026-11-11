@@ -15,8 +15,8 @@ import { addText } from '../ui/text';
 import { showToast } from '../ui/toast';
 
 /**
- * Title screen. Play starts a run, and Settings and High Scores open over
- * it; the other screens arrive in later milestones, and selecting them shows
+ * Title screen. Play starts a run, and Achievements, High Scores and
+ * Settings open over it; the other screens arrive in later milestones, and selecting them shows
  * a "coming later" note for now.
  */
 export class TitleScene extends Phaser.Scene {
@@ -73,7 +73,7 @@ export class TitleScene extends Phaser.Scene {
         const items: { label: string; action: () => void }[] = [
             { label: STRINGS.menu.play, action: () => this.play() },
             { label: STRINGS.menu.howToPlay, action: soon(STRINGS.menu.howToPlay) },
-            { label: STRINGS.menu.achievements, action: soon(STRINGS.menu.achievements) },
+            { label: STRINGS.menu.achievements, action: () => openScreen(this, 'achievements', { from: 'title' }) },
             { label: STRINGS.menu.highScores, action: () => openScreen(this, 'highScores', { from: 'title' }) },
             { label: STRINGS.menu.settings, action: () => openScreen(this, 'settings', { from: 'title' }) },
             { label: STRINGS.menu.credits, action: soon(STRINGS.menu.credits) },

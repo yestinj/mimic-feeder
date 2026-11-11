@@ -118,6 +118,13 @@ export class Run {
     /** A boss fight is on (from its zone starting until the next floor). */
     inBossFight = false;
     bossesDefeated = 0;
+    /** A heart was lost during the current boss fight. */
+    private hurtInBossFight = false;
+
+    /** Feats for the secret achievements: a boss beaten without losing a heart, a bomb pulled into the mouth, a new floor reached on the last heart. */
+    flawlessBosses = 0;
+    hotSnacks = 0;
+    lastHeartFloors = 0;
 
     hasStaff = false;
     hasMagnet = false;
@@ -234,6 +241,10 @@ export class Run {
             ({ floor: this.floor, zone: this.zone } = nextZone(this.floor, this.zone));
             const boss = isBossZone(this.floor, this.zone);
             this.inBossFight = boss;
+            this.hurtInBossFight = false;
+            if (this.floor !== previousFloor) {
+                this.reachFloor();
+            }
             events.push({ type: 'zone', floor: this.floor, zone: this.zone, newFloor: this.floor !== previousFloor, boss });
         }
         return events;
@@ -242,6 +253,9 @@ export class Run {
     /** The boss is beaten: its points, and the fight is won (the next floor follows its death). */
     defeatBoss(): RunEvent[] {
         this.bossesDefeated += 1;
+        if (!this.hurtInBossFight) {
+            this.flawlessBosses += 1;
+        }
         return [...this.gain(BOSS.points), { type: 'bossDefeated' }];
     }
 
@@ -251,7 +265,14 @@ export class Run {
         this.floor += 1;
         this.zone = 1;
         this.eatenInZone = 0;
+        this.reachFloor();
         return [{ type: 'zone', floor: this.floor, zone: this.zone, newFloor: true, boss: false }];
+    }
+
+    private reachFloor(): void {
+        if (this.lives === 1) {
+            this.lastHeartFloors += 1;
+        }
     }
 
     /** A cat waited on the floor long enough to be rescued. */
@@ -318,6 +339,11 @@ export class Run {
         this.shotDown += 1;
     }
 
+    /** An achievement's reward: score only, as in the p5 game. */
+    reward(points: number): void {
+        this.score += points;
+    }
+
     /** Bonus score and XP (cat rescues and bosses, from M2b). */
     bonus(points: number): RunEvent[] {
         return this.gain(points);
@@ -349,6 +375,10 @@ export class Run {
                 bossesDefeated: this.bossesDefeated,
                 judgmentsSurvived: this.judgmentsSurvived,
                 uses: { ...this.uses },
+                judgmentsCalled: this.judged ? 1 : 0,
+                flawlessBosses: this.flawlessBosses,
+                hotSnacks: this.hotSnacks,
+                lastHeartFloors: this.lastHeartFloors,
             },
         };
     }
@@ -375,9 +405,12 @@ export class Run {
         return this.loseLife({ type: 'wasted', creature: kind });
     }
 
-    /** The mimic touched a hazard. */
-    detonate(kind: HazardKind): RunEvent[] {
+    /** The mimic touched a hazard (`pulledIn`: Magnetism brought it). */
+    detonate(kind: HazardKind, pulledIn = false): RunEvent[] {
         this.detonated[kind] += 1;
+        if (pulledIn) {
+            this.hotSnacks += 1;
+        }
         return this.loseLife({ type: kind });
     }
 
@@ -408,6 +441,9 @@ export class Run {
         }
         this.lives -= 1;
         this.lastLoss = cause;
+        if (this.inBossFight) {
+            this.hurtInBossFight = true;
+        }
         return this.isOver ? [{ type: 'lifeLost' }, { type: 'gameOver' }] : [{ type: 'lifeLost' }];
     }
 }

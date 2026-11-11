@@ -1,12 +1,13 @@
-// Menu screens opened over another one (Settings and High Scores, from the
-// title, the pause menu or the results). The screen underneath sleeps, so it
-// keeps its state (focus, an animation half done) and wakes up as it was.
+// Menu screens opened over another one (Settings, High Scores and
+// Achievements, from the title, the pause menu or the results). The screen
+// underneath sleeps, so it keeps its state (focus, an animation half done)
+// and wakes up as it was.
 import * as Phaser from 'phaser';
 import { backgroundKey, floorBackground } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { COLOURS, MOTION } from '../theme';
 
-export type ScreenKey = 'settings' | 'highScores';
+export type ScreenKey = 'settings' | 'highScores' | 'achievements';
 export type ReturnTo = 'title' | 'pause' | 'results';
 
 export interface ScreenData {

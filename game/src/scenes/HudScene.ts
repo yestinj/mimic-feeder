@@ -9,6 +9,7 @@ import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import type { Ability } from '../rules/abilities';
+import { TIER_POINTS, type Achievement } from '../rules/achievements';
 import { overlaps } from '../rules/contact';
 import { AbilityBar } from '../ui/AbilityBar';
 import { BossBar } from '../ui/BossBar';
@@ -102,6 +103,11 @@ export class HudScene extends Phaser.Scene {
         game.events.on(RUN_EVENTS.abilityNotice, onAbilityNotice);
         game.events.on(RUN_EVENTS.boss, onBoss);
         game.events.on(RUN_EVENTS.judgment, onJudgment);
+        const onAchievement = (achievement: Achievement): void => {
+            const name = STRINGS.achievements.list[achievement.id]?.name ?? achievement.id;
+            this.notifications.toast(STRINGS.achievements.unlocked, STRINGS.achievements.reward(name, TIER_POINTS[achievement.tier]));
+        };
+        game.events.on(RUN_EVENTS.achievement, onAchievement);
         // Muting (M, or Settings over the pause menu) is saved; the icon follows the save.
         const stopFollowingMute = onProfileChange((save) => this.muteIcon.setVisible(save.settings.muted));
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -111,6 +117,7 @@ export class HudScene extends Phaser.Scene {
             game.events.off(RUN_EVENTS.abilityNotice, onAbilityNotice);
             game.events.off(RUN_EVENTS.boss, onBoss);
             game.events.off(RUN_EVENTS.judgment, onJudgment);
+            game.events.off(RUN_EVENTS.achievement, onAchievement);
             stopFollowingMute();
         });
 

@@ -36,7 +36,8 @@ export class PauseScene extends Phaser.Scene {
         super('pause');
     }
 
-    create(): void {
+    /** `show: 'achievements'`: K was pressed during play, so the achievements open straight over the menu. */
+    create(data?: { show?: 'achievements' }): void {
         this.dialog = null;
         this.leaving = false;
         const run = (this.scene.get('game') as GameScene).currentRun;
@@ -55,16 +56,20 @@ export class PauseScene extends Phaser.Scene {
             }
         };
         onKeyDown(this, ['ESC', 'P'], back);
+        onKeyDown(this, ['K'], () => this.openAchievements());
 
         this.cameras.main.fadeIn(MOTION.fast, 0, 0, 0);
         markReady('pause');
+        if (data?.show === 'achievements') {
+            this.openAchievements();
+        }
     }
 
     private addMenu(): void {
         const items: { label: string; action: () => void }[] = [
             { label: STRINGS.pause.resume, action: () => this.resumeGame() },
             { label: STRINGS.menu.howToPlay, action: () => showToast(this, STRINGS.comingLater(STRINGS.menu.howToPlay)) },
-            { label: STRINGS.menu.achievements, action: () => showToast(this, STRINGS.comingLater(STRINGS.menu.achievements)) },
+            { label: STRINGS.menu.achievements, action: () => this.openAchievements() },
             { label: STRINGS.menu.settings, action: () => openScreen(this, 'settings', { from: 'pause' }) },
             { label: STRINGS.pause.restart, action: () => this.confirmAbandon(STRINGS.confirm.restart, () => this.restart()) },
             { label: STRINGS.pause.quit, action: () => this.confirmAbandon(STRINGS.confirm.quit, () => this.quit()) },
@@ -101,6 +106,12 @@ export class PauseScene extends Phaser.Scene {
             addText(this, left, y, label, TYPE.body, { colour: TEXT_COLOURS.muted });
             addText(this, right, y, value, TYPE.body, { bold: true }).setOrigin(1, 0);
         });
+    }
+
+    private openAchievements(): void {
+        if (!this.dialog && !this.leaving) {
+            openScreen(this, 'achievements', { from: 'pause' });
+        }
     }
 
     private confirmAbandon(confirmLabel: string, onConfirm: () => void): void {

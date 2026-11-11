@@ -58,6 +58,8 @@ export interface GameSnapshot {
         readonly bestScore: number;
         readonly runs: number;
         readonly discoveries: readonly string[];
+        /** Unlocked achievement ids. */
+        readonly achievements: readonly string[];
         readonly settings: Settings;
     };
 }
@@ -154,6 +156,7 @@ function saveView(): GameSnapshot['save'] {
         bestScore: save.bests.score,
         runs: save.totals.runs,
         discoveries: save.discoveries,
+        achievements: Object.keys(save.achievements),
         settings: save.settings,
     };
 }

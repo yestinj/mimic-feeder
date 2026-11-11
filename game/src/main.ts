@@ -4,6 +4,7 @@ import '@fontsource/barlow/latin-700.css';
 import './style.css';
 import * as Phaser from 'phaser';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from './config';
+import { AchievementsScene } from './scenes/AchievementsScene';
 import { BootScene } from './scenes/BootScene';
 import { GameScene } from './scenes/GameScene';
 import { HighScoresScene } from './scenes/HighScoresScene';
@@ -37,8 +38,8 @@ const game = new Phaser.Game({
     // would need blob: in the CSP's img-src.
     loader: { imageLoadType: 'HTMLImageElement' },
     // Listed bottom to top: the HUD draws over the game, the pause menu and new-ability card over both,
-    // and Settings and High Scores over whichever screen opened them.
-    scene: [BootScene, PreloadScene, TitleScene, GameScene, HudScene, PauseScene, UnlockScene, ResultsScene, SettingsScene, HighScoresScene, SystemScene],
+    // and Settings, High Scores and Achievements over whichever screen opened them.
+    scene: [BootScene, PreloadScene, TitleScene, GameScene, HudScene, PauseScene, UnlockScene, ResultsScene, SettingsScene, HighScoresScene, AchievementsScene, SystemScene],
 });
 game.events.once(Phaser.Core.Events.READY, () => applySavedMute(game));
 installTestHook(game);

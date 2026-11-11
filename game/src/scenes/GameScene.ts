@@ -21,7 +21,8 @@ import { Run, type RunEvent } from '../rules/run';
 import { SpawnHistory, keepClearOf, pickObject, pickSpawnX, rollHazard } from '../rules/spawner';
 import { MIMIC, SPAWNING } from '../rules/tuning';
 import { profile, updateProfile } from '../profile';
-import { recordRun } from '../rules/save';
+import { addTotals, bestsWith, recordRun } from '../rules/save';
+import { TIER_POINTS, newlyEarned } from '../rules/achievements';
 import { markDiscovered, markIntroduced, wasIntroduced } from '../session';
 import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
 import { onKeyDown } from '../ui/keys';
@@ -44,7 +45,12 @@ export const RUN_EVENTS = {
     boss: 'boss',
     /** The Ninefold Judgment's phase or wave changed (payload: JudgmentView), or it's over (payload: null). */
     judgment: 'judgment',
+    /** An achievement unlocked (payload: the Achievement). */
+    achievement: 'achievement',
 } as const;
+
+/** How often achievements are checked during play. */
+const ACHIEVEMENT_CHECK_MS = 250;
 
 export interface BossHealth {
     readonly health: number;
@@ -108,6 +114,7 @@ export class GameScene extends Phaser.Scene {
     private ending = false;
     /** The run has been added to the save (it only counts once). */
     private recorded = false;
+    private achievementCheckMs = 0;
     private pauseBlur: Phaser.Filters.Blur | null = null;
     /** Abilities unlocked for the first time, waiting to be introduced on a card. */
     private pendingCards: Ability[] = [];
@@ -124,6 +131,32 @@ export class GameScene extends Phaser.Scene {
     /** The run in progress, for the HUD and pause screens. */
     get currentRun(): Run {
         return this.run;
+    }
+
+    /**
+     * Unlocks achievements the run has now earned: lifetime ones count the
+     * saved totals plus this run, milestones this run's bests. Each is saved
+     * with its date and adds its points; `announce` shows it on the HUD.
+     */
+    private checkAchievements(announce: boolean): void {
+        const save = profile();
+        const run = this.run.record();
+        const earned = newlyEarned(save.achievements, addTotals(save.totals, run.totals), bestsWith(save.bests, run));
+        if (earned.length === 0) {
+            return;
+        }
+        const date = new Date().toISOString();
+        updateProfile((current) => ({ ...current, achievements: { ...current.achievements, ...Object.fromEntries(earned.map(({ id }) => [id, date])) } }));
+        for (const achievement of earned) {
+            this.run.reward(TIER_POINTS[achievement.tier]);
+            if (announce) {
+                this.events.emit(RUN_EVENTS.achievement, achievement);
+            }
+        }
+        if (announce) {
+            playSound(this, 'playerLevelUp');
+        }
+        this.events.emit(RUN_EVENTS.changed);
     }
 
     /** Restart or Quit from the pause menu: the run counts towards lifetime totals, but not the board. */
@@ -180,6 +213,7 @@ export class GameScene extends Phaser.Scene {
         this.spawning = true;
         this.ending = false;
         this.recorded = false;
+        this.achievementCheckMs = 0;
         this.pauseBlur = null;
         this.pendingCards = [];
         this.cardsAfterBoss = null;
@@ -282,6 +316,11 @@ export class GameScene extends Phaser.Scene {
         // delta as the physics: on a slow machine nothing falls faster than
         // things spawn.
         this.run.tick(delta);
+        this.achievementCheckMs += delta;
+        if (this.achievementCheckMs >= ACHIEVEMENT_CHECK_MS) {
+            this.achievementCheckMs = 0;
+            this.checkAchievements(true);
+        }
         if (this.judgmentPending && !this.run.inBossFight) {
             this.judgmentPending = false;
             this.beginJudgment();
@@ -355,6 +394,8 @@ export class GameScene extends Phaser.Scene {
         keyboard.addCapture([Phaser.Input.Keyboard.KeyCodes.UP, Phaser.Input.Keyboard.KeyCodes.DOWN, Phaser.Input.Keyboard.KeyCodes.SPACE]);
         onKeyDown(this, ['UP', 'W'], () => this.jump());
         onKeyDown(this, ['P', 'ESC'], () => this.openOverlay('pause'));
+        // K opens the achievements, over the pause menu.
+        onKeyDown(this, ['K'], () => this.openOverlay('pause', { show: 'achievements' }));
         onKeyDown(this, ['LEFT', 'A'], (event) => this.tryDash(-1, event.timeStamp));
         onKeyDown(this, ['RIGHT', 'D'], (event) => this.tryDash(1, event.timeStamp));
         onKeyDown(this, ['SPACE'], () => this.castShadowBolt());
@@ -562,7 +603,8 @@ export class GameScene extends Phaser.Scene {
                 break;
             case 'detonate':
                 if (isHazard(kind)) {
-                    events = this.run.detonate(kind);
+                    // A bomb pulled in by Magnetism is a Hot Snack (a secret achievement).
+                    events = this.run.detonate(kind, object.magnetSpeed !== null);
                     explode(this, kind, object.x, object.y, object.displayWidth, object.displayHeight).setDepth(DEPTH.effects);
                 }
                 playSound(this, 'explode');
@@ -993,7 +1035,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card). */
-    private openOverlay(key: 'pause' | 'unlock', data?: object): void {
+    private openOverlay(key: 'pause' | 'unlock', data: object = {}): void {
         if (this.ending || !this.scene.isActive()) {
             return;
         }
@@ -1001,6 +1043,8 @@ export class GameScene extends Phaser.Scene {
         this.sound.pauseAll();
         this.scene.pause();
         this.scene.pause('hud');
+        // Always some data: launched without any, Phaser hands the scene its previous launch's data
+        // (so a pause after K would open the achievements again).
         this.scene.launch(key, data);
     }
 
@@ -1018,6 +1062,8 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         this.ending = true;
+        // Anything earned with the last life still counts (and its points reach the score).
+        this.checkAchievements(false);
         // Saved at once, so closing the tab during the results loses nothing.
         const results = this.saveRun(true);
         this.physics.pause();

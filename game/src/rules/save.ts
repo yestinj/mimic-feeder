@@ -38,7 +38,7 @@ export interface HighScore {
     readonly date: string;
 }
 
-/** Counts across every run (achievements build on these in M3b). */
+/** Counts across every run (the grind achievements are measured on these). */
 export interface Totals {
     readonly runs: number;
     readonly playTimeMs: number;
@@ -53,6 +53,11 @@ export interface Totals {
     readonly bossesDefeated: number;
     readonly judgmentsSurvived: number;
     readonly uses: Readonly<Record<Ability, number>>;
+    /** The secret achievements' feats: the Ninefold Judgment brought on, a boss beaten without losing a heart, a bomb pulled into the mouth with Magnetism, a new floor reached on the last heart. */
+    readonly judgmentsCalled: number;
+    readonly flawlessBosses: number;
+    readonly hotSnacks: number;
+    readonly lastHeartFloors: number;
 }
 
 /** Bests from single runs. */
@@ -104,6 +109,10 @@ export function emptyTotals(): Totals {
         bossesDefeated: 0,
         judgmentsSurvived: 0,
         uses: zeroCounts(ABILITIES),
+        judgmentsCalled: 0,
+        flawlessBosses: 0,
+        hotSnacks: 0,
+        lastHeartFloors: 0,
     };
 }
 
@@ -216,6 +225,10 @@ function readTotals(value: unknown): Totals {
         bossesDefeated: whole('bossesDefeated'),
         judgmentsSurvived: whole('judgmentsSurvived'),
         uses: counts(source.uses, ABILITIES),
+        judgmentsCalled: whole('judgmentsCalled'),
+        flawlessBosses: whole('flawlessBosses'),
+        hotSnacks: whole('hotSnacks'),
+        lastHeartFloors: whole('lastHeartFloors'),
     };
 }
 
@@ -304,6 +317,20 @@ export function addTotals(a: Totals, b: Totals): Totals {
         bossesDefeated: a.bossesDefeated + b.bossesDefeated,
         judgmentsSurvived: a.judgmentsSurvived + b.judgmentsSurvived,
         uses: sum(a.uses, b.uses),
+        judgmentsCalled: a.judgmentsCalled + b.judgmentsCalled,
+        flawlessBosses: a.flawlessBosses + b.flawlessBosses,
+        hotSnacks: a.hotSnacks + b.hotSnacks,
+        lastHeartFloors: a.lastHeartFloors + b.lastHeartFloors,
+    };
+}
+
+/** The bests, counting a run (in progress or finished). */
+export function bestsWith(bests: Bests, run: RunRecord): Bests {
+    return {
+        score: Math.max(bests.score, run.score),
+        floor: Math.max(bests.floor, run.floor),
+        level: Math.max(bests.level, run.level),
+        playTimeMs: Math.max(bests.playTimeMs, run.playTimeMs),
     };
 }
 
@@ -324,12 +351,7 @@ export interface RunRecord {
  * new save and the score's rank (null if it didn't place).
  */
 export function recordRun(save: SaveData, run: RunRecord, endedInGameOver: boolean, date: string): { save: SaveData; rank: number | null } {
-    const bests: Bests = {
-        score: Math.max(save.bests.score, run.score),
-        floor: Math.max(save.bests.floor, run.floor),
-        level: Math.max(save.bests.level, run.level),
-        playTimeMs: Math.max(save.bests.playTimeMs, run.playTimeMs),
-    };
+    const bests = bestsWith(save.bests, run);
     const rank = endedInGameOver ? scoreRank(save.highScores, run.score) : null;
     const highScores = rank === null
         ? save.highScores
