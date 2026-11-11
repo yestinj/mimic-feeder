@@ -1,9 +1,19 @@
 import * as Phaser from 'phaser';
 import { ANIMATIONS, OBJECT_ANIMATIONS, TEXTURES, firstFrame, objectTexture } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
-import { profile } from '../profile';
+import { profile, updateProfile } from '../profile';
 import { ABILITIES, type Ability } from '../rules/abilities';
-import { GUIDE_ENTRIES, isDiscovered, isKnownAbility, type GuideCategory, type GuideEntry, type GuideKey } from '../rules/guide';
+import {
+    GUIDE_ENTRIES,
+    discoveredCount,
+    isDiscovered,
+    isKnownAbility,
+    markDiscoveriesSeen,
+    unseenDiscoveries,
+    type GuideCategory,
+    type GuideEntry,
+    type GuideKey,
+} from '../rules/guide';
 import { STRINGS } from '../strings';
 import { markReady, setHowToPlayView } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
@@ -11,6 +21,7 @@ import { addAbilityIcon } from '../ui/AbilityBar';
 import { Button } from '../ui/Button';
 import { Keycap } from '../ui/Keycap';
 import { Menu } from '../ui/Menu';
+import { addNewTag } from '../ui/NewTag';
 import { Tabs } from '../ui/Tabs';
 import { UI, addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
@@ -48,13 +59,17 @@ type KeyToken = { readonly key: string } | { readonly word: string };
 /**
  * How to Play (plan §3.4): Basics, Controls, Creatures & Items, and
  * Abilities. Creatures and items not met yet show as silhouettes with "???",
- * and abilities not unlocked yet as "???" with a vague hint. Opens from the
- * title and pause menus, and with H straight over the run.
+ * and abilities not unlocked yet as "???" with a vague hint. Anything met
+ * since Creatures & Items was last looked at is marked "New" there (its tab
+ * has a dot); opened during a run with something new, it opens on that tab.
+ * Opens from the title and pause menus, and with H straight over the run.
  */
 export class HowToPlayScene extends Phaser.Scene {
     private screen!: ScreenData;
     private leaving = false;
     private page: Phaser.GameObjects.GameObject[] = [];
+    /** Met since Creatures & Items was last looked at: marked "New" for this visit. */
+    private unseen = new Set<GuideKey>();
 
     constructor() {
         super('howToPlay');
@@ -65,6 +80,8 @@ export class HowToPlayScene extends Phaser.Scene {
         this.leaving = false;
         this.page = [];
         startScreen(this, data);
+        const save = profile();
+        this.unseen = new Set(unseenDiscoveries(save));
 
         addText(this, DESIGN_WIDTH / 2, 80, STRINGS.howToPlay.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         const icons: Record<Tab, (scene: Phaser.Scene, x: number, y: number) => Phaser.GameObjects.Image | Keycap> = {
@@ -73,8 +90,18 @@ export class HowToPlayScene extends Phaser.Scene {
             bestiary: (scene, x, y) => fit(scene.add.image(x, y, objectTexture('goblin')), 40),
             abilities: (scene, x, y) => fit(scene.add.image(x, y, UI.iconTentacles), 40),
         };
-        const tabs = new Tabs(this, TAB_Y, TAB_WIDTH, TABS.map((tab) => ({ label: STRINGS.howToPlay.tabs[tab], icon: icons[tab] })), (index) => this.showTab(TABS[index] ?? 'basics'));
-        tabs.show(0);
+        const labels: Record<Tab, string> = {
+            ...STRINGS.howToPlay.tabs,
+            bestiary: STRINGS.howToPlay.bestiaryTab(discoveredCount(save.discoveries), GUIDE_ENTRIES.length),
+        };
+        const tabs = new Tabs(this, TAB_Y, TAB_WIDTH, TABS.map((tab) => ({
+            label: labels[tab],
+            icon: icons[tab],
+            dot: tab === 'bestiary' && this.unseen.size > 0,
+        })), (index) => this.showTab(TABS[index] ?? 'basics'));
+        // During a run, something just met is the likeliest reason to look.
+        const duringRun = data.from === 'game' || data.from === 'pause';
+        tabs.show(duringRun && this.unseen.size > 0 ? TABS.indexOf('bestiary') : 0);
 
         const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.howToPlay.back, { width: 360, onSelect: () => this.close() });
         new Menu(this, [back]);
@@ -100,6 +127,10 @@ export class HowToPlayScene extends Phaser.Scene {
                 break;
             case 'bestiary':
                 this.showBestiary(save.discoveries);
+                // Seen now (the tags stay for this visit).
+                if (unseenDiscoveries(save).length > 0) {
+                    updateProfile(markDiscoveriesSeen);
+                }
                 break;
             case 'abilities':
                 this.showAbilities(save.introduced);
@@ -107,6 +138,7 @@ export class HowToPlayScene extends Phaser.Scene {
         }
         setHowToPlayView({
             tab,
+            fresh: [...this.unseen],
             hidden: GUIDE_ENTRIES.filter(({ key }) => !isDiscovered(key, save.discoveries)).map(({ key }) => key),
             lockedAbilities: ABILITIES.filter((ability) => !isKnownAbility(ability, save.introduced)),
         });
@@ -239,6 +271,9 @@ export class HowToPlayScene extends Phaser.Scene {
             colour: met ? TEXT_COLOURS.muted : TEXT_COLOURS.dim,
             wrapWidth: right - 20 - textX,
         }));
+        if (this.unseen.has(entry.key)) {
+            parts.push(addNewTag(this, left + 20 + 46, height / 2 - 24));
+        }
         return this.add.container(x, y, parts);
     }
 

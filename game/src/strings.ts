@@ -4,6 +4,8 @@
 export const STRINGS = {
     gameTitle: 'Mimic Feeder',
     tagline: 'Feed the mimic. Hoard the shinies. Mind the bombs.',
+    /** On something earned or met since the player last looked. */
+    newTag: 'New',
     loading: 'Waking the mimic…',
     pressToContinue: 'Press any key',
     keyHints: '← → move   ·   ↑ jump   ·   Esc menu',
@@ -135,8 +137,6 @@ export const STRINGS = {
         locked: 'Locked',
         secretName: '???',
         points: (points: number) => `+${points}`,
-        /** On a card unlocked since the screen was last opened. */
-        new: 'New',
         progress: (value: string, goal: string) => `${value} / ${goal}`,
         hint: '← → change tab   ·   Esc back',
         back: 'Back',
@@ -219,6 +219,8 @@ export const STRINGS = {
     howToPlay: {
         title: 'How to Play',
         tabs: { basics: 'Basics', controls: 'Controls', bestiary: 'Creatures & Items', abilities: 'Abilities' },
+        /** The Creatures & Items tab, with how many have been met. */
+        bestiaryTab: (met: number, total: number) => `Creatures & Items  ${met}/${total}`,
         hint: '← → change tab   ·   Esc back',
         back: 'Back',
         basics: [

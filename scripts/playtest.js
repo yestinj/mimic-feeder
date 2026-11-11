@@ -277,12 +277,20 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('KeyK');
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('achievements'));
         assert(true, '/next/ K closes the achievements too');
-        // H opens How to Play straight over the run, and H closes it again.
+        // H opens How to Play straight over the run, on Creatures & Items since this run has met new things,
+        // which marks them seen (they stay tagged "New" for this visit); H closes it again.
+        // A crown, dropped away from the mimic (missing one costs nothing), is the thing just met.
+        const crownX = (await snapshot()).game.mimicX > 960 ? 300 : 1620;
+        await debug('spawn', 'crown', crownX);
+        const met = (await waitForSnapshot((s) => s.save.newDiscoveries.includes('crown'))).save.newDiscoveries;
+        assert(true, '/next/ meeting something marks it new for How to Play');
         await page.keyboard.press('KeyH');
-        await waitForSnapshot((s) => s.running.includes('howToPlay') && s.paused.includes('game') && s.howToPlay && s.howToPlay.tab === 'basics');
+        const opened = await waitForSnapshot((s) => s.running.includes('howToPlay') && s.paused.includes('game') && s.howToPlay && s.howToPlay.tab === 'bestiary');
+        assert(met.every((key) => opened.howToPlay.fresh.includes(key)) && opened.save.newDiscoveries.length === 0,
+            '/next/ H opens How to Play over the run on what is new, and marks it seen');
         await page.keyboard.press('KeyH');
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('howToPlay') && s.howToPlay === null);
-        assert(true, '/next/ H opens How to Play over the run, and H goes back to play');
+        assert(true, '/next/ H goes back to play');
         // Opened from the pause menu (K there too), Esc goes back to the menu, then to the run.
         await page.keyboard.press('KeyP');
         await waitForSnapshot((s) => s.running.includes('pause'));

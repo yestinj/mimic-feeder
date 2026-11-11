@@ -1,6 +1,5 @@
 import * as Phaser from 'phaser';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
-import { prefersReducedMotion } from '../motion';
 import { profile, updateProfile } from '../profile';
 import {
     ACHIEVEMENTS,
@@ -22,6 +21,7 @@ import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from '../ui/Button';
 import { addMedal, addTabMedal, TIER_COLOURS, TIER_TEXT_COLOURS } from '../ui/Medal';
 import { Menu } from '../ui/Menu';
+import { addNewTag } from '../ui/NewTag';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Tabs } from '../ui/Tabs';
 import { addPanel } from '../ui/kit';
@@ -73,7 +73,6 @@ export class AchievementsScene extends Phaser.Scene {
     private cards: Phaser.GameObjects.Container[] = [];
     /** Unlocked since the screen was last open: marked "New" for this visit. */
     private unseen = new Set<string>();
-    private pulses: Phaser.Tweens.Tween[] = [];
 
     constructor() {
         super('achievements');
@@ -83,7 +82,6 @@ export class AchievementsScene extends Phaser.Scene {
         this.screen = data;
         this.leaving = false;
         this.cards = [];
-        this.pulses = [];
         startScreen(this, data);
 
         const unlocked = profile().achievements;
@@ -128,8 +126,6 @@ export class AchievementsScene extends Phaser.Scene {
     }
 
     private showTab(tab: Tab): void {
-        this.pulses.forEach((pulse) => pulse.remove());
-        this.pulses = [];
         this.cards.forEach((card) => card.destroy());
         const save = profile();
         // Opened during a run, progress includes the run so far (it's saved when the run ends).
@@ -211,26 +207,9 @@ export class AchievementsScene extends Phaser.Scene {
         }
 
         if (this.unseen.has(achievement.id)) {
-            parts.push(this.addNewTag(left + CARD_PADDING + MEDAL_SIZE / 2, MEDAL_SIZE / 2 - 6));
+            parts.push(addNewTag(this, left + CARD_PADDING + MEDAL_SIZE / 2, MEDAL_SIZE / 2 - 6));
         }
         return this.add.container(x, y, parts);
-    }
-
-    /** A "New" tag across the bottom of a medal, pulsing gently (unless motion is reduced). */
-    private addNewTag(x: number, y: number): Phaser.GameObjects.Container {
-        const label = addText(this, 0, 0, STRINGS.achievements.new, TYPE.tiny, { bold: true, colour: TEXT_COLOURS.shadow, shadow: false })
-            .setOrigin(0.5);
-        const width = label.width + 24;
-        const pill = this.add.graphics()
-            .fillStyle(COLOURS.goldBright, 1)
-            .fillRoundedRect(-width / 2, -13, width, 26, 13)
-            .lineStyle(2, COLOURS.ink, 0.9)
-            .strokeRoundedRect(-width / 2, -13, width, 26, 13);
-        const tag = this.add.container(x, y, [pill, label]);
-        if (!prefersReducedMotion()) {
-            this.pulses.push(this.tweens.add({ targets: tag, scale: 1.08, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.InOut' }));
-        }
-        return tag;
     }
 
     private close(): void {

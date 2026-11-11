@@ -6,6 +6,7 @@ import type * as Phaser from 'phaser';
 import { isMuted } from './audio';
 import { profile } from './profile';
 import { unseenAchievements } from './rules/achievements';
+import { unseenDiscoveries } from './rules/guide';
 import type { Settings } from './rules/save';
 
 /** What the game scene reports about the run in progress. */
@@ -49,8 +50,8 @@ export interface GameSnapshot {
     readonly dialog: boolean;
     /** The new-ability card on screen, and whether it accepts its key yet. */
     readonly card: { readonly ability: string; readonly ready: boolean } | null;
-    /** How to Play, while it's open: the tab shown, the creatures and items not met yet, and the abilities not unlocked yet. */
-    readonly howToPlay: { readonly tab: string; readonly hidden: readonly string[]; readonly lockedAbilities: readonly string[] } | null;
+    /** How to Play, while it's open: the tab shown, what's marked "New", the creatures and items not met yet, and the abilities not unlocked yet. */
+    readonly howToPlay: { readonly tab: string; readonly fresh: readonly string[]; readonly hidden: readonly string[]; readonly lockedAbilities: readonly string[] } | null;
     /** The results screen, while it's showing: the cause of death, the place on the board, and whether it's asking for a name. */
     readonly results: { readonly cause: string | null; readonly rank: number | null; readonly naming: boolean } | null;
     /** What the save holds. */
@@ -65,6 +66,8 @@ export interface GameSnapshot {
         readonly achievements: readonly string[];
         /** Unlocked ones not yet seen on the achievements screen ("New" there). */
         readonly newAchievements: readonly string[];
+        /** Creatures and items met but not yet seen on How to Play ("New" there). */
+        readonly newDiscoveries: readonly string[];
         readonly settings: Settings;
     };
 }
@@ -169,6 +172,7 @@ function saveView(): GameSnapshot['save'] {
         discoveries: save.discoveries,
         achievements: Object.keys(save.achievements),
         newAchievements: unseenAchievements(save),
+        newDiscoveries: unseenDiscoveries(save),
         settings: save.settings,
     };
 }

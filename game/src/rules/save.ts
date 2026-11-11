@@ -82,8 +82,10 @@ export interface SaveData {
     readonly achievements: Readonly<Record<string, string>>;
     /** Unlocked achievements already seen on the achievements screen (the rest are marked "New" there). */
     readonly achievementsSeen: readonly string[];
-    /** Object kinds the player has met (How to Play shows the rest as "???", M3c). */
+    /** Object kinds the player has met (How to Play shows the rest as "???"). */
     readonly discoveries: readonly string[];
+    /** Discoveries already seen on How to Play's Creatures & Items tab (the rest are marked "New" there). */
+    readonly discoveriesSeen: readonly string[];
     /** Abilities whose new-ability card has been shown. */
     readonly introduced: readonly Ability[];
 }
@@ -130,6 +132,7 @@ export function defaultSave(systemPrefersReducedMotion: boolean): SaveData {
         achievements: {},
         achievementsSeen: [],
         discoveries: [],
+        discoveriesSeen: [],
         introduced: [],
     };
 }
@@ -276,6 +279,7 @@ export function parseSave(raw: string | null, systemPrefersReducedMotion: boolea
         achievements: Object.fromEntries(Object.entries(achievements).filter((entry): entry is [string, string] => typeof entry[1] === 'string')),
         achievementsSeen: readStrings(data.achievementsSeen),
         discoveries: readStrings(data.discoveries),
+        discoveriesSeen: readStrings(data.discoveriesSeen),
         introduced: readStrings(data.introduced).filter((item): item is Ability => (ABILITIES as readonly string[]).includes(item)),
     };
 }

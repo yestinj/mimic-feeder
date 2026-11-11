@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { STRINGS } from '../strings';
 import { ABILITIES } from './abilities';
-import { GUIDE_ENTRIES, isDiscovered, isKnownAbility } from './guide';
+import { GUIDE_ENTRIES, discoveredCount, isDiscovered, isKnownAbility, markDiscoveriesSeen, unseenDiscoveries } from './guide';
+import { defaultSave } from './save';
 import { OBJECTS } from './objects';
 
 describe('How to Play', () => {
@@ -18,6 +19,17 @@ describe('How to Play', () => {
     it('never mentions the Ninefold Judgment', () => {
         const text = JSON.stringify(STRINGS.howToPlay).toLowerCase();
         expect(text).not.toMatch(/judg|ninefold/);
+    });
+
+    it('counts what has been met, and marks it "new" until Creatures & Items has been looked at', () => {
+        const save = { ...defaultSave(false), discoveries: ['goblin', 'boss', 'judgment', 'dragon'] };
+        expect(discoveredCount(save.discoveries)).toBe(3);
+        // In tab order, and only what the tab shows (not the Judgment).
+        expect(unseenDiscoveries(save)).toEqual(['goblin', 'dragon', 'boss']);
+        const seen = markDiscoveriesSeen(save);
+        expect(seen.discoveriesSeen).not.toContain('judgment');
+        expect(unseenDiscoveries(seen)).toEqual([]);
+        expect(unseenDiscoveries({ ...seen, discoveries: [...seen.discoveries, 'cat'] })).toEqual(['cat']);
     });
 
     it('hides what has not been met or unlocked yet', () => {
