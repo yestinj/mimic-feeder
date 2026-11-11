@@ -23,6 +23,7 @@ import { Button } from '../ui/Button';
 import { addMedal, addTabMedal, TIER_COLOURS, TIER_TEXT_COLOURS } from '../ui/Medal';
 import { Menu } from '../ui/Menu';
 import { ProgressBar } from '../ui/ProgressBar';
+import { Tabs } from '../ui/Tabs';
 import { addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
 import { closeScreen, startScreen, type ScreenData } from '../ui/screens';
@@ -37,8 +38,6 @@ const SUMMARY_BAR_Y = 188;
 const SUMMARY_BAR_WIDTH = 640;
 const TAB_Y = 252;
 const TAB_WIDTH = 300;
-/** The tab row's left edge (it's centred). */
-const TABS_LEFT = DESIGN_WIDTH / 2 - (TABS.length * TAB_WIDTH) / 2;
 const TAB_MEDAL = 40;
 const COLUMNS = 3;
 const CARD_WIDTH = 580;
@@ -71,9 +70,6 @@ function onTab(tab: Tab): Achievement[] {
 export class AchievementsScene extends Phaser.Scene {
     private screen!: ScreenData;
     private leaving = false;
-    private tab: Tab = 'bronze';
-    private tabs: { label: Phaser.GameObjects.Text; medal: Phaser.GameObjects.Container; dot: Phaser.GameObjects.Arc | null }[] = [];
-    private tabUnderline!: Phaser.GameObjects.Rectangle;
     private cards: Phaser.GameObjects.Container[] = [];
     /** Unlocked since the screen was last open: marked "New" for this visit. */
     private unseen = new Set<string>();
@@ -95,17 +91,23 @@ export class AchievementsScene extends Phaser.Scene {
         if (this.unseen.size > 0) {
             updateProfile(markAchievementsSeen);
         }
-        this.tab = TABS.find((tab) => this.hasUnseen(tab)) ?? 'bronze';
         addText(this, DESIGN_WIDTH / 2, 80, STRINGS.achievements.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         this.addSummary(unlocked);
-        this.addTabs(unlocked);
-        this.showTab(this.tab);
+        // Each tier's medal, name and how many of it are unlocked; it opens on the first tab with something new.
+        const tabs = new Tabs(this, TAB_Y, TAB_WIDTH, TABS.map((tab) => {
+            const list = onTab(tab);
+            const done = list.filter(({ id }) => id in unlocked).length;
+            return {
+                label: `${STRINGS.achievements.tabs[tab]}  ${done}/${list.length}`,
+                icon: (scene: Phaser.Scene, x: number, y: number) => addTabMedal(scene, x, y, tab, TAB_MEDAL),
+                dot: this.hasUnseen(tab),
+            };
+        }), (index) => this.showTab(TABS[index] ?? 'bronze'));
+        tabs.show(Math.max(0, TABS.findIndex((tab) => this.hasUnseen(tab))));
 
         const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.achievements.back, { width: 360, onSelect: () => this.close() });
         new Menu(this, [back]);
         addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 28, STRINGS.achievements.hint, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
-        onKeyDown(this, ['LEFT', 'A'], () => this.stepTab(-1), { repeat: true });
-        onKeyDown(this, ['RIGHT', 'D'], () => this.stepTab(1), { repeat: true });
         // K too, since it opens them.
         onKeyDown(this, ['ESC', 'BACKSPACE', 'K'], () => this.close());
 
@@ -121,53 +123,11 @@ export class AchievementsScene extends Phaser.Scene {
         new ProgressBar(this, DESIGN_WIDTH / 2, SUMMARY_BAR_Y, SUMMARY_BAR_WIDTH, COLOURS.gold).setProgress(count / ACHIEVEMENTS.length, false);
     }
 
-    /** The tab row: each tier's medal, name and how many of it are unlocked. */
-    private addTabs(unlocked: Readonly<Record<string, string>>): void {
-        const left = TABS_LEFT;
-        this.tabs = TABS.map((tab, i) => {
-            const list = onTab(tab);
-            const done = list.filter(({ id }) => id in unlocked).length;
-            const centre = left + TAB_WIDTH * (i + 0.5);
-            const label = addText(this, 0, TAB_Y, `${STRINGS.achievements.tabs[tab]}  ${done}/${list.length}`, TYPE.button, { role: 'display', bold: true })
-                .setOrigin(0, 0.5);
-            // The medal and label are centred together in the tab.
-            const gap = 12;
-            const start = centre - (TAB_MEDAL + gap + label.width) / 2;
-            const medal = addTabMedal(this, start + TAB_MEDAL / 2, TAB_Y, tab, TAB_MEDAL);
-            label.setX(start + TAB_MEDAL + gap);
-            // Something new on this tab: a dot until it's looked at.
-            const dot = this.hasUnseen(tab) ? this.add.circle(label.x + label.width + 12, TAB_Y - 14, 7, COLOURS.goldBright).setStrokeStyle(2, COLOURS.ink, 0.9) : null;
-            this.add.zone(centre, TAB_Y, TAB_WIDTH, 60)
-                .setInteractive({ useHandCursor: true })
-                .on(Phaser.Input.Events.POINTER_UP, () => this.showTab(tab));
-            return { label, medal, dot };
-        });
-        this.add.rectangle(left, TAB_Y + 34, TABS.length * TAB_WIDTH, 2, COLOURS.goldDim, 0.5).setOrigin(0, 0.5);
-        const x = left + TAB_WIDTH * (TABS.indexOf(this.tab) + 0.5);
-        this.tabUnderline = this.add.rectangle(x, TAB_Y + 34, TAB_WIDTH - 40, 4, COLOURS.gold).setOrigin(0.5);
-    }
-
     private hasUnseen(tab: Tab): boolean {
         return onTab(tab).some(({ id }) => this.unseen.has(id));
     }
 
-    private stepTab(step: 1 | -1): void {
-        const index = TABS.indexOf(this.tab);
-        this.showTab(TABS[(index + step + TABS.length) % TABS.length] ?? 'bronze');
-    }
-
     private showTab(tab: Tab): void {
-        this.tab = tab;
-        const index = TABS.indexOf(tab);
-        this.tabs.forEach(({ label, medal, dot }, i) => {
-            label.setColor(i === index ? TEXT_COLOURS.gold : TEXT_COLOURS.muted);
-            medal.setAlpha(i === index ? 1 : 0.55);
-            if (i === index) {
-                dot?.setVisible(false);
-            }
-        });
-        this.tweens.add({ targets: this.tabUnderline, x: TABS_LEFT + TAB_WIDTH * (index + 0.5), duration: MOTION.fast, ease: MOTION.ease });
-
         this.pulses.forEach((pulse) => pulse.remove());
         this.pulses = [];
         this.cards.forEach((card) => card.destroy());

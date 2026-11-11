@@ -49,6 +49,8 @@ export interface GameSnapshot {
     readonly dialog: boolean;
     /** The new-ability card on screen, and whether it accepts its key yet. */
     readonly card: { readonly ability: string; readonly ready: boolean } | null;
+    /** How to Play, while it's open: the tab shown, the creatures and items not met yet, and the abilities not unlocked yet. */
+    readonly howToPlay: { readonly tab: string; readonly hidden: readonly string[]; readonly lockedAbilities: readonly string[] } | null;
     /** The results screen, while it's showing: the cause of death, the place on the board, and whether it's asking for a name. */
     readonly results: { readonly cause: string | null; readonly rank: number | null; readonly naming: boolean } | null;
     /** What the save holds. */
@@ -133,6 +135,12 @@ export function setDialogOpen(open: boolean): void {
 }
 
 let card: (() => GameSnapshot['card']) | null = null;
+let howToPlay: GameSnapshot['howToPlay'] = null;
+
+/** How to Play reports what it shows; null when it closes. */
+export function setHowToPlayView(view: GameSnapshot['howToPlay']): void {
+    howToPlay = view;
+}
 let results: GameSnapshot['results'] = null;
 
 /** The results scene reports what it shows; null when it closes. */
@@ -177,6 +185,7 @@ export function installTestHook(game: Phaser.Game): void {
             muted: isMuted(),
             dialog: dialogOpen,
             card: card ? card() : null,
+            howToPlay,
             results,
             save: saveView(),
         };

@@ -2,13 +2,15 @@
 // Vite config for the Phaser + TypeScript rewrite. It builds into dist/next/,
 // which the site serves at /next/ alongside the current p5 game until the swap
 // (see docs/phaser-migration/plan.md).
-import { createReadStream, statSync } from 'node:fs';
+import { createReadStream, readFileSync, statSync } from 'node:fs';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
 const GAME_DIR = fileURLToPath(new URL('.', import.meta.url));
 const ASSETS_DIR = resolve(GAME_DIR, '../src/assets');
+/** The game's version, from package.json (shown in Credits). */
+const { version: GAME_VERSION } = JSON.parse(readFileSync(resolve(GAME_DIR, '../package.json'), 'utf8')) as { version: string };
 
 const ASSET_TYPES: Record<string, string> = {
     '.png': 'image/png',
@@ -61,6 +63,7 @@ export default defineConfig({
     base: '/next/',
     publicDir: false,
     plugins: [serveSharedAssets()],
+    define: { __GAME_VERSION__: JSON.stringify(GAME_VERSION) },
     build: {
         outDir: resolve(GAME_DIR, '../dist/next'),
         emptyOutDir: true,

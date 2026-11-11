@@ -14,7 +14,6 @@ import { addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
 import { openScreen } from '../ui/screens';
 import { addText } from '../ui/text';
-import { showToast } from '../ui/toast';
 import type { GameScene } from './GameScene';
 
 const PANEL_HEIGHT = 600;
@@ -55,7 +54,8 @@ export class PauseScene extends Phaser.Scene {
             }
         };
         onKeyDown(this, ['ESC', 'P'], back);
-        onKeyDown(this, ['K'], () => this.openAchievements());
+        onKeyDown(this, ['H'], () => this.openScreen('howToPlay'));
+        onKeyDown(this, ['K'], () => this.openScreen('achievements'));
 
         this.cameras.main.fadeIn(MOTION.fast, 0, 0, 0);
         markReady('pause');
@@ -64,8 +64,8 @@ export class PauseScene extends Phaser.Scene {
     private addMenu(): void {
         const items: { label: string; action: () => void }[] = [
             { label: STRINGS.pause.resume, action: () => this.resumeGame() },
-            { label: STRINGS.menu.howToPlay, action: () => showToast(this, STRINGS.comingLater(STRINGS.menu.howToPlay)) },
-            { label: STRINGS.menu.achievements, action: () => this.openAchievements() },
+            { label: STRINGS.menu.howToPlay, action: () => this.openScreen('howToPlay') },
+            { label: STRINGS.menu.achievements, action: () => this.openScreen('achievements') },
             { label: STRINGS.menu.settings, action: () => openScreen(this, 'settings', { from: 'pause' }) },
             { label: STRINGS.pause.restart, action: () => this.confirmAbandon(STRINGS.confirm.restart, () => this.restart()) },
             { label: STRINGS.pause.quit, action: () => this.confirmAbandon(STRINGS.confirm.quit, () => this.quit()) },
@@ -104,9 +104,10 @@ export class PauseScene extends Phaser.Scene {
         });
     }
 
-    private openAchievements(): void {
+    /** How to Play or the achievements, over the menu (H and K open them too). */
+    private openScreen(key: 'howToPlay' | 'achievements'): void {
         if (!this.dialog && !this.leaving) {
-            openScreen(this, 'achievements', { from: 'pause' });
+            openScreen(this, key, { from: 'pause' });
         }
     }
 
