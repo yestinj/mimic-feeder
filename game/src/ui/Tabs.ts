@@ -57,8 +57,9 @@ export class Tabs {
         });
         scene.add.rectangle(this.left, y + 34, specs.length * tabWidth, 2, COLOURS.goldDim, 0.5).setOrigin(0, 0.5);
         this.underline = scene.add.rectangle(this.centre(0), y + 34, tabWidth - 40, 4, COLOURS.gold).setOrigin(0.5);
-        onKeyDown(scene, ['LEFT', 'A'], () => this.step(-1), { repeat: true });
-        onKeyDown(scene, ['RIGHT', 'D'], () => this.step(1), { repeat: true });
+        // One step per press: a held key would rebuild the page at the keyboard's repeat rate.
+        onKeyDown(scene, ['LEFT', 'A'], () => this.step(-1));
+        onKeyDown(scene, ['RIGHT', 'D'], () => this.step(1));
     }
 
     get index(): number {

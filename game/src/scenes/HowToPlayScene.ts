@@ -27,6 +27,7 @@ import { UI, addPanel } from '../ui/kit';
 import { onKeyDown } from '../ui/keys';
 import { closeScreen, startScreen, type ScreenData } from '../ui/screens';
 import { addText } from '../ui/text';
+import type { GameScene } from './GameScene';
 
 type Tab = 'basics' | 'controls' | 'bestiary' | 'abilities';
 /** On the Controls tab, the menu keys start at this row of the right-hand panel. */
@@ -53,6 +54,9 @@ const SPRITE_ZOOM: Partial<Record<GuideKey, number>> = { boss: 1.9, fireball: 1.
 /** The Staff and Magnet sprites are square tiles, which don't sit on a round plate: their kit icons stand in. */
 const KIT_PICTURES: Partial<Record<GuideKey, string>> = { staff: UI.iconStaff, magnet: UI.iconMagnetism };
 
+/** What a plate shows: a creature or item (by its guide key), or a texture. */
+type Picture = { readonly entry: GuideKey } | { readonly texture: string };
+
 /** A key, or a word between keys ("or"). */
 type KeyToken = { readonly key: string } | { readonly word: string };
 
@@ -70,6 +74,8 @@ export class HowToPlayScene extends Phaser.Scene {
     private page: Phaser.GameObjects.GameObject[] = [];
     /** Met since Creatures & Items was last looked at: marked "New" for this visit. */
     private unseen = new Set<GuideKey>();
+    /** Abilities unlocked in any run, plus (during a run) any this run has whose card hasn't been shown yet. */
+    private known: Ability[] = [];
 
     constructor() {
         super('howToPlay');
@@ -82,6 +88,11 @@ export class HowToPlayScene extends Phaser.Scene {
         startScreen(this, data);
         const save = profile();
         this.unseen = new Set(unseenDiscoveries(save));
+        // During a run, something just met is the likeliest reason to look.
+        const duringRun = data.from === 'game' || data.from === 'pause';
+        // New-ability cards wait after a boss's defeat, so an ability can be usable before it's recorded as introduced.
+        const run = duringRun ? (this.scene.get('game') as GameScene).currentRun : null;
+        this.known = [...save.introduced, ...ABILITIES.filter((ability) => run?.hasAbility(ability) === true)];
 
         addText(this, DESIGN_WIDTH / 2, 80, STRINGS.howToPlay.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         const icons: Record<Tab, (scene: Phaser.Scene, x: number, y: number) => Phaser.GameObjects.Image | Keycap> = {
@@ -92,15 +103,13 @@ export class HowToPlayScene extends Phaser.Scene {
         };
         const labels: Record<Tab, string> = {
             ...STRINGS.howToPlay.tabs,
-            bestiary: STRINGS.howToPlay.bestiaryTab(discoveredCount(save.discoveries), GUIDE_ENTRIES.length),
+            bestiary: `${STRINGS.howToPlay.tabs.bestiary}  ${STRINGS.howToPlay.count(discoveredCount(save.discoveries), GUIDE_ENTRIES.length)}`,
         };
         const tabs = new Tabs(this, TAB_Y, TAB_WIDTH, TABS.map((tab) => ({
             label: labels[tab],
             icon: icons[tab],
             dot: tab === 'bestiary' && this.unseen.size > 0,
         })), (index) => this.showTab(TABS[index] ?? 'basics'));
-        // During a run, something just met is the likeliest reason to look.
-        const duringRun = data.from === 'game' || data.from === 'pause';
         tabs.show(duringRun && this.unseen.size > 0 ? TABS.indexOf('bestiary') : 0);
 
         const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.howToPlay.back, { width: 360, onSelect: () => this.close() });
@@ -123,7 +132,7 @@ export class HowToPlayScene extends Phaser.Scene {
                 this.showBasics();
                 break;
             case 'controls':
-                this.showControls(save.introduced);
+                this.showControls(this.known);
                 break;
             case 'bestiary':
                 this.showBestiary(save.discoveries);
@@ -133,14 +142,14 @@ export class HowToPlayScene extends Phaser.Scene {
                 }
                 break;
             case 'abilities':
-                this.showAbilities(save.introduced);
+                this.showAbilities(this.known);
                 break;
         }
         setHowToPlayView({
             tab,
             fresh: [...this.unseen],
             hidden: GUIDE_ENTRIES.filter(({ key }) => !isDiscovered(key, save.discoveries)).map(({ key }) => key),
-            lockedAbilities: ABILITIES.filter((ability) => !isKnownAbility(ability, save.introduced)),
+            lockedAbilities: ABILITIES.filter((ability) => !isKnownAbility(ability, this.known)),
         });
     }
 
@@ -157,7 +166,7 @@ export class HowToPlayScene extends Phaser.Scene {
             const y = CONTENT_TOP + 20 + Math.floor(i / 3) * (height + gapY) + height / 2;
             const cardLeft = -width / 2;
             const top = -height / 2;
-            const plate = this.addPlate(cardLeft + 30 + 48, top + 30 + 48, 96, icons[i] ?? TEXTURES.chestOpen, false);
+            const plate = this.addPlate(cardLeft + 30 + 48, top + 30 + 48, 96, { texture: icons[i] ?? TEXTURES.chestOpen }, false);
             const title = addText(this, cardLeft + 30 + 96 + 24, top + 30 + 48, tip.title, TYPE.heading, { role: 'display', bold: true, colour: TEXT_COLOURS.gold })
                 .setOrigin(0, 0.5);
             const text = addText(this, cardLeft + 30, top + 146, tip.text, TYPE.body, { colour: TEXT_COLOURS.primary, wrapWidth: width - 60 });
@@ -255,7 +264,7 @@ export class HowToPlayScene extends Phaser.Scene {
         if (!met) {
             parts.push(this.add.graphics().fillStyle(COLOURS.ink, 0.45).fillRoundedRect(left, -height / 2, width, height, CARD_RADIUS));
         }
-        parts.push(this.addPlate(left + 20 + 46, 0, 92, entry.key, !met));
+        parts.push(this.addPlate(left + 20 + 46, 0, 92, { entry: entry.key }, !met));
         const nameY = -height / 2 + 32;
         const name = addText(this, textX, nameY, met ? (info?.name ?? entry.key) : text.unknownName, TYPE.body, { bold: true }).setOrigin(0, 0.5);
         parts.push(name);
@@ -322,14 +331,15 @@ export class HowToPlayScene extends Phaser.Scene {
     }
 
     /** A round dark plate with a picture on it: a sprite (animated, if it moves in play) or a kit image; a silhouette if `hidden`. */
-    private addPlate(x: number, y: number, size: number, picture: GuideKey | string, hidden: boolean): Phaser.GameObjects.Container {
+    /** A round dark plate with a picture on it: a creature or item (animated, if it moves in play) or a texture; a silhouette if `hidden`. */
+    private addPlate(x: number, y: number, size: number, picture: Picture, hidden: boolean): Phaser.GameObjects.Container {
         const plate = this.add.graphics()
             .fillStyle(COLOURS.ink, 0.75)
             .fillCircle(0, 0, size / 2)
             .lineStyle(3, hidden ? COLOURS.iron : COLOURS.goldDim, 1)
             .strokeCircle(0, 0, size / 2);
-        const sprite = this.spriteFor(picture);
-        const zoom = SPRITE_ZOOM[picture as GuideKey] ?? 1;
+        const sprite = 'entry' in picture ? this.entrySprite(picture.entry) : this.add.sprite(0, 0, picture.texture);
+        const zoom = 'entry' in picture ? (SPRITE_ZOOM[picture.entry] ?? 1) : 1;
         fit(sprite, size * 0.68 * zoom);
         if (hidden) {
             sprite.setTint(SILHOUETTE).setTintMode(Phaser.TintModes.FILL);
@@ -337,24 +347,21 @@ export class HowToPlayScene extends Phaser.Scene {
         return this.add.container(x, y, [plate, sprite]);
     }
 
-    private spriteFor(picture: GuideKey | string): Phaser.GameObjects.Sprite {
-        const kit = KIT_PICTURES[picture as GuideKey];
+    /** A creature, item or the boss as it looks in play. */
+    private entrySprite(key: GuideKey): Phaser.GameObjects.Sprite {
+        const kit = KIT_PICTURES[key];
         if (kit) {
             return this.add.sprite(0, 0, kit);
         }
-        if (picture === 'boss') {
+        if (key === 'boss') {
             return this.add.sprite(0, 0, firstFrame('bossIdle')).play(ANIMATIONS.bossIdle);
         }
-        const kind = GUIDE_ENTRIES.find(({ key }) => key === picture)?.key;
-        if (!kind || kind === 'boss') {
-            return this.add.sprite(0, 0, picture);
-        }
-        const sprite = this.add.sprite(0, 0, objectTexture(kind));
-        const animation = OBJECT_ANIMATIONS[kind];
+        const sprite = this.add.sprite(0, 0, objectTexture(key));
+        const animation = OBJECT_ANIMATIONS[key];
         if (animation) {
             sprite.play(ANIMATIONS[animation]);
         }
-        if (kind === 'fireball') {
+        if (key === 'fireball') {
             // The fireball frames point sideways; turned to fall nose first, as in play.
             sprite.setAngle(90);
         }

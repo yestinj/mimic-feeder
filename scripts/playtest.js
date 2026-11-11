@@ -443,14 +443,18 @@ async function checkNextBuild(browser) {
         assert(reloaded.save.achievements.includes('staff_initiate'), '/next/ achievements survive a reload');
 
         // How to Play (second on the title menu): what this run met is shown, and the abilities it unlocked.
+        // From the title it opens on Basics: the goblin met since H was pressed stays new until Creatures & Items is shown.
         await page.keyboard.press('ArrowDown');
         await page.keyboard.press('Enter');
-        await waitForSnapshot((s) => s.running.includes('howToPlay') && !s.running.includes('title') && s.howToPlay && s.howToPlay.tab === 'basics');
+        const basics = await waitForSnapshot((s) => s.running.includes('howToPlay') && !s.running.includes('title') && s.howToPlay && s.howToPlay.tab === 'basics');
+        assert(basics.save.newDiscoveries.includes('goblin'), '/next/ How to Play opens on Basics from the title, leaving new things unseen');
         await page.keyboard.press('ArrowRight');
         await page.keyboard.press('ArrowRight');
-        const guide = (await waitForSnapshot((s) => s.howToPlay && s.howToPlay.tab === 'bestiary')).howToPlay;
-        assert(!guide.hidden.includes('goblin') && !guide.hidden.includes('bomb') && guide.lockedAbilities.length === 0,
-            '/next/ How to Play opens from the title, with what has been met and unlocked shown');
+        const shown = await waitForSnapshot((s) => s.howToPlay && s.howToPlay.tab === 'bestiary');
+        const guide = shown.howToPlay;
+        assert(!guide.hidden.includes('goblin') && !guide.hidden.includes('bomb') && guide.lockedAbilities.length === 0
+            && guide.fresh.includes('goblin') && shown.save.newDiscoveries.length === 0,
+            '/next/ Creatures & Items shows what has been met and unlocked, tags what is new, and marks it seen');
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('howToPlay'));
 

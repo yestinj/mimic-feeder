@@ -219,8 +219,8 @@ export const STRINGS = {
     howToPlay: {
         title: 'How to Play',
         tabs: { basics: 'Basics', controls: 'Controls', bestiary: 'Creatures & Items', abilities: 'Abilities' },
-        /** The Creatures & Items tab, with how many have been met. */
-        bestiaryTab: (met: number, total: number) => `Creatures & Items  ${met}/${total}`,
+        /** How many of the Creatures & Items have been met, after the tab's name. */
+        count: (met: number, total: number) => `${met}/${total}`,
         hint: '← → change tab   ·   Esc back',
         back: 'Back',
         basics: [
