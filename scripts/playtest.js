@@ -260,12 +260,13 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('Space');
         await waitForSnapshot((s) => !s.card && s.running.includes('game'));
         assert(true, "/next/ the ability's own key closes the card and play resumes");
-        await waitForSnapshot((s) => s.save.achievements.includes('staff_initiate'));
-        assert(true, '/next/ finding the Staff unlocks the Staff Initiate achievement, and saves it');
+        await waitForSnapshot((s) => s.save.achievements.includes('staff_initiate') && s.save.newAchievements.includes('staff_initiate'));
+        assert(true, '/next/ finding the Staff unlocks the Staff Initiate achievement, saves it and marks it new');
 
-        // K opens the achievements straight over the run, and Esc goes back to it.
+        // K opens the achievements straight over the run (which marks what's new as seen), and Esc goes back to it.
         await page.keyboard.press('KeyK');
         await waitForSnapshot((s) => s.running.includes('achievements') && !s.running.includes('pause') && s.paused.includes('game'));
+        assert((await snapshot()).save.newAchievements.length === 0, '/next/ opening the achievements marks new ones as seen');
         await page.waitForTimeout(400);
         await page.screenshot({ path: path.join(OUT_DIR, 'next-achievements.png') });
         await page.keyboard.press('Escape');

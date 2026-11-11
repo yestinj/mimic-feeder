@@ -80,6 +80,8 @@ export interface SaveData {
     readonly totals: Totals;
     /** Achievement ids and when each was unlocked (ISO date-time). */
     readonly achievements: Readonly<Record<string, string>>;
+    /** Unlocked achievements already seen on the achievements screen (the rest are marked "New" there). */
+    readonly achievementsSeen: readonly string[];
     /** Object kinds the player has met (How to Play shows the rest as "???", M3c). */
     readonly discoveries: readonly string[];
     /** Abilities whose new-ability card has been shown. */
@@ -126,6 +128,7 @@ export function defaultSave(systemPrefersReducedMotion: boolean): SaveData {
         bests: { score: 0, floor: 0, level: 0, playTimeMs: 0 },
         totals: emptyTotals(),
         achievements: {},
+        achievementsSeen: [],
         discoveries: [],
         introduced: [],
     };
@@ -271,6 +274,7 @@ export function parseSave(raw: string | null, systemPrefersReducedMotion: boolea
         },
         totals: readTotals(data.totals),
         achievements: Object.fromEntries(Object.entries(achievements).filter((entry): entry is [string, string] => typeof entry[1] === 'string')),
+        achievementsSeen: readStrings(data.achievementsSeen),
         discoveries: readStrings(data.discoveries),
         introduced: readStrings(data.introduced).filter((item): item is Ability => (ABILITIES as readonly string[]).includes(item)),
     };

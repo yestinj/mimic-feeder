@@ -22,7 +22,7 @@ import { SpawnHistory, keepClearOf, pickObject, pickSpawnX, rollHazard } from '.
 import { MIMIC, SPAWNING } from '../rules/tuning';
 import { profile, updateProfile } from '../profile';
 import { addTotals, bestsWith, recordRun } from '../rules/save';
-import { TIER_POINTS, newlyEarned } from '../rules/achievements';
+import { TIER_POINTS, newlyEarned, withUnlocked } from '../rules/achievements';
 import { markDiscovered, markIntroduced, wasIntroduced } from '../session';
 import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
 import { onKeyDown } from '../ui/keys';
@@ -145,8 +145,7 @@ export class GameScene extends Phaser.Scene {
         if (earned.length === 0) {
             return;
         }
-        const date = new Date().toISOString();
-        updateProfile((current) => ({ ...current, achievements: { ...current.achievements, ...Object.fromEntries(earned.map(({ id }) => [id, date])) } }));
+        updateProfile((current) => withUnlocked(current, earned, new Date().toISOString()));
         for (const achievement of earned) {
             this.run.reward(TIER_POINTS[achievement.tier]);
             if (announce) {
@@ -161,6 +160,8 @@ export class GameScene extends Phaser.Scene {
 
     /** Restart or Quit from the pause menu: the run counts towards lifetime totals, but not the board. */
     abandonRun(): void {
+        // Anything earned since the last check still unlocks, for this run.
+        this.checkAchievements(false);
         this.saveRun(false);
     }
 

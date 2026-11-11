@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { ACHIEVEMENTS, TIER_POINTS, newlyEarned, pointsEarned, progress, showsProgress, unlockedCount } from './achievements';
+import {
+    ACHIEVEMENTS,
+    TIER_POINTS,
+    markAchievementsSeen,
+    newlyEarned,
+    pointsEarned,
+    progress,
+    showsProgress,
+    unlockEarned,
+    unlockedCount,
+    unseenAchievements,
+} from './achievements';
 import { Run } from './run';
 import { addTotals, bestsWith, defaultSave, emptyTotals, type Bests, type Totals } from './save';
 import { STRINGS } from '../strings';
@@ -22,11 +33,33 @@ describe('achievements', () => {
         expect(TIER_POINTS).toEqual({ bronze: 25, silver: 50, gold: 100 });
     });
 
-    it('has a name and description for every achievement', () => {
-        for (const { id } of ACHIEVEMENTS) {
+    it('has a name and description for every achievement, and a hint for every secret', () => {
+        for (const { id, secret } of ACHIEVEMENTS) {
             expect(STRINGS.achievements.list[id]?.name, id).toBeTruthy();
             expect(STRINGS.achievements.list[id]?.description, id).toBeTruthy();
+            if (secret) {
+                expect(STRINGS.achievements.list[id]?.hint, id).toBeTruthy();
+            }
         }
+    });
+
+    it('quietly unlocks what a save has already earned', () => {
+        const fresh = defaultSave(false);
+        expect(unlockEarned(fresh, 'today')).toBe(fresh);
+        // Played before achievements existed: three cats rescued, Floor 3 reached.
+        const played = { ...fresh, totals: { ...fresh.totals, catsRescued: 3 }, bests: { ...fresh.bests, floor: 3 } };
+        const unlocked = unlockEarned(played, 'today');
+        expect(unlocked.achievements).toEqual({ cat_lover: 'today', dungeon_explorer: 'today' });
+        expect(unlocked.bests.score).toBe(0);
+        expect(unlockEarned(unlocked, 'later')).toBe(unlocked);
+    });
+
+    it('marks unlocks "new" until the achievements screen has been opened', () => {
+        const save = { ...defaultSave(false), achievements: { first_blood: 'x', boss_hunter: 'y' } };
+        expect(unseenAchievements(save)).toEqual(['first_blood', 'boss_hunter']);
+        const seen = markAchievementsSeen(save);
+        expect(unseenAchievements(seen)).toEqual([]);
+        expect(unseenAchievements({ ...seen, achievements: { ...seen.achievements, cat_lover: 'z' } })).toEqual(['cat_lover']);
     });
 
     it('counts grind achievements across runs', () => {

@@ -3,7 +3,7 @@
 // milestones (floor, score, level, time) are reached in a single run, so they
 // are measured on the personal bests. Each one adds score when it unlocks.
 import { EDIBLE_KINDS } from './objects';
-import type { Bests, Totals } from './save';
+import type { Bests, SaveData, Totals } from './save';
 
 export type Tier = 'bronze' | 'silver' | 'gold';
 
@@ -162,6 +162,33 @@ export function showsProgress(achievement: Achievement): boolean {
 /** Achievements now earned that aren't unlocked yet, in list order. */
 export function newlyEarned(unlocked: Readonly<Record<string, string>>, totals: Totals, bests: Bests): Achievement[] {
     return ACHIEVEMENTS.filter((achievement) => !(achievement.id in unlocked) && statValue(achievement.stat, totals, bests) >= achievement.goal);
+}
+
+/** The save with `earned` unlocked on `date`. */
+export function withUnlocked(save: SaveData, earned: readonly Achievement[], date: string): SaveData {
+    return { ...save, achievements: { ...save.achievements, ...Object.fromEntries(earned.map(({ id }) => [id, date])) } };
+}
+
+/**
+ * Unlocks, quietly, whatever the save has already earned: from runs played
+ * before achievements existed, or once a goal is lowered. There's no notice
+ * and no score, since no run is under way. The same save comes back if
+ * there's nothing to unlock.
+ */
+export function unlockEarned(save: SaveData, date: string): SaveData {
+    const earned = newlyEarned(save.achievements, save.totals, save.bests);
+    return earned.length > 0 ? withUnlocked(save, earned, date) : save;
+}
+
+/** Unlocked achievements not yet seen on the achievements screen, in list order. */
+export function unseenAchievements(save: SaveData): string[] {
+    const seen = new Set(save.achievementsSeen);
+    return ACHIEVEMENTS.filter(({ id }) => id in save.achievements && !seen.has(id)).map(({ id }) => id);
+}
+
+/** The achievements screen has been opened: everything unlocked is seen. */
+export function markAchievementsSeen(save: SaveData): SaveData {
+    return { ...save, achievementsSeen: ACHIEVEMENTS.filter(({ id }) => id in save.achievements).map(({ id }) => id) };
 }
 
 /** Unlocked out of all, for the screen's header. */

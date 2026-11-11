@@ -55,6 +55,14 @@ describe('profile', () => {
         expect(loadProfile(storage).name).toBe('Chomper');
     });
 
+    it('unlocks, on loading, achievements a save has already earned', () => {
+        const storage = new FakeStorage();
+        const fresh = defaultSave(false);
+        storage.setItem(SAVE_KEY, JSON.stringify({ ...fresh, totals: { ...fresh.totals, catsRescued: 3 } }));
+        expect(Object.keys(loadProfile(storage).achievements)).toEqual(['cat_lover']);
+        expect(Object.keys(JSON.parse(storage.getItem(SAVE_KEY) ?? '{}').achievements)).toEqual(['cat_lover']);
+    });
+
     it('carries on without storage, or when writes fail', () => {
         loadProfile(null);
         expect(updateProfile((save) => ({ ...save, name: 'Nowhere' })).name).toBe('Nowhere');

@@ -5,6 +5,7 @@
 import type * as Phaser from 'phaser';
 import { isMuted } from './audio';
 import { profile } from './profile';
+import { unseenAchievements } from './rules/achievements';
 import type { Settings } from './rules/save';
 
 /** What the game scene reports about the run in progress. */
@@ -60,6 +61,8 @@ export interface GameSnapshot {
         readonly discoveries: readonly string[];
         /** Unlocked achievement ids. */
         readonly achievements: readonly string[];
+        /** Unlocked ones not yet seen on the achievements screen ("New" there). */
+        readonly newAchievements: readonly string[];
         readonly settings: Settings;
     };
 }
@@ -157,6 +160,7 @@ function saveView(): GameSnapshot['save'] {
         runs: save.totals.runs,
         discoveries: save.discoveries,
         achievements: Object.keys(save.achievements),
+        newAchievements: unseenAchievements(save),
         settings: save.settings,
     };
 }
