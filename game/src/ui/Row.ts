@@ -147,8 +147,9 @@ export class SliderRow extends Row {
         if (stepped !== this.value) {
             this.value = stepped;
             this.paint();
-            playSound(this.scene, 'uiTick');
             this.onChange(stepped);
+            // After the change, so the effects volume ticks at its new level.
+            playSound(this.scene, 'uiTick');
         }
     }
 
@@ -203,8 +204,9 @@ export class ToggleRow extends Row {
     select(): void {
         this.value = !this.value;
         this.paint();
-        playSound(this.scene, 'uiToggle');
         this.onChange(this.value);
+        // After the change: muting is silent, unmuting clicks.
+        playSound(this.scene, 'uiToggle');
     }
 
     adjust(): void {

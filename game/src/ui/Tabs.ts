@@ -69,6 +69,9 @@ export class Tabs {
 
     /** Shows tab `index`: the first call puts the underline straight there, later ones slide it. */
     show(index: number): void {
+        if (index === this.current) {
+            return;
+        }
         const first = this.current === -1;
         this.current = index;
         this.labels.forEach((label, i) => label.setColor(i === index ? TEXT_COLOURS.gold : TEXT_COLOURS.muted));

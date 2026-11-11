@@ -65,6 +65,8 @@ export class HudScene extends Phaser.Scene {
     private shownScore = 0;
     private shownLevel = 1;
     private scoreTween: Phaser.Tweens.Tween | null = null;
+    /** The score's bump, kept apart: the score text is also faded with its block while the boss flies behind it. */
+    private scoreBump: Phaser.Tweens.Tween | null = null;
 
     constructor() {
         super('hud');
@@ -232,8 +234,8 @@ export class HudScene extends Phaser.Scene {
         });
         // A bump with every gain: a bigger one, flashing white, for treasure and other big hauls.
         const big = score - this.shownScore >= BIG_GAIN;
-        this.tweens.killTweensOf(this.scoreText);
-        this.tweens.add({ targets: this.scoreText, scale: { from: big ? 1.2 : 1.08, to: 1 }, duration: big ? MOTION.slow : MOTION.normal, ease: 'Back.Out' });
+        this.scoreBump?.stop();
+        this.scoreBump = this.tweens.add({ targets: this.scoreText, scale: { from: big ? 1.2 : 1.08, to: 1 }, duration: big ? MOTION.slow : MOTION.normal, ease: 'Back.Out' });
         if (big) {
             this.scoreText.setTint(0xffffff);
             this.time.delayedCall(MOTION.normal, () => this.scoreText.clearTint());

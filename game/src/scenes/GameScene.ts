@@ -186,7 +186,10 @@ export class GameScene extends Phaser.Scene {
     private checkNewBest(): void {
         if (!this.bestAnnounced && this.bestToBeat > 0 && this.run.score > this.bestToBeat) {
             this.bestAnnounced = true;
-            playSound(this, 'newBest');
+            // During the Judgment the toast waits for it to end, and so does its sound.
+            if (!this.judgment) {
+                playSound(this, 'newBest');
+            }
             this.events.emit(RUN_EVENTS.newBest, this.bestToBeat);
         }
     }
