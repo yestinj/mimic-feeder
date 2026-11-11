@@ -184,7 +184,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
   - Screen shake tuned per event. Shake and hit-stop respect the settings and reduced motion.
 - **Boss entrance:** an intro card ("The Flying Demon") with a camera push and a rumble.
 - **Built in M4b:** hit-stop on losing a heart (70 ms) and on a Shadow-Bolted bomb (45 ms), skipped with reduced motion; the lid snapping shut on every bite; squash and stretch on jumping, landing and biting, with dust on landing; shake tuned per event (hazard hits heaviest, good things lightest); and the boss card, rumble and camera push (no push with reduced motion).
-- **Sounds (M4b):** UI sounds (menu moves, select, back, tabs, toggles and sliders), the results' tally ticks and score landing, "New best!", the dash whoosh and the boss rumble come from Kenney's CC0 packs (kenney.nl). Each was trimmed, peak-normalised and converted to MP3 with ffmpeg; `game/src/assets.ts` notes the pack and file for each, and Credits thanks Kenney.
+- **Sounds (M4b):** UI sounds (menu moves, select, back, tabs, toggles and sliders), the results' tally ticks and score landing, "New best!" and the boss rumble come from Kenney's CC0 packs (kenney.nl), chosen with the owner by ear. Each was trimmed, peak-normalised and converted to MP3 with ffmpeg; `game/src/assets.ts` notes the pack and file for each, and Credits thanks Kenney. The dash whoosh was made for the game (swept, filtered noise), since none of the packs had a real air whoosh.
 - **Ambient effects per floor:** dust, embers, flickering torchlight using Phaser 4 lighting. Kept light, and switched off by reduced motion where it moves a lot.
 
 ### Later (not in this migration)

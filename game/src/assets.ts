@@ -146,8 +146,8 @@ export const SOUNDS = {
     dungeonWarning: { file: 'dungeon_warning.mp3', volume: 0.85 },
     dungeonJudgment: { file: 'dungeon_judgment.mp3', volume: 0.85 },
     dungeonRelents: { file: 'dungeon_relents.mp3', volume: 0.85 },
-    // New in M4b, from Kenney's CC0 packs (kenney.nl): each trimmed, peak-normalised to -1 dB and
-    // converted to mono MP3 with ffmpeg. Source pack and file after each.
+    // New in M4b, from Kenney's CC0 packs (kenney.nl) unless noted: each trimmed, peak-normalised
+    // to -1 dB and converted to mono MP3 with ffmpeg. Source pack and file after each.
     /** Menu focus moving (UI Audio: rollover2). */
     uiMove: { file: 'ui_move.mp3', volume: 0.25 },
     /** A button or menu item chosen (Interface Sounds: select_001). */
@@ -166,8 +166,13 @@ export const SOUNDS = {
     tallyScore: { file: 'tally_score.mp3', volume: 0.45 },
     /** "New best!" mid-run (Interface Sounds: confirmation_001). */
     newBest: { file: 'new_best.mp3', volume: 0.45 },
-    /** The dash (Digital Audio: phaseJump2). */
-    dashWhoosh: { file: 'dash_whoosh.mp3', volume: 0.3 },
+    /**
+     * The dash: made for the game (original), not from a pack. White noise
+     * through a resonant band-pass whose centre falls from about 3.4 kHz to
+     * 500 Hz over 0.26 s, with a little noise an octave up for air, under a
+     * quick swell and longer fade: something swooping past.
+     */
+    dashWhoosh: { file: 'dash_whoosh.mp3', volume: 0.35 },
     /** A boss arriving (Sci-Fi Sounds: lowFrequency_explosion_001). */
     bossRumble: { file: 'boss_rumble.mp3', volume: 0.6 },
 } as const;
