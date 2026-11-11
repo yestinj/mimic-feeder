@@ -20,8 +20,10 @@ import { dropSpeed, musicForFloor, spawnInterval } from '../rules/progression';
 import { Run, type RunEvent } from '../rules/run';
 import { SpawnHistory, keepClearOf, pickObject, pickSpawnX, rollHazard } from '../rules/spawner';
 import { MIMIC, SPAWNING } from '../rules/tuning';
+import { prefersReducedMotion } from '../motion';
 import { profile, updateProfile } from '../profile';
-import { addTotals, bestsWith, recordRun } from '../rules/save';
+import { addTotals, bestsBeaten, bestsWith, recordRun } from '../rules/save';
+import { GUIDE_ENTRIES, type GuideKey } from '../rules/guide';
 import { TIER_POINTS, newlyEarned, withUnlocked } from '../rules/achievements';
 import { markDiscovered, markIntroduced, wasIntroduced } from '../session';
 import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
@@ -79,6 +81,8 @@ export interface AbilityState {
 }
 /** How long the playfield lingers after the last life before the results. */
 const GAME_OVER_HOLD_MS = 1800;
+/** How long play takes to slow to a stop as the run ends. */
+const GAME_OVER_SLOW_MS = 700;
 const BACKGROUND_FADE_MS = 1200;
 
 
@@ -115,6 +119,9 @@ export class GameScene extends Phaser.Scene {
     /** The run has been added to the save (it only counts once). */
     private recorded = false;
     private achievementCheckMs = 0;
+    /** For the results' highlights: achievements unlocked, and creatures, items and the boss met for the first time, this run. */
+    private unlockedThisRun: string[] = [];
+    private metThisRun: GuideKey[] = [];
     private pauseBlur: Phaser.Filters.Blur | null = null;
     /** Abilities unlocked for the first time, waiting to be introduced on a card. */
     private pendingCards: Ability[] = [];
@@ -147,6 +154,7 @@ export class GameScene extends Phaser.Scene {
         }
         updateProfile((current) => withUnlocked(current, earned, new Date().toISOString()));
         for (const achievement of earned) {
+            this.unlockedThisRun.push(achievement.id);
             this.run.reward(TIER_POINTS[achievement.tier]);
             if (announce) {
                 this.events.emit(RUN_EVENTS.achievement, achievement);
@@ -172,15 +180,33 @@ export class GameScene extends Phaser.Scene {
      */
     private saveRun(gameOver: boolean): ResultsData {
         const date = new Date().toISOString();
-        const bestBefore = profile().bests.score;
+        const before = profile();
+        const record = this.run.record();
         let rank: number | null = null;
         if (!this.recorded) {
             this.recorded = true;
-            const result = recordRun(profile(), this.run.record(), gameOver, date);
+            const result = recordRun(before, record, gameOver, date);
             updateProfile(() => result.save);
             rank = result.rank;
         }
-        return { ...this.run.summary(), rank, newBest: this.run.score > 0 && this.run.score > bestBefore, date };
+        return {
+            ...this.run.summary(),
+            rank,
+            newBest: this.run.score > 0 && this.run.score > before.bests.score,
+            date,
+            totals: record.totals,
+            size: this.run.growth.size,
+            bestsBeaten: bestsBeaten(before.bests, before.totals.runs, record),
+            achievements: [...this.unlockedThisRun],
+            discoveries: [...this.metThisRun],
+        };
+    }
+
+    /** Records meeting something; creatures, items and the boss met for the first time are a highlight of the results. */
+    private meet(key: string): void {
+        if (markDiscovered(key) && GUIDE_ENTRIES.some((entry) => entry.key === key)) {
+            this.metThisRun.push(key as GuideKey);
+        }
     }
 
     /** Each ability's state, for the HUD's ability bar. */
@@ -216,6 +242,8 @@ export class GameScene extends Phaser.Scene {
         this.ending = false;
         this.recorded = false;
         this.achievementCheckMs = 0;
+        this.unlockedThisRun = [];
+        this.metThisRun = [];
         this.pauseBlur = null;
         this.pendingCards = [];
         this.cardsAfterBoss = null;
@@ -268,6 +296,11 @@ export class GameScene extends Phaser.Scene {
             },
             startBoss: () => this.debugStartBoss(),
             bonus: (points) => this.apply(this.run.bonus(points), false),
+            die: () => {
+                while (!this.run.isOver) {
+                    this.apply(this.run.detonate('bomb'), false);
+                }
+            },
             shootCats: (count) => {
                 for (let i = 0; i < count; i++) {
                     this.apply(this.run.shootCat(), false);
@@ -535,7 +568,7 @@ export class GameScene extends Phaser.Scene {
     private addObject(kind: ObjectKind, x: number): void {
         const variation = 1 + (this.random() * 2 - 1) * SPAWNING.speedVariation;
         const object = new FallingObject(this, kind, x, variation);
-        markDiscovered(kind);
+        this.meet(kind);
         // Adding to a physics group resets velocity, so set the speed after.
         this.objects.add(object);
         object.setDropSpeed(this.dropSpeed());
@@ -706,7 +739,7 @@ export class GameScene extends Phaser.Scene {
         }
         const boss = new Boss(this, this.run.floor, this.random).setDepth(DEPTH.boss);
         this.boss = boss;
-        markDiscovered('boss');
+        this.meet('boss');
         // Bolts pass through the boss while it dies.
         this.physics.add.overlap(boss, this.bolts.group, (_boss, bolt) => {
             const sprite = bolt as Phaser.Physics.Arcade.Sprite;
@@ -862,7 +895,7 @@ export class GameScene extends Phaser.Scene {
         this.bossFireballs.clear(true, true);
         this.music.stop();
         this.speak('dungeonJudgment');
-        markDiscovered('judgment');
+        this.meet('judgment');
         this.judgment = new Judgment(this, {
             mimic: () => ({
                 rect: this.mimic.rect(),
@@ -1075,7 +1108,12 @@ export class GameScene extends Phaser.Scene {
         this.checkAchievements(false);
         // Saved at once, so closing the tab during the results loses nothing.
         const results = this.saveRun(true);
-        this.physics.pause();
+        // Play slows to a stop as the run ends (stops at once with reduced motion).
+        if (prefersReducedMotion()) {
+            this.physics.pause();
+        } else {
+            this.tweens.add({ targets: this.physics.world, timeScale: 6, duration: GAME_OVER_SLOW_MS, ease: 'Quad.In', onComplete: () => this.physics.pause() });
+        }
         this.music.stop();
         this.sound.stopAll();
         playSound(this, 'gameOver');

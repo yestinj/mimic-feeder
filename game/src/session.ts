@@ -19,9 +19,11 @@ export function wasDiscovered(kind: string): boolean {
     return profile().discoveries.includes(kind);
 }
 
-/** Records that an object kind has been met. */
-export function markDiscovered(kind: string): void {
-    if (!wasDiscovered(kind)) {
-        updateProfile((save) => ({ ...save, discoveries: [...save.discoveries, kind] }));
+/** Records that an object kind has been met; true if it's the first time. */
+export function markDiscovered(kind: string): boolean {
+    if (wasDiscovered(kind)) {
+        return false;
     }
+    updateProfile((save) => ({ ...save, discoveries: [...save.discoveries, kind] }));
+    return true;
 }

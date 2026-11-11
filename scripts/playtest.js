@@ -404,7 +404,12 @@ async function checkNextBuild(browser) {
         assert((await snapshot()).game.boltsCast === judged.game.boltsCast, '/next/ Shadow Bolts are blocked during the Judgment');
         await waitForSnapshot((s) => s.results !== null, 120000);
         assert((await snapshot()).results.cause === 'Judged by the dungeon', '/next/ dying to the Judgment shows as the cause of death');
-        assert(!(await snapshot()).results.naming, '/next/ the name is only asked for once');
+        // Any key skips the story of the run to the end (it takes a few seconds otherwise).
+        await page.waitForTimeout(500);
+        await page.keyboard.press('Space');
+        await waitForSnapshot((s) => s.results && s.results.staged, 1500);
+        assert(!(await snapshot()).results.naming, '/next/ any key skips the results to the end, and the name is only asked for once');
+        await page.waitForTimeout(200);
 
         // High Scores (second button) opens over the results, and Esc goes back to them.
         await page.keyboard.press('ArrowRight');

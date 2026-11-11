@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { ANIMATIONS, OBJECT_ANIMATIONS, TEXTURES, firstFrame, objectTexture } from '../assets';
+import { TEXTURES, objectTexture } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { profile, updateProfile } from '../profile';
 import { ABILITIES, type Ability } from '../rules/abilities';
@@ -19,6 +19,7 @@ import { markReady, setHowToPlayView } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { addAbilityIcon } from '../ui/AbilityBar';
 import { Button } from '../ui/Button';
+import { addEntrySprite, fitTo } from '../ui/EntrySprite';
 import { Keycap } from '../ui/Keycap';
 import { Menu } from '../ui/Menu';
 import { addNewTag } from '../ui/NewTag';
@@ -38,8 +39,6 @@ const TAB_Y = 172;
 const TAB_WIDTH = 400;
 const CONTENT_TOP = 250;
 const CARD_RADIUS = 14;
-/** What hides something not met yet: a dark silhouette, on a card that sinks back. */
-const SILHOUETTE = 0x5c4f44;
 
 const CATEGORY_COLOURS: Record<GuideCategory, string> = {
     creature: TEXT_COLOURS.primary,
@@ -49,10 +48,6 @@ const CATEGORY_COLOURS: Record<GuideCategory, string> = {
     boss: '#ffb37a',
 };
 
-/** Sprites with a lot of empty space round them, drawn larger to fill their plate like the rest. */
-const SPRITE_ZOOM: Partial<Record<GuideKey, number>> = { boss: 1.9, fireball: 1.6 };
-/** The Staff and Magnet sprites are square tiles, which don't sit on a round plate: their kit icons stand in. */
-const KIT_PICTURES: Partial<Record<GuideKey, string>> = { staff: UI.iconStaff, magnet: UI.iconMagnetism };
 
 /** What a plate shows: a creature or item (by its guide key), or a texture. */
 type Picture = { readonly entry: GuideKey } | { readonly texture: string };
@@ -96,10 +91,10 @@ export class HowToPlayScene extends Phaser.Scene {
 
         addText(this, DESIGN_WIDTH / 2, 80, STRINGS.howToPlay.title, TYPE.title, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
         const icons: Record<Tab, (scene: Phaser.Scene, x: number, y: number) => Phaser.GameObjects.Image | Keycap> = {
-            basics: (scene, x, y) => fit(scene.add.image(x, y, TEXTURES.chestOpen), 40),
+            basics: (scene, x, y) => fitTo(scene.add.image(x, y, TEXTURES.chestOpen), 40),
             controls: (scene, x, y) => new Keycap(scene, x, y, 'W', 36),
-            bestiary: (scene, x, y) => fit(scene.add.image(x, y, objectTexture('goblin')), 40),
-            abilities: (scene, x, y) => fit(scene.add.image(x, y, UI.iconTentacles), 40),
+            bestiary: (scene, x, y) => fitTo(scene.add.image(x, y, objectTexture('goblin')), 40),
+            abilities: (scene, x, y) => fitTo(scene.add.image(x, y, UI.iconTentacles), 40),
         };
         const labels: Record<Tab, string> = {
             ...STRINGS.howToPlay.tabs,
@@ -330,42 +325,17 @@ export class HowToPlayScene extends Phaser.Scene {
         });
     }
 
-    /** A round dark plate with a picture on it: a sprite (animated, if it moves in play) or a kit image; a silhouette if `hidden`. */
-    /** A round dark plate with a picture on it: a creature or item (animated, if it moves in play) or a texture; a silhouette if `hidden`. */
+    /** A round dark plate with a picture on it: a creature or item (as in play), or a texture; a silhouette if `hidden`. */
     private addPlate(x: number, y: number, size: number, picture: Picture, hidden: boolean): Phaser.GameObjects.Container {
         const plate = this.add.graphics()
             .fillStyle(COLOURS.ink, 0.75)
             .fillCircle(0, 0, size / 2)
             .lineStyle(3, hidden ? COLOURS.iron : COLOURS.goldDim, 1)
             .strokeCircle(0, 0, size / 2);
-        const sprite = 'entry' in picture ? this.entrySprite(picture.entry) : this.add.sprite(0, 0, picture.texture);
-        const zoom = 'entry' in picture ? (SPRITE_ZOOM[picture.entry] ?? 1) : 1;
-        fit(sprite, size * 0.68 * zoom);
-        if (hidden) {
-            sprite.setTint(SILHOUETTE).setTintMode(Phaser.TintModes.FILL);
-        }
+        const sprite = 'entry' in picture
+            ? addEntrySprite(this, 0, 0, picture.entry, size * 0.68, hidden)
+            : fitTo(this.add.image(0, 0, picture.texture), size * 0.68);
         return this.add.container(x, y, [plate, sprite]);
-    }
-
-    /** A creature, item or the boss as it looks in play. */
-    private entrySprite(key: GuideKey): Phaser.GameObjects.Sprite {
-        const kit = KIT_PICTURES[key];
-        if (kit) {
-            return this.add.sprite(0, 0, kit);
-        }
-        if (key === 'boss') {
-            return this.add.sprite(0, 0, firstFrame('bossIdle')).play(ANIMATIONS.bossIdle);
-        }
-        const sprite = this.add.sprite(0, 0, objectTexture(key));
-        const animation = OBJECT_ANIMATIONS[key];
-        if (animation) {
-            sprite.play(ANIMATIONS[animation]);
-        }
-        if (key === 'fireball') {
-            // The fireball frames point sideways; turned to fall nose first, as in play.
-            sprite.setAngle(90);
-        }
-        return sprite;
     }
 
     private close(): void {
@@ -375,10 +345,4 @@ export class HowToPlayScene extends Phaser.Scene {
         this.leaving = true;
         closeScreen(this, this.screen);
     }
-}
-
-/** Scales an image or sprite to fit a `box`-sized square. */
-function fit<T extends Phaser.GameObjects.Image>(image: T, box: number): T {
-    image.setScale(Math.min(box / image.width, box / image.height));
-    return image;
 }
