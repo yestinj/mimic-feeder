@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { playSound } from '../audio';
 import { TEXTURES } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { prefersReducedMotion } from '../motion';
@@ -180,7 +181,10 @@ export class ResultsScene extends Phaser.Scene {
             if (label) {
                 parts.push(addText(this, x, y + 88, label, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5));
             }
-            this.pop(parts, at + i * STEP_MS, () => this.countUp(number, count, formatScore), () => number.setText(formatScore(count)));
+            this.pop(parts, at + i * STEP_MS, () => {
+                playSound(this, 'tallyTick');
+                this.countUp(number, count, formatScore);
+            }, () => number.setText(formatScore(count)));
         });
         return at + chips.length * STEP_MS + COUNT_MS / 2;
     }
@@ -197,7 +201,10 @@ export class ResultsScene extends Phaser.Scene {
 
         addText(this, cx, top + 44, text.score.toUpperCase(), TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true }).setOrigin(0.5);
         const score = addText(this, cx, top + 118, '0', TYPE.hero, { bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
-        this.reveal(at, () => this.countUp(score, results.score, formatScore, 900, () => this.bump(score)), () => score.setText(formatScore(results.score)).setScale(1));
+        this.reveal(at, () => this.countUp(score, results.score, formatScore, 900, () => {
+            playSound(this, 'tallyScore');
+            this.bump(score);
+        }), () => score.setText(formatScore(results.score)).setScale(1));
 
         // "New best!", or its place on the board; and short of a new best, the best so far to measure it by.
         const placed = results.rank !== null ? text.onBoard(results.rank) : null;
@@ -315,7 +322,7 @@ export class ResultsScene extends Phaser.Scene {
                 x += chip.width + SPACE.s;
             });
         });
-        built.forEach((chip, i) => this.pop([chip], at + 150 + i * STEP_MS));
+        built.forEach((chip, i) => this.pop([chip], at + 150 + i * STEP_MS, () => playSound(this, 'tallyTick')));
     }
 
     /** A highlight: an icon and a line on a dark pill. */
@@ -443,7 +450,8 @@ export class ResultsScene extends Phaser.Scene {
         onKeyDown(this, ['ESC'], () => {
             if (this.nameField) {
                 this.skipName();
-            } else {
+            } else if (!this.leaving) {
+                playSound(this, 'uiBack');
                 this.leave('title');
             }
         });

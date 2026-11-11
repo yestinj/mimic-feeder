@@ -132,7 +132,7 @@ export const SOUNDS = {
     explode: { file: 'explode.mp3', volume: 0.5 },
     splat: { file: 'splat.mp3', volume: 0.2 },
     loseLife: { file: 'lose_life.mp3', volume: 0.2 },
-    /** Shadow Bolt and dash (until the dash gets its own whoosh in M4); crowns and diamonds announce themselves with it too. */
+    /** Shadow Bolt; crowns and diamonds announce themselves with it too. */
     castSpell: { file: 'cast_spell.mp3', volume: 0.2 },
     boltHit: { file: 'shadowbolt_hit.mp3', volume: 0.2 },
     slurp: { file: 'slurp.mp3', volume: 0.5 },
@@ -146,6 +146,30 @@ export const SOUNDS = {
     dungeonWarning: { file: 'dungeon_warning.mp3', volume: 0.85 },
     dungeonJudgment: { file: 'dungeon_judgment.mp3', volume: 0.85 },
     dungeonRelents: { file: 'dungeon_relents.mp3', volume: 0.85 },
+    // New in M4b, from Kenney's CC0 packs (kenney.nl): each trimmed, peak-normalised to -1 dB and
+    // converted to mono MP3 with ffmpeg. Source pack and file after each.
+    /** Menu focus moving (UI Audio: rollover2). */
+    uiMove: { file: 'ui_move.mp3', volume: 0.25 },
+    /** A button or menu item chosen (Interface Sounds: select_001). */
+    uiSelect: { file: 'ui_select.mp3', volume: 0.4 },
+    /** Back, Esc, closing a screen (Interface Sounds: back_002). */
+    uiBack: { file: 'ui_back.mp3', volume: 0.35 },
+    /** A tab changing (UI Audio: switch13). */
+    uiTab: { file: 'ui_tab.mp3', volume: 0.35 },
+    /** A Settings toggle flipped (Interface Sounds: toggle_001). */
+    uiToggle: { file: 'ui_toggle.mp3', volume: 0.35 },
+    /** A Settings slider stepping (Interface Sounds: tick_004). */
+    uiTick: { file: 'ui_tick.mp3', volume: 0.3 },
+    /** Each count in the results' tally (Interface Sounds: tick_001). */
+    tallyTick: { file: 'tally_tick.mp3', volume: 0.25 },
+    /** The results' score landing (Casino Audio: chips-stack-2). */
+    tallyScore: { file: 'tally_score.mp3', volume: 0.45 },
+    /** "New best!" mid-run (Interface Sounds: confirmation_001). */
+    newBest: { file: 'new_best.mp3', volume: 0.45 },
+    /** The dash (RPG Audio: cloth2). */
+    dashWhoosh: { file: 'dash_whoosh.mp3', volume: 0.4 },
+    /** A boss arriving (Sci-Fi Sounds: lowFrequency_explosion_001). */
+    bossRumble: { file: 'boss_rumble.mp3', volume: 0.6 },
 } as const;
 
 export type SoundName = keyof typeof SOUNDS;

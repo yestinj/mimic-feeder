@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { playSound } from '../audio';
 import { DESIGN_WIDTH } from '../config';
 import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import { onKeyDown } from './keys';
@@ -76,6 +77,7 @@ export class Tabs {
         if (first) {
             this.underline.setX(this.centre(index));
         } else {
+            playSound(this.scene, 'uiTab');
             this.scene.tweens.add({ targets: this.underline, x: this.centre(index), duration: MOTION.fast, ease: MOTION.ease });
         }
         this.onShow(index);

@@ -4,6 +4,7 @@ import { GROUND_Y, RUN_SCALE, SIZE_SCALE } from '../config';
 import type { Rect } from '../rules/contact';
 import type { Growth } from '../rules/run';
 import { MIMIC } from '../rules/tuning';
+import { dust } from './effects';
 
 export type Lid = 'closed' | 'ajar' | 'open';
 
@@ -13,10 +14,15 @@ const LID_TEXTURES: Record<Lid, string> = {
     open: TEXTURES.chestOpen,
 };
 
+/** How long the lid stays snapped shut after a bite (ms). */
+const SNAP_MS = 110;
+
 /**
  * The player's chest. Its hitbox is an invisible physics zone the size of the
  * closed chest; the sprite follows it, standing on the hitbox's bottom edge,
  * so the open lid can rise above it without changing what counts as a hit.
+ * The sprite squashes and stretches (jumping, landing, biting) without
+ * changing the hitbox, and the lid snaps shut on a bite.
  */
 export class Mimic {
     readonly sprite: Phaser.GameObjects.Image;
@@ -31,9 +37,14 @@ export class Mimic {
     /** Scene time until which the lid is held open (tentacles) or ajar (just cast a Shadow Bolt). */
     private holdOpenUntil = 0;
     private holdAjarUntil = 0;
+    /** Scene time until which the lid is snapped shut on a bite. */
+    private snapUntil = 0;
+    /** The sprite's squash and stretch, on top of its size. */
+    private readonly squash = { x: 1, y: 1 };
+    private wasOnGround = true;
     lid: Lid = 'closed';
 
-    constructor(scene: Phaser.Scene, x: number) {
+    constructor(private readonly scene: Phaser.Scene, x: number) {
         const closed = scene.textures.getFrame(TEXTURES.chestClosed);
         this.baseWidth = closed.width * MIMIC.scale * SIZE_SCALE;
         this.baseHeight = closed.height * MIMIC.scale * SIZE_SCALE;
@@ -89,7 +100,35 @@ export class Mimic {
         // Keep standing on the same spot rather than growing into the floor.
         this.body.y = bottom - height;
         this.zone.y = bottom - height / 2;
-        this.sprite.setScale(MIMIC.scale * SIZE_SCALE * growth.size);
+        this.drawScale();
+    }
+
+    /** A bite: the lid snaps shut and the chest squashes for a moment. */
+    bite(time: number): void {
+        this.snapUntil = time + SNAP_MS;
+        this.squashTo(1.08, 0.9, 70);
+    }
+
+    /** Squashes or stretches the sprite to (x, y) and springs back. */
+    private squashTo(x: number, y: number, duration: number): void {
+        this.scene.tweens.killTweensOf(this.squash);
+        this.scene.tweens.add({
+            targets: this.squash,
+            x,
+            y,
+            duration,
+            ease: 'Quad.Out',
+            yoyo: true,
+            onComplete: () => {
+                this.squash.x = 1;
+                this.squash.y = 1;
+            },
+        });
+    }
+
+    private drawScale(): void {
+        const scale = MIMIC.scale * SIZE_SCALE * this.growth.size;
+        this.sprite.setScale(scale * this.squash.x, scale * this.squash.y);
     }
 
     /** Holds the lid open until `time` (scene time). */
@@ -117,6 +156,7 @@ export class Mimic {
         }
         this.jumps += 1;
         this.body.setVelocityY(-MIMIC.jumpSpeed * SIZE_SCALE * this.growth.jump);
+        this.squashTo(0.88, 1.14, 110);
         return this.jumps;
     }
 
@@ -128,12 +168,21 @@ export class Mimic {
      */
     update(direction: number, foodNearby: boolean, time: number): void {
         this.body.setVelocityX(direction * MIMIC.runSpeed * RUN_SCALE * this.growth.speed);
-        if (this.onGround) {
+        const onGround = this.onGround;
+        if (onGround) {
             this.jumps = 0;
+            if (!this.wasOnGround) {
+                // Landing: a squash and a puff of dust.
+                this.squashTo(1.14, 0.84, 90);
+                dust(this.scene, this.body.center.x, this.body.bottom, this.body.width).setDepth(this.sprite.depth - 0.05);
+            }
         }
+        this.wasOnGround = onGround;
 
-        const airborne = !this.onGround;
-        if (time < this.holdOpenUntil || time < this.biteOpenUntil) {
+        const airborne = !onGround;
+        if (time < this.snapUntil) {
+            this.lid = 'closed';
+        } else if (time < this.holdOpenUntil || time < this.biteOpenUntil) {
             this.lid = 'open';
         } else if (time < this.holdAjarUntil) {
             this.lid = 'ajar';
@@ -149,5 +198,6 @@ export class Mimic {
         }
         this.sprite.setTexture(LID_TEXTURES[this.lid]);
         this.sprite.setPosition(this.body.center.x, this.body.bottom);
+        this.drawScale();
     }
 }

@@ -1,4 +1,5 @@
 import type * as Phaser from 'phaser';
+import { playSound } from '../audio';
 import { onKeyDown } from './keys';
 
 /** Anything a menu can focus: buttons, and the rows of the Settings screen. */
@@ -35,15 +36,16 @@ export class Menu {
     private readonly stopListening: (() => void)[];
 
     constructor(
-        scene: Phaser.Scene,
+        private readonly scene: Phaser.Scene,
         private readonly items: readonly Focusable[],
         options: MenuOptions = {},
     ) {
         this.index = this.nextEnabled(options.initialIndex ?? 0, 0);
         items.forEach((item, i) => {
             item.onHover = () => {
-                if (this.enabled && item.isEnabled() && !this.current()?.capturing) {
+                if (this.enabled && item.isEnabled() && !this.current()?.capturing && i !== this.index) {
                     this.focus(i);
+                    playSound(this.scene, 'uiMove');
                 }
             };
         });
@@ -96,7 +98,11 @@ export class Menu {
 
     private move(step: 1 | -1): void {
         if (this.enabled && !this.current()?.capturing) {
-            this.focus(this.nextEnabled(this.index + step, step));
+            const next = this.nextEnabled(this.index + step, step);
+            if (next !== this.index) {
+                playSound(this.scene, 'uiMove');
+            }
+            this.focus(next);
         }
     }
 

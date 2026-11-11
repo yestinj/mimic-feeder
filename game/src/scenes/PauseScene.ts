@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { playSound } from '../audio';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { floorInfo } from '../rules/floors';
 import { formatPlayTime } from '../rules/format';
@@ -49,7 +50,8 @@ export class PauseScene extends Phaser.Scene {
         const back = (): void => {
             if (this.dialog) {
                 this.dialog.cancel();
-            } else {
+            } else if (!this.leaving) {
+                playSound(this, 'uiBack');
                 this.resumeGame();
             }
         };

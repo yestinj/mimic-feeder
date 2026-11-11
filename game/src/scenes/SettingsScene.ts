@@ -58,7 +58,7 @@ export class SettingsScene extends Phaser.Scene {
         addPanel(this, LEFT_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
         addPanel(this, RIGHT_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
         const items = [...this.addAudioAndDisplay(), ...this.addProfileAndData()];
-        const back = new Button(this, DESIGN_WIDTH / 2, 900, STRINGS.settings.back, { width: 360, onSelect: () => this.close() });
+        const back = new Button(this, DESIGN_WIDTH / 2, 900, STRINGS.settings.back, { width: 360, quiet: true, onSelect: () => this.close() });
         this.menu = new Menu(this, [...items, back]);
 
         this.hint = addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 70, STRINGS.settings.hint, TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);

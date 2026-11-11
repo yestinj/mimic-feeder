@@ -47,7 +47,7 @@ export class CreditsScene extends Phaser.Scene {
         addText(this, centre, top + PANEL_HEIGHT - 70, text.version(__GAME_VERSION__), TYPE.small, { bold: true, colour: TEXT_COLOURS.muted }).setOrigin(0.5);
         addText(this, centre, top + PANEL_HEIGHT - 38, text.beta, TYPE.small, { colour: TEXT_COLOURS.dim }).setOrigin(0.5);
 
-        const back = new Button(this, DESIGN_WIDTH / 2, 990, text.back, { width: 360, onSelect: () => this.close() });
+        const back = new Button(this, DESIGN_WIDTH / 2, 990, text.back, { width: 360, quiet: true, onSelect: () => this.close() });
         new Menu(this, [back]);
         addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 28, text.hint, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
         onKeyDown(this, ['ESC', 'BACKSPACE'], () => this.close());

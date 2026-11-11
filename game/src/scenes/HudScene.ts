@@ -4,7 +4,7 @@ import { onProfileChange } from '../profile';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { floorTitle } from '../rules/floors';
 import { formatScore } from '../rules/format';
-import type { Run, RunEvent } from '../rules/run';
+import { GROWTH, type Run, type RunEvent } from '../rules/run';
 import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
@@ -21,6 +21,14 @@ import { ProgressBar } from '../ui/ProgressBar';
 import { UI } from '../ui/kit';
 import { addText } from '../ui/text';
 import { RUN_EVENTS, type BossHealth, type GameScene } from './GameScene';
+
+/** A gain in score this big gets the bigger bump (a crown or more). */
+const BIG_GAIN = 50;
+
+/** A growth factor as the percentage it adds: 1.05 → 5. */
+function percentGain(factor: number): number {
+    return Math.round((factor - 1) * 100);
+}
 
 const MARGIN = 48;
 const XP_BAR_WIDTH = 300;
@@ -105,6 +113,8 @@ export class HudScene extends Phaser.Scene {
         game.events.on(RUN_EVENTS.judgment, onJudgment);
         const onAchievement = (achievement: Achievement): void => this.notifications.achievementToast(achievement);
         game.events.on(RUN_EVENTS.achievement, onAchievement);
+        const onNewBest = (best: number): void => this.notifications.toast(STRINGS.notices.newBest, STRINGS.notices.newBestDetail(formatScore(best)));
+        game.events.on(RUN_EVENTS.newBest, onNewBest);
         // Muting (M, or Settings over the pause menu) is saved; the icon follows the save.
         const stopFollowingMute = onProfileChange((save) => this.muteIcon.setVisible(save.settings.muted));
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -115,6 +125,7 @@ export class HudScene extends Phaser.Scene {
             game.events.off(RUN_EVENTS.boss, onBoss);
             game.events.off(RUN_EVENTS.judgment, onJudgment);
             game.events.off(RUN_EVENTS.achievement, onAchievement);
+            game.events.off(RUN_EVENTS.newBest, onNewBest);
             stopFollowingMute();
         });
 
@@ -219,7 +230,14 @@ export class HudScene extends Phaser.Scene {
                 this.scoreText.setText(formatScore(this.shownScore));
             },
         });
-        this.tweens.add({ targets: this.scoreText, scale: { from: 1.08, to: 1 }, duration: MOTION.normal, ease: 'Cubic.Out' });
+        // A bump with every gain: a bigger one, flashing white, for treasure and other big hauls.
+        const big = score - this.shownScore >= BIG_GAIN;
+        this.tweens.killTweensOf(this.scoreText);
+        this.tweens.add({ targets: this.scoreText, scale: { from: big ? 1.2 : 1.08, to: 1 }, duration: big ? MOTION.slow : MOTION.normal, ease: 'Back.Out' });
+        if (big) {
+            this.scoreText.setTint(0xffffff);
+            this.time.delayedCall(MOTION.normal, () => this.scoreText.clearTint());
+        }
     }
 
     private updateLowHealth(): void {
@@ -237,7 +255,7 @@ export class HudScene extends Phaser.Scene {
         switch (event.type) {
             case 'zone':
                 if (event.boss) {
-                    this.notifications.banner(STRINGS.notices.bossFight);
+                    this.notifications.bossCard(STRINGS.boss.name, STRINGS.notices.bossFight);
                 } else if (event.newFloor) {
                     this.notifications.banner(floorTitle(event.floor));
                 } else {
@@ -251,7 +269,7 @@ export class HudScene extends Phaser.Scene {
                 this.notifications.judgmentWarning(STRINGS.judgment.warningTitle, STRINGS.judgment.warningDetail);
                 break;
             case 'levelUp':
-                this.notifications.toast(STRINGS.notices.levelUp(event.level), STRINGS.notices.levelUpDetail, 'levelUp');
+                this.notifications.toast(STRINGS.notices.levelUp(event.level), STRINGS.notices.levelUpDetail(percentGain(GROWTH.speed), percentGain(GROWTH.size)), 'levelUp');
                 break;
             case 'extraLife':
                 this.notifications.toast(STRINGS.notices.extraLife, STRINGS.notices.extraLifeDetail);

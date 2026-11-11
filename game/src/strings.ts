@@ -26,11 +26,14 @@ export const STRINGS = {
     notices: {
         zone: (zone: number) => `Zone ${zone}`,
         levelUp: (level: number) => `Level ${level}`,
-        levelUpDetail: 'Faster and bigger',
+        levelUpDetail: (speed: number, size: number) => `Speed +${speed}%   \u00b7   Size +${size}%`,
+        newBest: 'New best!',
+        newBestDetail: (best: string) => `Past your best of ${best}`,
         extraLife: 'Extra life!',
         extraLifeDetail: 'One more heart',
         press: 'Press',
-        bossFight: 'Boss Fight!',
+        /** Above the boss's name as it arrives. */
+        bossFight: 'Boss fight',
         bossDefeated: 'Boss Defeated!',
         tentaclesGrow: 'Tentacles +1',
         tentaclesGrowDetail: (reach: number) => `They grab ${reach} at once`,
@@ -313,7 +316,8 @@ export const STRINGS = {
         built: [
             'Phaser (MIT licence)',
             'Grenze Gotisch and Barlow fonts (SIL Open Font Licence)',
-            'Art, sound and music: original, public domain, or under free licences',
+            'Interface sounds by Kenney (kenney.nl), CC0',
+            'Other art, sound and music: original, public domain, or under free licences',
         ],
         hint: 'Esc back',
         back: 'Back',
