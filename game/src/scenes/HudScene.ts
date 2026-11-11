@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import { isMuted } from '../audio';
+import { onProfileChange } from '../profile';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { floorTitle } from '../rules/floors';
 import { formatScore } from '../rules/format';
@@ -19,7 +20,6 @@ import { ProgressBar } from '../ui/ProgressBar';
 import { UI } from '../ui/kit';
 import { addText } from '../ui/text';
 import { RUN_EVENTS, type BossHealth, type GameScene } from './GameScene';
-import { GAME_EVENTS } from './SystemScene';
 
 const MARGIN = 48;
 const XP_BAR_WIDTH = 300;
@@ -96,16 +96,14 @@ export class HudScene extends Phaser.Scene {
             this.bossBar.set(health);
             this.notifications.makeRoomForBossBar(health !== null);
         };
-        const onMute = (muted: boolean): void => {
-            this.muteIcon.setVisible(muted);
-        };
         game.events.on(RUN_EVENTS.event, onEvent);
         game.events.on(RUN_EVENTS.changed, onChanged);
         game.events.on(RUN_EVENTS.over, onOver);
         game.events.on(RUN_EVENTS.abilityNotice, onAbilityNotice);
         game.events.on(RUN_EVENTS.boss, onBoss);
         game.events.on(RUN_EVENTS.judgment, onJudgment);
-        this.game.events.on(GAME_EVENTS.muteChanged, onMute);
+        // Muting (M, or Settings over the pause menu) is saved; the icon follows the save.
+        const stopFollowingMute = onProfileChange((save) => this.muteIcon.setVisible(save.settings.muted));
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             game.events.off(RUN_EVENTS.event, onEvent);
             game.events.off(RUN_EVENTS.changed, onChanged);
@@ -113,7 +111,7 @@ export class HudScene extends Phaser.Scene {
             game.events.off(RUN_EVENTS.abilityNotice, onAbilityNotice);
             game.events.off(RUN_EVENTS.boss, onBoss);
             game.events.off(RUN_EVENTS.judgment, onJudgment);
-            this.game.events.off(GAME_EVENTS.muteChanged, onMute);
+            stopFollowingMute();
         });
 
         this.refresh(false);

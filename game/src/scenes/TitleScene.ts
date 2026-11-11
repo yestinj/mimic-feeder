@@ -2,21 +2,26 @@ import * as Phaser from 'phaser';
 import { TEXTURES, backgroundKey } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y } from '../config';
 import { warmUpRenderers } from '../game/warmUp';
+import { profile } from '../profile';
+import { formatScore } from '../rules/format';
 import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from '../ui/Button';
 import { Menu } from '../ui/Menu';
 import { addPanel } from '../ui/kit';
+import { openScreen } from '../ui/screens';
 import { addText } from '../ui/text';
 import { showToast } from '../ui/toast';
 
 /**
- * Title screen. Play starts a run; the other screens arrive in later
- * milestones, and selecting them shows a "coming later" note for now.
+ * Title screen. Play starts a run, and Settings and High Scores open over
+ * it; the other screens arrive in later milestones, and selecting them shows
+ * a "coming later" note for now.
  */
 export class TitleScene extends Phaser.Scene {
     private leaving = false;
+    private profileText!: Phaser.GameObjects.Text;
 
     constructor() {
         super('title');
@@ -30,6 +35,7 @@ export class TitleScene extends Phaser.Scene {
         this.addMimic();
         this.addMenu();
         this.addFooter();
+        this.addProfileLine();
         warmUpRenderers(this);
         markReady('title');
     }
@@ -63,21 +69,34 @@ export class TitleScene extends Phaser.Scene {
     }
 
     private addMenu(): void {
-        const items = [
-            STRINGS.menu.play,
-            STRINGS.menu.howToPlay,
-            STRINGS.menu.achievements,
-            STRINGS.menu.highScores,
-            STRINGS.menu.settings,
-            STRINGS.menu.credits,
+        const soon = (label: string) => () => showToast(this, STRINGS.comingLater(label));
+        const items: { label: string; action: () => void }[] = [
+            { label: STRINGS.menu.play, action: () => this.play() },
+            { label: STRINGS.menu.howToPlay, action: soon(STRINGS.menu.howToPlay) },
+            { label: STRINGS.menu.achievements, action: soon(STRINGS.menu.achievements) },
+            { label: STRINGS.menu.highScores, action: () => openScreen(this, 'highScores', { from: 'title' }) },
+            { label: STRINGS.menu.settings, action: () => openScreen(this, 'settings', { from: 'title' }) },
+            { label: STRINGS.menu.credits, action: soon(STRINGS.menu.credits) },
         ];
         const top = 390;
         const step = 84;
         addPanel(this, DESIGN_WIDTH / 2, top + ((items.length - 1) * step) / 2, 540, items.length * step + SPACE.xl);
-        const buttons = items.map((label, i) => new Button(this, DESIGN_WIDTH / 2, top + i * step, label, {
-            onSelect: label === STRINGS.menu.play ? () => this.play() : () => showToast(this, STRINGS.comingLater(label)),
-        }));
+        const buttons = items.map((item, i) => new Button(this, DESIGN_WIDTH / 2, top + i * step, item.label, { onSelect: item.action }));
         new Menu(this, buttons);
+    }
+
+    /** The mimic's name and best score, once there's something to show. Settings can change both. */
+    private addProfileLine(): void {
+        this.profileText = addText(this, DESIGN_WIDTH - SPACE.l, SPACE.l, '', TYPE.small, { bold: true, colour: TEXT_COLOURS.gold }).setOrigin(1, 0);
+        const refresh = (): void => {
+            const save = profile();
+            const best = save.bests.score > 0 ? formatScore(save.bests.score) : null;
+            this.profileText.setText(save.named || best !== null ? STRINGS.profileLine(save.name, best) : '');
+        };
+        refresh();
+        // The scene's event emitter outlives the scene, so the listener goes when it shuts down.
+        this.events.on(Phaser.Scenes.Events.WAKE, refresh);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.WAKE, refresh));
     }
 
     private addFooter(): void {

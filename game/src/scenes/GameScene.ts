@@ -20,11 +20,14 @@ import { dropSpeed, musicForFloor, spawnInterval } from '../rules/progression';
 import { Run, type RunEvent } from '../rules/run';
 import { SpawnHistory, keepClearOf, pickObject, pickSpawnX, rollHazard } from '../rules/spawner';
 import { MIMIC, SPAWNING } from '../rules/tuning';
-import { markIntroduced, wasIntroduced } from '../session';
+import { profile, updateProfile } from '../profile';
+import { recordRun } from '../rules/save';
+import { markDiscovered, markIntroduced, wasIntroduced } from '../session';
 import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
 import { onKeyDown } from '../ui/keys';
 import { COLOURS, MOTION } from '../theme';
 import type { HudScene } from './HudScene';
+import type { ResultsData } from './ResultsScene';
 import { GAME_EVENTS } from './SystemScene';
 
 /** Events the game scene emits on its own `events`, for the HUD. */
@@ -103,6 +106,8 @@ export class GameScene extends Phaser.Scene {
     /** Test mode can switch the normal spawns off. */
     private spawning = true;
     private ending = false;
+    /** The run has been added to the save (it only counts once). */
+    private recorded = false;
     private pauseBlur: Phaser.Filters.Blur | null = null;
     /** Abilities unlocked for the first time, waiting to be introduced on a card. */
     private pendingCards: Ability[] = [];
@@ -119,6 +124,28 @@ export class GameScene extends Phaser.Scene {
     /** The run in progress, for the HUD and pause screens. */
     get currentRun(): Run {
         return this.run;
+    }
+
+    /** Restart or Quit from the pause menu: the run counts towards lifetime totals, but not the board. */
+    abandonRun(): void {
+        this.saveRun(false);
+    }
+
+    /**
+     * Adds the run to the save, once. A run that ended in game over can make
+     * the high scores; every run adds to the lifetime totals and bests.
+     */
+    private saveRun(gameOver: boolean): ResultsData {
+        const date = new Date().toISOString();
+        const bestBefore = profile().bests.score;
+        let rank: number | null = null;
+        if (!this.recorded) {
+            this.recorded = true;
+            const result = recordRun(profile(), this.run.record(), gameOver, date);
+            updateProfile(() => result.save);
+            rank = result.rank;
+        }
+        return { ...this.run.summary(), rank, newBest: this.run.score > 0 && this.run.score > bestBefore, date };
     }
 
     /** Each ability's state, for the HUD's ability bar. */
@@ -152,6 +179,7 @@ export class GameScene extends Phaser.Scene {
         this.spawnElapsed = 0;
         this.spawning = true;
         this.ending = false;
+        this.recorded = false;
         this.pauseBlur = null;
         this.pendingCards = [];
         this.cardsAfterBoss = null;
@@ -203,6 +231,7 @@ export class GameScene extends Phaser.Scene {
                 }
             },
             startBoss: () => this.debugStartBoss(),
+            bonus: (points) => this.apply(this.run.bonus(points), false),
             shootCats: (count) => {
                 for (let i = 0; i < count; i++) {
                     this.apply(this.run.shootCat(), false);
@@ -462,6 +491,7 @@ export class GameScene extends Phaser.Scene {
     private addObject(kind: ObjectKind, x: number): void {
         const variation = 1 + (this.random() * 2 - 1) * SPAWNING.speedVariation;
         const object = new FallingObject(this, kind, x, variation);
+        markDiscovered(kind);
         // Adding to a physics group resets velocity, so set the speed after.
         this.objects.add(object);
         object.setDropSpeed(this.dropSpeed());
@@ -630,6 +660,7 @@ export class GameScene extends Phaser.Scene {
         }
         const boss = new Boss(this, this.run.floor, this.random).setDepth(DEPTH.boss);
         this.boss = boss;
+        markDiscovered('boss');
         // Bolts pass through the boss while it dies.
         this.physics.add.overlap(boss, this.bolts.group, (_boss, bolt) => {
             const sprite = bolt as Phaser.Physics.Arcade.Sprite;
@@ -785,6 +816,7 @@ export class GameScene extends Phaser.Scene {
         this.bossFireballs.clear(true, true);
         this.music.stop();
         this.speak('dungeonJudgment');
+        markDiscovered('judgment');
         this.judgment = new Judgment(this, {
             mimic: () => ({
                 rect: this.mimic.rect(),
@@ -806,6 +838,9 @@ export class GameScene extends Phaser.Scene {
 
     /** The dungeon relents: everything set aside comes back, and the music resumes. */
     private endJudgment(): void {
+        if (!this.ending) {
+            this.run.surviveJudgment();
+        }
         this.judgment?.destroy();
         this.judgment = null;
         for (const object of this.suspended) {
@@ -983,6 +1018,8 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         this.ending = true;
+        // Saved at once, so closing the tab during the results loses nothing.
+        const results = this.saveRun(true);
         this.physics.pause();
         this.music.stop();
         this.sound.stopAll();
@@ -999,7 +1036,7 @@ export class GameScene extends Phaser.Scene {
             }
             finished = true;
             this.scene.stop('hud');
-            this.scene.start('results', this.run.summary());
+            this.scene.start('results', results);
         };
         this.time.delayedCall(GAME_OVER_HOLD_MS, finish);
         // Let a key held at the moment of death go before any key can skip.

@@ -141,6 +141,7 @@ Settings are reachable from the title and pause menus, and save automatically.
 ### 3.8 Saves
 
 - **On first load,** the three old keys are deleted (`mimicFeederHighScores`, `mimicFeederLastUsedName`, `mimicAchievements`). Starting fresh is accepted.
+  - **Not before M5:** `/next/` shares its origin, and so its storage, with the live p5 game, whose saves those keys are. The clean-up is built and tested in M3 but stays switched off (`DELETE_P5_SAVES` in `game/src/profile.ts`) until the swap.
 - **One versioned save object** replaces them, so future changes can upgrade it. It holds:
   - Name and settings.
   - Top-10 high scores.
@@ -148,6 +149,7 @@ Settings are reachable from the title and pause menus, and save automatically.
   - Discoveries and personal bests.
   - Lifetime totals: runs played, creatures eaten by type, and the ability and hazard counters.
 - Storage stays wrapped so a blocked or corrupt save never crashes the game.
+- **Which runs count:** a run that ends in game over can make the high scores. A run abandoned from the pause menu (Restart or Quit) still adds to the lifetime totals and personal bests, but not the high scores.
 
 ### 3.9 Gameplay changes
 
@@ -228,7 +230,7 @@ Each milestone is one or more PRs. The owner reviews each, and can play the late
 | **M2** | Full gameplay | Dash, Shadow Bolt, Tentacles, Magnetism with the ability bar; Staff, Magnet and potion offers; cats and rescue; dragons; boss with boss bar; Ninefold Judgment; the gameplay fixes; cause-of-death tracking | Gameplay matches the inventory, with unit tests for the rules |
 | **M3** | Menus and saves | Title menu, How to Play with discovery, Achievements (lifetime counters, progress, secrets), High Scores, Settings (including fullscreen and erase), Credits, new save with old-key cleanup | Every screen reachable and working with keyboard and mouse |
 | **M4** | Polish | Notification tiers, results story and naming flow, UI sounds and dash whoosh, transitions, title screen life, boss entrance, game-feel pass, ambient floor effects, auto-pause, resume-countdown trial, cursor, final text review with the owner | The owner signs off the look and feel |
-| **M5** | Swap | Phaser to the site root, p5 code, globals generator and old smoke checks removed, docs (README, AGENTS.md) rewritten, live check moved to root | Live site runs the Phaser version |
+| **M5** | Swap | Phaser to the site root, p5 code, globals generator and old smoke checks removed, the old save keys' clean-up switched on, docs (README, AGENTS.md) rewritten, live check moved to root | Live site runs the Phaser version |
 
 The p5 game stays live and unchanged until M5. `AGENTS.md` gets a short note about the migration in M0, and a full rewrite in M5.
 

@@ -22,6 +22,8 @@ const LABEL_COLOURS: Record<ButtonState, string> = {
 export interface ButtonOptions {
     readonly width?: number;
     readonly enabled?: boolean;
+    /** A red label, for a choice that destroys something. */
+    readonly danger?: boolean;
     readonly onSelect: () => void;
 }
 
@@ -34,6 +36,7 @@ export class Button extends Phaser.GameObjects.Container {
     private readonly background: Phaser.GameObjects.NineSlice;
     private readonly label: Phaser.GameObjects.Text;
     private readonly onSelect: () => void;
+    private readonly danger: boolean;
     private focused = false;
     private enabled: boolean;
 
@@ -46,6 +49,7 @@ export class Button extends Phaser.GameObjects.Container {
         const height = 64;
         this.enabled = options.enabled ?? true;
         this.onSelect = options.onSelect;
+        this.danger = options.danger ?? false;
 
         this.background = scene.add.nineslice(0, 0, UI.buttonNormal, undefined, width, height, SLICE.button, SLICE.button);
         this.label = addText(scene, 0, -2, text, TYPE.button, { role: 'display', bold: true }).setOrigin(0.5);
@@ -101,6 +105,6 @@ export class Button extends Phaser.GameObjects.Container {
 
     private paint(state: ButtonState): void {
         this.background.setTexture(TEXTURES[state]);
-        this.label.setColor(LABEL_COLOURS[state]);
+        this.label.setColor(this.danger && (state === 'normal' || state === 'focus') ? TEXT_COLOURS.danger : LABEL_COLOURS[state]);
     }
 }

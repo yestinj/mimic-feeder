@@ -4,7 +4,7 @@ import { toggleMute } from '../audio';
 import { DESIGN_WIDTH } from '../config';
 import { DEBUG_MODE } from '../testHook';
 import { TEXT_COLOURS, TYPE } from '../theme';
-import { onKeyDown } from '../ui/keys';
+import { isTyping, onKeyDown } from '../ui/keys';
 import { addText } from '../ui/text';
 
 /** With ?debug: frames slower than this are logged to the console. */
@@ -14,16 +14,14 @@ const WORST_WINDOW_MS = 5000;
 
 /** Game-wide events, emitted on `game.events`. */
 export const GAME_EVENTS = {
-    /** Sound was muted or unmuted (payload: muted). */
-    muteChanged: 'mute-changed',
     /** A background-loaded file arrived (payload: its key). */
     deferredLoaded: 'deferred-loaded',
 } as const;
 
 /**
  * Runs for the whole session, behind every other scene: global keys (M to
- * mute, anywhere) and loading the later floors' assets in the background.
- * With ?debug it also shows frame times, to catch stutters.
+ * mute and F for fullscreen, anywhere) and loading the later floors' assets
+ * in the background. With ?debug it also shows frame times, to catch stutters.
  */
 export class SystemScene extends Phaser.Scene {
     private frameText: Phaser.GameObjects.Text | null = null;
@@ -56,8 +54,16 @@ export class SystemScene extends Phaser.Scene {
         if (DEBUG_MODE) {
             this.frameText = addText(this, DESIGN_WIDTH / 2, 6, '', TYPE.tiny, { colour: TEXT_COLOURS.primary }).setOrigin(0.5, 0);
         }
+        // Not while a name is being typed: M and F are letters then.
         onKeyDown(this, ['M'], () => {
-            this.game.events.emit(GAME_EVENTS.muteChanged, toggleMute(this.game));
+            if (!isTyping()) {
+                toggleMute(this.game);
+            }
+        });
+        onKeyDown(this, ['F'], () => {
+            if (!isTyping()) {
+                this.scale.toggleFullscreen();
+            }
         });
 
         this.load.on(Phaser.Loader.Events.FILE_COMPLETE, (key: string) => {
