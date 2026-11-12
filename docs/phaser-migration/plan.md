@@ -69,7 +69,7 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
   - New floor, with the floor's name, e.g. "Floor 2: Ageing Lower Halls". The background cross-fades underneath.
   - Boss fight, boss defeated.
 - **Unlock notices** for items and abilities: larger, about 4 s, with icon, name and a large keycap ("Press **Space** to cast Shadow Bolt"). At the same time the slot pops into the ability bar with a glow and its keycap pulses.
-- **Toasts** for everything else: zone change, level-up (with the speed and size gain), extra life, "New best!" mid-run, and achievements. Achievement toasts look like platform achievements: tier badge, name, points.
+- **Toasts** for everything else: zone change, level-up (with the speed and size gain), extra life, "New best!" mid-run (once a run, when the score passes the best before it), and achievements. Achievement toasts look like platform achievements: tier badge, name, points.
 - **Ninefold Judgment** keeps its own panels, restyled in its purple and red.
 - **Queue rules carry over:**
   - Messages are held during the Judgment, and a superseded five-kill warning is dropped.
@@ -183,6 +183,8 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
   - Squash-and-stretch, and dust on landing.
   - Screen shake tuned per event. Shake and hit-stop respect the settings and reduced motion.
 - **Boss entrance:** an intro card ("The Flying Demon") with a camera push and a rumble.
+- **Built in M4b:** hit-stop on losing a heart (70 ms) and on a Shadow-Bolted bomb (45 ms), skipped with reduced motion; the lid snapping shut on every bite; squash and stretch on jumping, landing and biting, with dust on landing; shake tuned per event (hazard hits heaviest, good things lightest); and the boss card, rumble and camera push (no push with reduced motion).
+- **Sounds (M4b):** UI sounds (menu moves, select, back, tabs, toggles and sliders), the results' tally ticks and score landing, "New best!" and the boss rumble come from Kenney's CC0 packs (kenney.nl), chosen with the owner by ear. Each was trimmed, peak-normalised and converted to MP3 with ffmpeg; `game/src/assets.ts` notes the pack and file for each, and Credits thanks Kenney. The dash whoosh was made for the game (swept, filtered noise), since none of the packs had a real air whoosh.
 - **Ambient effects per floor:** dust, embers, flickering torchlight using Phaser 4 lighting. Kept light, and switched off by reduced motion where it moves a lot.
 
 ### Later (not in this migration)

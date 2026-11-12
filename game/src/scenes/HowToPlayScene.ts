@@ -107,7 +107,7 @@ export class HowToPlayScene extends Phaser.Scene {
         })), (index) => this.showTab(TABS[index] ?? 'basics'));
         tabs.show(duringRun && this.unseen.size > 0 ? TABS.indexOf('bestiary') : 0);
 
-        const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.howToPlay.back, { width: 360, onSelect: () => this.close() });
+        const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.howToPlay.back, { width: 360, quiet: true, onSelect: () => this.close() });
         new Menu(this, [back]);
         addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 28, STRINGS.howToPlay.hint, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
         // H too, since it opens it.

@@ -5,6 +5,7 @@
 // achievements can also open straight over the run (H and K), which is
 // paused underneath and resumes when they close.
 import * as Phaser from 'phaser';
+import { playSound } from '../audio';
 import { backgroundKey, floorBackground } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import type { GameScene } from '../scenes/GameScene';
@@ -37,8 +38,9 @@ export function startScreen(scene: Phaser.Scene, data: ScreenData): void {
     addScreenBackdrop(scene, data);
 }
 
-/** Closes a screen opened with openScreen and wakes the one it came from. */
+/** Closes a screen opened with openScreen (with the back sound) and wakes the one it came from. */
 export function closeScreen(scene: Phaser.Scene, data: ScreenData): void {
+    playSound(scene, 'uiBack');
     // Nothing more is clicked while it fades out (see startScreen).
     scene.input.enabled = false;
     scene.cameras.main.fadeOut(MOTION.fast, 0, 0, 0);

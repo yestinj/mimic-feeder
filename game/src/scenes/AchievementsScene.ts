@@ -103,7 +103,7 @@ export class AchievementsScene extends Phaser.Scene {
         }), (index) => this.showTab(TABS[index] ?? 'bronze'));
         tabs.show(Math.max(0, TABS.findIndex((tab) => this.hasUnseen(tab))));
 
-        const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.achievements.back, { width: 360, onSelect: () => this.close() });
+        const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.achievements.back, { width: 360, quiet: true, onSelect: () => this.close() });
         new Menu(this, [back]);
         addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 28, STRINGS.achievements.hint, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
         // K too, since it opens them.

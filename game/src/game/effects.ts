@@ -97,3 +97,26 @@ export const GLOW_COLOURS = {
     crown: COLOURS.goldBright,
     diamond: 0x5ad8ff,
 } as const;
+
+/** A puff of dust either side of (x, y), where something `width` wide lands. */
+export function dust(scene: Phaser.Scene, x: number, y: number, width: number): Phaser.GameObjects.Container {
+    const puffs: Phaser.GameObjects.Arc[] = [];
+    const container = scene.add.container(x, y);
+    for (let i = 0; i < 6; i++) {
+        const side = i % 2 === 0 ? -1 : 1;
+        const puff = scene.add.circle(side * width * 0.3, -6, 10 + (i % 3) * 4, COLOURS.dust, 0.45);
+        puffs.push(puff);
+        container.add(puff);
+        scene.tweens.add({
+            targets: puff,
+            x: side * (width * 0.45 + 30 + (i % 3) * 18),
+            y: -18 - (i % 3) * 8,
+            scale: 1.6,
+            alpha: 0,
+            duration: 420,
+            ease: 'Cubic.Out',
+        });
+    }
+    scene.time.delayedCall(450, () => container.destroy());
+    return container;
+}

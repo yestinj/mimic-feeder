@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { playSound } from '../audio';
 import { MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import { SLICE, UI } from './kit';
 import { addText } from './text';
@@ -24,6 +25,8 @@ export interface ButtonOptions {
     readonly enabled?: boolean;
     /** A red label, for a choice that destroys something. */
     readonly danger?: boolean;
+    /** No click of its own: its action makes the sound (a Back button closing its screen). */
+    readonly quiet?: boolean;
     readonly onSelect: () => void;
 }
 
@@ -37,6 +40,7 @@ export class Button extends Phaser.GameObjects.Container {
     private readonly label: Phaser.GameObjects.Text;
     private readonly onSelect: () => void;
     private readonly danger: boolean;
+    private readonly quiet: boolean;
     private focused = false;
     private enabled: boolean;
 
@@ -50,6 +54,7 @@ export class Button extends Phaser.GameObjects.Container {
         this.enabled = options.enabled ?? true;
         this.onSelect = options.onSelect;
         this.danger = options.danger ?? false;
+        this.quiet = options.quiet ?? false;
 
         this.background = scene.add.nineslice(0, 0, UI.buttonNormal, undefined, width, height, SLICE.button, SLICE.button);
         this.label = addText(scene, 0, -2, text, TYPE.button, { role: 'display', bold: true }).setOrigin(0.5);
@@ -88,6 +93,9 @@ export class Button extends Phaser.GameObjects.Container {
     select(): void {
         if (!this.enabled) {
             return;
+        }
+        if (!this.quiet) {
+            playSound(this.scene, 'uiSelect');
         }
         this.paint('pressed');
         this.scene.time.delayedCall(MOTION.fast, () => {

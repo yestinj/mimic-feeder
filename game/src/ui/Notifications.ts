@@ -3,7 +3,7 @@ import { DESIGN_WIDTH } from '../config';
 import type { Ability } from '../rules/abilities';
 import { TIER_POINTS, type Achievement } from '../rules/achievements';
 import { STRINGS } from '../strings';
-import { MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
+import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { addAbilityIcon } from './AbilityBar';
 import { Keycap } from './Keycap';
 import { SLICE, UI, addPanel } from './kit';
@@ -13,6 +13,8 @@ import { addText } from './text';
 const BANNER_Y = 300;
 const BANNER_HEIGHT = 157;
 const BANNER_HOLD_MS = 1800;
+/** The boss's entrance stays up a little longer. */
+const BOSS_HOLD_MS = 2400;
 /** The dungeon's warning stays up longer (4 s in all, as in the p5 game). */
 const JUDGMENT_WARNING_HOLD_MS = 3500;
 const TOAST_Y = 132;
@@ -31,6 +33,8 @@ interface Notice {
     readonly achievement?: Achievement;
     /** A banner in the Ninefold Judgment's colours, with a line under the title. */
     readonly judgment?: boolean;
+    /** The boss's entrance: its name, large, with "Boss fight" above it. */
+    readonly boss?: boolean;
 }
 
 /**
@@ -74,6 +78,11 @@ export class Notifications {
     achievementToast(achievement: Achievement): void {
         const name = STRINGS.achievements.list[achievement.id]?.name ?? achievement.id;
         this.enqueue(this.toasts, this.toastShowing, { title: STRINGS.achievements.unlocked, detail: name, achievement }, () => this.nextToast());
+    }
+
+    /** A boss arrives: its name on the banner, with `kicker` ("Boss fight") above, held a little longer. */
+    bossCard(name: string, kicker: string): void {
+        this.enqueue(this.banners, this.bannerShowing, { title: name, detail: kicker, boss: true }, () => this.nextBanner());
     }
 
     /** The dungeon's warning after five cats: a judgment-coloured banner. */
@@ -180,6 +189,14 @@ export class Notifications {
             const detail = addText(this.scene, 0, 40, notice.detail ?? '', TYPE.body, { colour: '#ebdce6' }).setOrigin(0.5);
             const panel = addPanel(this.scene, 0, 0, Math.max(760, title.width + SPACE.xl * 2), 170, 'judgment');
             this.show([panel, title, detail], BANNER_Y, JUDGMENT_WARNING_HOLD_MS, 0, () => this.nextBanner(), 'banner');
+            return;
+        }
+        if (notice.boss) {
+            const glow = this.scene.add.image(0, 0, UI.glow).setTint(COLOURS.ember).setDisplaySize(1100, 360).setAlpha(0.35);
+            const kicker = addText(this.scene, 0, -50, (notice.detail ?? '').toUpperCase(), TYPE.small, { bold: true, colour: '#ff8f80', letterSpacing: 8 }).setOrigin(0.5);
+            const name = addText(this.scene, 0, 12, notice.title, TYPE.banner, { role: 'display', bold: true, colour: '#ffcf9a' }).setOrigin(0.5);
+            const ribbon = this.scene.add.nineslice(0, 6, UI.banner, undefined, Math.max(820, name.width + SLICE.banner * 2 + SPACE.l), BANNER_HEIGHT + 30, SLICE.banner, SLICE.banner);
+            this.show([glow, ribbon, kicker, name], BANNER_Y, BOSS_HOLD_MS, 0, () => this.nextBanner(), 'banner');
             return;
         }
         const text = addText(this.scene, 0, -2, notice.title, TYPE.banner, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);

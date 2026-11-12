@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { playSound } from '../audio';
 import { DESIGN_WIDTH } from '../config';
 import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import { onKeyDown } from './keys';
@@ -68,6 +69,9 @@ export class Tabs {
 
     /** Shows tab `index`: the first call puts the underline straight there, later ones slide it. */
     show(index: number): void {
+        if (index === this.current) {
+            return;
+        }
         const first = this.current === -1;
         this.current = index;
         this.labels.forEach((label, i) => label.setColor(i === index ? TEXT_COLOURS.gold : TEXT_COLOURS.muted));
@@ -76,6 +80,7 @@ export class Tabs {
         if (first) {
             this.underline.setX(this.centre(index));
         } else {
+            playSound(this.scene, 'uiTab');
             this.scene.tweens.add({ targets: this.underline, x: this.centre(index), duration: MOTION.fast, ease: MOTION.ease });
         }
         this.onShow(index);

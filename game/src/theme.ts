@@ -18,6 +18,8 @@ export const COLOURS = {
     health: 0xd8473a,
     xp: 0x7fd99a,
     ember: 0xff8a3d,
+    /** Dust kicked up on landing. */
+    dust: 0xb8a487,
     /** The Ninefold Judgment's palette. */
     judgment: 0x9a5bd6,
 } as const;

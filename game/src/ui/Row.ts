@@ -2,6 +2,7 @@
 // right (slider, toggle, name field), or a label alone for an action. Rows
 // are focused and changed through a Menu, or with the mouse.
 import * as Phaser from 'phaser';
+import { playSound } from '../audio';
 import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import type { Focusable } from './Menu';
 import { TextField, type TextFieldOptions } from './TextField';
@@ -147,6 +148,8 @@ export class SliderRow extends Row {
             this.value = stepped;
             this.paint();
             this.onChange(stepped);
+            // After the change, so the effects volume ticks at its new level.
+            playSound(this.scene, 'uiTick');
         }
     }
 
@@ -202,6 +205,8 @@ export class ToggleRow extends Row {
         this.value = !this.value;
         this.paint();
         this.onChange(this.value);
+        // After the change: muting is silent, unmuting clicks.
+        playSound(this.scene, 'uiToggle');
     }
 
     adjust(): void {
@@ -237,6 +242,7 @@ export class ActionRow extends Row {
 
     select(): void {
         this.flash();
+        playSound(this.scene, 'uiSelect');
         this.action();
     }
 }

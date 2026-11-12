@@ -49,6 +49,8 @@ export const RUN_EVENTS = {
     judgment: 'judgment',
     /** An achievement unlocked (payload: the Achievement). */
     achievement: 'achievement',
+    /** The score just passed the best before this run (payload: that best). */
+    newBest: 'newBest',
 } as const;
 
 /** How often achievements are checked during play. */
@@ -81,6 +83,16 @@ export interface AbilityState {
 }
 /** How long the playfield lingers after the last life before the results. */
 const GAME_OVER_HOLD_MS = 1800;
+/**
+ * Screen shake by event (the p5 game's reference strengths): heavy for a
+ * hazard hit, light for good things. Skipped when shake is off in Settings.
+ */
+const SHAKE = { hazardHit: 7, heartLost: 3, bombShot: 4, powerUp: 3, treasure: 2, dash: 2, bossEntrance: 8 } as const;
+/** How far the camera pushes in as a boss arrives. */
+const BOSS_PUSH_ZOOM = 1.06;
+/** A moment's freeze on big hits (ms); skipped with reduced motion. */
+const HIT_STOP_MS = { heartLost: 70, bombShot: 45 } as const;
+
 /** How long play takes to slow to a stop as the run ends. */
 const GAME_OVER_SLOW_MS = 700;
 const BACKGROUND_FADE_MS = 1200;
@@ -121,6 +133,9 @@ export class GameScene extends Phaser.Scene {
     private achievementCheckMs = 0;
     /** For the results' highlights: achievements unlocked, and creatures, items and the boss met for the first time, this run. */
     private unlockedThisRun: string[] = [];
+    /** The best score before this run, and whether passing it has been announced. */
+    private bestToBeat = 0;
+    private bestAnnounced = false;
     private metThisRun: GuideKey[] = [];
     private pauseBlur: Phaser.Filters.Blur | null = null;
     /** Abilities unlocked for the first time, waiting to be introduced on a card. */
@@ -167,6 +182,18 @@ export class GameScene extends Phaser.Scene {
         this.events.emit(RUN_EVENTS.changed);
     }
 
+    /** Once a run, when the score passes the best before it (if there was one): "New best!". */
+    private checkNewBest(): void {
+        if (!this.bestAnnounced && this.bestToBeat > 0 && this.run.score > this.bestToBeat) {
+            this.bestAnnounced = true;
+            // During the Judgment the toast waits for it to end, and so does its sound.
+            if (!this.judgment) {
+                playSound(this, 'newBest');
+            }
+            this.events.emit(RUN_EVENTS.newBest, this.bestToBeat);
+        }
+    }
+
     /** Restart or Quit from the pause menu: the run counts towards lifetime totals, but not the board. */
     abandonRun(): void {
         // Anything earned since the last check still unlocks, for this run.
@@ -202,6 +229,20 @@ export class GameScene extends Phaser.Scene {
             achievements: [...this.unlockedThisRun],
             discoveries: [...this.metThisRun],
         };
+    }
+
+    /** Freezes the action for a moment on a big hit (not on the last heart, and not with reduced motion). */
+    private hitStop(ms: number): void {
+        const world = this.physics.world;
+        if (prefersReducedMotion() || this.ending || this.run.isOver || world.isPaused) {
+            return;
+        }
+        world.pause();
+        this.time.delayedCall(ms, () => {
+            if (!this.ending) {
+                world.resume();
+            }
+        });
     }
 
     /** Records meeting something; creatures, items and the boss met for the first time are a highlight of the results. */
@@ -246,6 +287,8 @@ export class GameScene extends Phaser.Scene {
         this.achievementCheckMs = 0;
         this.unlockedThisRun = [];
         this.metThisRun = [];
+        this.bestToBeat = profile().bests.score;
+        this.bestAnnounced = false;
         this.pauseBlur = null;
         this.pendingCards = [];
         this.cardsAfterBoss = null;
@@ -357,6 +400,7 @@ export class GameScene extends Phaser.Scene {
         if (this.achievementCheckMs >= ACHIEVEMENT_CHECK_MS) {
             this.achievementCheckMs = 0;
             this.checkAchievements(true);
+            this.checkNewBest();
         }
         if (this.judgmentPending && !this.run.inBossFight) {
             this.judgmentPending = false;
@@ -481,8 +525,8 @@ export class GameScene extends Phaser.Scene {
             .setDepth(DEPTH.mimic - 0.1);
         this.tweens.add({ targets: ghost, alpha: 0, duration: 220, onComplete: () => ghost.destroy() });
         this.mimic.dash(direction * DASH_DISTANCE);
-        shake(this.cameras.main, 3);
-        playSound(this, 'castSpell');
+        shake(this.cameras.main, SHAKE.dash);
+        playSound(this, 'dashWhoosh');
     }
 
     private castShadowBolt(): void {
@@ -616,17 +660,18 @@ export class GameScene extends Phaser.Scene {
                 if (isEdible(kind)) {
                     events = this.run.eat(kind);
                 }
+                this.mimic.bite(this.time.now);
                 playSound(this, kind === 'cat' ? 'catMeow' : 'collect');
                 break;
             case 'collect':
                 if (isShiny(kind)) {
                     events = this.run.collect(kind);
                     playSound(this, 'collect');
-                    shake(this.cameras.main, 4);
+                    shake(this.cameras.main, SHAKE.treasure);
                 } else if (isPowerUp(kind)) {
                     events = this.run.collectPowerUp(kind);
                     playSound(this, POWER_UP_SOUNDS[kind]);
-                    shake(this.cameras.main, kind === 'potion' ? 4 : 3);
+                    shake(this.cameras.main, SHAKE.powerUp);
                 }
                 break;
             case 'sideHit':
@@ -646,7 +691,7 @@ export class GameScene extends Phaser.Scene {
                     explode(this, kind, object.x, object.y, object.displayWidth, object.displayHeight).setDepth(DEPTH.effects);
                 }
                 playSound(this, 'explode');
-                shake(this.cameras.main, 5);
+                shake(this.cameras.main, SHAKE.hazardHit);
                 break;
         }
         object.destroy();
@@ -683,6 +728,7 @@ export class GameScene extends Phaser.Scene {
         }
         const kind = target.kind;
         const events = isEdible(kind) ? this.run.eat(kind) : [];
+        this.mimic.bite(this.time.now);
         playSound(this, kind === 'cat' ? 'catMeow' : 'collect');
         target.destroy();
         this.apply(events, false);
@@ -752,6 +798,20 @@ export class GameScene extends Phaser.Scene {
         }, () => boss.alive);
         this.music.play('boss');
         this.emitBossHealth();
+        this.bossEntrance();
+    }
+
+    /** The boss arrives: a rumble, and (unless motion is reduced) the camera pushes in and settles back. */
+    private bossEntrance(): void {
+        shake(this.cameras.main, SHAKE.bossEntrance);
+        playSound(this, 'bossRumble');
+        if (prefersReducedMotion()) {
+            return;
+        }
+        const camera = this.cameras.main;
+        // The camera's zoom takes easing functions, not their names.
+        camera.zoomTo(BOSS_PUSH_ZOOM, 450, Phaser.Math.Easing.Sine.Out);
+        this.time.delayedCall(1100, () => camera.zoomTo(1, 700, Phaser.Math.Easing.Sine.InOut));
     }
 
     /** Clears the board for the boss: creatures and cats splat, hazards go off, anything else vanishes. No lives are lost. */
@@ -948,7 +1008,8 @@ export class GameScene extends Phaser.Scene {
             events = this.run.shootHazard(kind);
             explode(this, kind, object.x, object.y, object.displayWidth, object.displayHeight).setDepth(DEPTH.effects);
             playSound(this, 'explode');
-            shake(this.cameras.main, 5);
+            shake(this.cameras.main, SHAKE.bombShot);
+            this.hitStop(HIT_STOP_MS.bombShot);
         } else if (kind === 'cat') {
             events = this.run.shootCat();
             boltHit(this, object.x, object.y).setDepth(DEPTH.effects);
@@ -999,6 +1060,9 @@ export class GameScene extends Phaser.Scene {
                     break;
                 case 'lifeLost':
                     playSound(this, 'loseLife');
+                    // A hazard has already shaken harder; a creature let go gets a lighter one.
+                    shake(this.cameras.main, SHAKE.heartLost);
+                    this.hitStop(HIT_STOP_MS.heartLost);
                     break;
                 case 'unlock':
                     // The first time: a card that pauses the game. After that: a toast.

@@ -75,7 +75,7 @@ export class HighScoresScene extends Phaser.Scene {
             this.addTable(scores.slice(3), latest);
         }
 
-        const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.highScores.back, { width: 360, onSelect: () => this.close() });
+        const back = new Button(this, DESIGN_WIDTH / 2, 990, STRINGS.highScores.back, { width: 360, quiet: true, onSelect: () => this.close() });
         new Menu(this, [back]);
         addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 28, STRINGS.highScores.hint, TYPE.tiny, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
         onKeyDown(this, ['ESC', 'BACKSPACE'], () => this.close());
