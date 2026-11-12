@@ -10,6 +10,8 @@ export const STRINGS = {
     pressToContinue: 'Press any key',
     keyHints: '← → move   ·   ↑ jump   ·   Esc menu',
     previewNotice: 'Preview of the new version. Work in progress.',
+    /** Beside How to Play on the title, until the first run has been played. */
+    newHere: 'New here? Start here',
     /** The title screen's line for a returning player. */
     profileLine: (name: string, best: string | null) => (best === null ? name : `${name}   ·   Best ${best}`),
     menu: {
@@ -112,6 +114,8 @@ export const STRINGS = {
         display: 'Display',
         profile: 'Profile',
         data: 'Data',
+        play: 'Play',
+        resumeCountdown: 'Countdown after pausing',
         musicVolume: 'Music volume',
         effectsVolume: 'Effects volume',
         mute: 'Mute (M)',
@@ -233,6 +237,9 @@ export const STRINGS = {
         nameHint: 'Enter save   ·   Esc skip',
         savedAs: (name: string) => `Saved as ${name}`,
         renameHint: 'You can change the name in Settings',
+    },
+    countdown: {
+        hint: 'P or Esc to stay paused',
     },
     /**
      * How to Play (plan §3.4). Light on exact numbers, and the Ninefold

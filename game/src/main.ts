@@ -4,8 +4,10 @@ import '@fontsource/barlow/latin-700.css';
 import './style.css';
 import * as Phaser from 'phaser';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from './config';
+import { MENU_CURSOR } from './ui/cursor';
 import { AchievementsScene } from './scenes/AchievementsScene';
 import { BootScene } from './scenes/BootScene';
+import { CountdownScene } from './scenes/CountdownScene';
 import { CreditsScene } from './scenes/CreditsScene';
 import { GameScene } from './scenes/GameScene';
 import { HighScoresScene } from './scenes/HighScoresScene';
@@ -41,7 +43,10 @@ const game = new Phaser.Game({
     loader: { imageLoadType: 'HTMLImageElement' },
     // Listed bottom to top: the HUD draws over the game, the pause menu and new-ability card over both,
     // and the menu screens (How to Play, Achievements, High Scores, Settings, Credits) over whichever screen opened them.
-    scene: [BootScene, PreloadScene, TitleScene, GameScene, HudScene, PauseScene, UnlockScene, ResultsScene, SettingsScene, HighScoresScene, AchievementsScene, HowToPlayScene, CreditsScene, SystemScene],
+    scene: [BootScene, PreloadScene, TitleScene, GameScene, HudScene, PauseScene, UnlockScene, ResultsScene, CountdownScene, SettingsScene, HighScoresScene, AchievementsScene, HowToPlayScene, CreditsScene, SystemScene],
 });
-game.events.once(Phaser.Core.Events.READY, () => applySavedMute(game));
+game.events.once(Phaser.Core.Events.READY, () => {
+    applySavedMute(game);
+    game.input.setDefaultCursor(MENU_CURSOR);
+});
 installTestHook(game);

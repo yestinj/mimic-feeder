@@ -39,15 +39,16 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
   - Shows the saved name and best score, plus one subtle hint line: "← → move · ↑ jump · Esc menu".
   - The first key press or click also unlocks audio.
   - **It has life:** the mimic idles there, its lid creaking open now and then, with dust drifting through the torchlight.
+  - Until a first run has been played, a "New here? Start here" tag points at How to Play (M4c).
 - **Pause menu** (P or Esc):
   - Items: Resume, How to Play, Achievements, Settings, Restart, Quit to menu. K stays a shortcut to Achievements, and H opens How to Play (agreed in M3c). During play both open straight over the run, and closing them goes back to play.
   - A "This run" panel shows floor and zone, time, level, and speed, size, drop-speed and spawn-rate percentages.
   - Restart and Quit ask "Abandon this run?", with Cancel selected by default.
 - **The same controls on every screen:** arrows or W/S to move, Enter to select, Esc to go back, and full mouse support. The selected item is clearly highlighted. Multi-page screens use tabs.
 - **Quick fades** between screens.
-- **Auto-pause:** losing focus (switching tabs, clicking another window) opens the pause menu.
-- **Resume countdown (experiment):** 3-2-1 after leaving pause. Easy to remove if it doesn't feel right.
-- **Cursor:** hidden during play; a themed cursor in menus.
+- **Auto-pause:** losing focus (switching tabs, clicking another window) opens the pause menu. Always on (agreed in M4c).
+- **Resume countdown (experiment):** 3-2-1 after leaving pause. Easy to remove if it doesn't feel right. Built in M4c as a Settings switch, "Countdown after pausing" (on by default, agreed in M4c): after the pause menu and after How to Play or Achievements opened mid-run, over the run unblurred; P, Esc or losing focus go back to the pause menu.
+- **Cursor:** hidden during play; a themed cursor in menus. Built in M4c: a gold arrow, and a brighter one over anything clickable.
 
 ### 3.2 HUD
 
@@ -186,6 +187,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
 - **Built in M4b:** hit-stop on losing a heart (70 ms) and on a Shadow-Bolted bomb (45 ms), skipped with reduced motion; the lid snapping shut on every bite; squash and stretch on jumping, landing and biting, with dust on landing; shake tuned per event (hazard hits heaviest, good things lightest); and the boss card, rumble and camera push (no push with reduced motion).
 - **Sounds (M4b):** UI sounds (menu moves, select, back, tabs, toggles and sliders), the results' tally ticks and score landing, "New best!" and the boss rumble come from Kenney's CC0 packs (kenney.nl), chosen with the owner by ear. Each was trimmed, peak-normalised and converted to MP3 with ffmpeg; `game/src/assets.ts` notes the pack and file for each, and Credits thanks Kenney. The dash whoosh was made for the game (swept, filtered noise), since none of the packs had a real air whoosh.
 - **Ambient effects per floor:** dust, embers, flickering torchlight using Phaser 4 lighting. Kept light, and switched off by reduced motion where it moves a lot.
+  - Built in M4c without Phaser's lights (the backgrounds have no normal maps): dust on every floor, embers from Floor 7 down, and a faint warm flicker over everything; on the title, glows on the torches. With reduced motion the particles stop and the light holds steady.
 
 ### Later (not in this migration)
 

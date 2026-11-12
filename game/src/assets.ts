@@ -173,6 +173,8 @@ export const SOUNDS = {
      * quick swell and longer fade: something swooping past.
      */
     dashWhoosh: { file: 'dash_whoosh.mp3', volume: 0.35 },
+    /** The mimic's lid creaking open on the title screen (RPG Audio: creak1). */
+    titleCreak: { file: 'title_creak.mp3', volume: 0.3 },
     /** A boss arriving (Sci-Fi Sounds: lowFrequency_explosion_001). */
     bossRumble: { file: 'boss_rumble.mp3', volume: 0.6 },
 } as const;

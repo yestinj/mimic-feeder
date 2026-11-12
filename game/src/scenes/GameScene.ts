@@ -8,6 +8,7 @@ import { Judgment } from '../game/Judgment';
 import { Mimic } from '../game/Mimic';
 import { ShadowBolts } from '../game/ShadowBolts';
 import { Tentacles } from '../game/Tentacles';
+import { Ambience } from '../game/ambience';
 import { GLOW_COLOURS, boltHit, explode, pointsPopup, shake, spawnGlow, splat } from '../game/effects';
 import { ABILITIES, Cooldowns, DoubleTap, nearestTargets, type Ability } from '../rules/abilities';
 import { BOSS } from '../rules/boss';
@@ -27,6 +28,7 @@ import { GUIDE_ENTRIES, type GuideKey } from '../rules/guide';
 import { TIER_POINTS, newlyEarned, withUnlocked } from '../rules/achievements';
 import { markDiscovered, markIntroduced, wasIntroduced } from '../session';
 import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
+import { showCursor } from '../ui/cursor';
 import { onKeyDown } from '../ui/keys';
 import { COLOURS, MOTION } from '../theme';
 import type { HudScene } from './HudScene';
@@ -61,7 +63,7 @@ export interface BossHealth {
     readonly max: number;
 }
 
-const DEPTH = { background: -10, ground: -9, shade: -6, apparition: -5, glow: -1, objects: 0, boss: 0.25, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
+const DEPTH = { background: -10, ground: -9, ambience: -8, shade: -6, apparition: -5, glow: -1, objects: 0, boss: 0.25, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
 /** Dash distance from the p5 game (100 px), across the wider screen. */
 const DASH_DISTANCE = 100 * RUN_SCALE;
 /** Magnetised objects fly at the mimic at 5× their fall speed. */
@@ -105,6 +107,7 @@ export class GameScene extends Phaser.Scene {
     private objects!: Phaser.Physics.Arcade.Group;
     private bolts!: ShadowBolts;
     private tentacles!: Tentacles;
+    private ambience!: Ambience;
     private boss: Boss | null = null;
     private bossFireballs!: Phaser.Physics.Arcade.Group;
     /** Normal music waits while the boss's death cue plays. */
@@ -324,9 +327,18 @@ export class GameScene extends Phaser.Scene {
         const onDeferredLoaded = (key: string): void => this.onDeferredLoaded(key);
         this.game.events.on(GAME_EVENTS.deferredLoaded, onDeferredLoaded);
         this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
+        // Auto-pause: losing focus (another tab, another window) mid-run opens the pause menu.
+        const onFocusLost = (): void => this.openOverlay('pause');
+        this.game.events.on(Phaser.Core.Events.BLUR, onFocusLost);
+        this.game.events.on(Phaser.Core.Events.HIDDEN, onFocusLost);
+        // No cursor during play; the menu one comes back whenever play stops.
+        showCursor(this, false);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             this.game.events.off(GAME_EVENTS.deferredLoaded, onDeferredLoaded);
             this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
+            this.game.events.off(Phaser.Core.Events.BLUR, onFocusLost);
+            this.game.events.off(Phaser.Core.Events.HIDDEN, onFocusLost);
+            showCursor(this, true);
             setGameView(null);
             setDebugApi(null);
         });
@@ -1096,6 +1108,7 @@ export class GameScene extends Phaser.Scene {
             .setOrigin(0.5, 1)
             .setDepth(DEPTH.background);
         this.backgrounds = [make(), make().setVisible(false)];
+        this.ambience = new Ambience(this, DEPTH.ambience);
         this.showFloorBackground(true);
 
         // A soft shadow along the floor, so things land on something.
@@ -1105,6 +1118,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     private showFloorBackground(instant: boolean): void {
+        this.ambience.setFloor(this.run.floor);
         const key = floorBackground(this.textures, this.run.floor);
         if (key === this.shownBackground) {
             return;
@@ -1143,6 +1157,33 @@ export class GameScene extends Phaser.Scene {
         this.scene.resume('hud');
     }
 
+    /**
+     * Leaving the pause menu, or How to Play or Achievements opened mid-run:
+     * with the resume countdown on (Settings), a 3-2-1 over the unblurred run
+     * first; otherwise straight back to play.
+     */
+    returnToPlay(): void {
+        if (!profile().settings.resumeCountdown) {
+            this.resumePlay();
+            return;
+        }
+        this.removePauseBlur();
+        this.scene.launch('countdown');
+    }
+
+    /** The countdown was cut short (P, Esc, or losing focus): back to the pause menu. */
+    reopenPause(): void {
+        this.pauseBlur ??= this.cameras.main.filters.external.addBlur(1, 2, 2, 1);
+        this.scene.launch('pause', {});
+    }
+
+    private removePauseBlur(): void {
+        if (this.pauseBlur) {
+            this.cameras.main.filters.external.remove(this.pauseBlur);
+            this.pauseBlur = null;
+        }
+    }
+
     /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card, How to Play, achievements); resumePlay undoes it. */
     private openOverlay(key: 'pause' | 'unlock' | 'howToPlay' | 'achievements', data: object = {}): void {
         if (this.ending || !this.scene.isActive()) {
@@ -1152,16 +1193,15 @@ export class GameScene extends Phaser.Scene {
         this.sound.pauseAll();
         this.scene.pause();
         this.scene.pause('hud');
+        showCursor(this, true);
         // Always some data: launched without any, Phaser hands the scene its previous launch's data.
         this.scene.launch(key, data);
     }
 
     private onResume(): void {
-        if (this.pauseBlur) {
-            this.cameras.main.filters.external.remove(this.pauseBlur);
-            this.pauseBlur = null;
-        }
+        this.removePauseBlur();
         this.sound.resumeAll();
+        showCursor(this, false);
     }
 
     /** The last life is gone: freeze, blur, then show the results. */
@@ -1170,6 +1210,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         this.ending = true;
+        showCursor(this, true);
         // Anything earned with the last life still counts (and its points reach the score).
         this.checkAchievements(false);
         // Saved at once, so closing the tab during the results loses nothing.

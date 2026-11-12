@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import { TEXTURES, backgroundKey } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y } from '../config';
+import { playSound } from '../audio';
+import { Ambience, FLOOR_1_TORCHES, addTorchGlows } from '../game/ambience';
 import { warmUpRenderers } from '../game/warmUp';
 import { profile } from '../profile';
 import { formatScore } from '../rules/format';
@@ -9,11 +11,21 @@ import { markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { Button } from '../ui/Button';
 import { Menu } from '../ui/Menu';
+import { addPulsingTag } from '../ui/NewTag';
 import { addPanel } from '../ui/kit';
 import { openScreen } from '../ui/screens';
 import { addText } from '../ui/text';
 
-/** Title screen. Play starts a run; How to Play, Achievements, High Scores, Settings and Credits open over it. */
+/** How often the mimic's lid creaks open on the title (ms between looks). */
+const LID_EVERY_MS = { min: 6000, max: 11000 } as const;
+/** Draw order: the backdrop, then the torchlight and dust, then everything else. */
+const DEPTH = { backdrop: -3, air: -2 } as const;
+
+/**
+ * Title screen. Play starts a run; How to Play, Achievements, High Scores,
+ * Settings and Credits open over it. It has some life: torchlight and dust,
+ * and the mimic breathing, its lid creaking open now and then.
+ */
 export class TitleScene extends Phaser.Scene {
     private leaving = false;
     private profileText!: Phaser.GameObjects.Text;
@@ -37,12 +49,15 @@ export class TitleScene extends Phaser.Scene {
 
     /** Floor 1's 4:3 background, cropped to fill 16:9 and anchored to the floor. */
     private addBackdrop(): void {
-        const background = this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT, backgroundKey(0)).setOrigin(0.5, 1);
+        const background = this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT, backgroundKey(0)).setOrigin(0.5, 1).setDepth(DEPTH.backdrop);
         background.setScale(Math.max(DESIGN_WIDTH / background.width, DESIGN_HEIGHT / background.height));
         // Darken and vignette the backdrop only, so the UI on top stays bright.
         background.enableFilters();
         background.filters?.internal.addVignette(0.5, 0.5, 0.8, 0.6);
-        this.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.35).setOrigin(0);
+        this.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.35).setOrigin(0).setDepth(DEPTH.backdrop);
+        // Torchlight and dust drifting through it.
+        addTorchGlows(this, FLOOR_1_TORCHES, DEPTH.air);
+        new Ambience(this, DEPTH.air);
     }
 
     private addTitle(): void {
@@ -59,8 +74,17 @@ export class TitleScene extends Phaser.Scene {
     private addMimic(): void {
         this.add.ellipse(1520, GROUND_Y - 4, 190, 26, COLOURS.ink, 0.5);
         const chest = this.add.image(1520, GROUND_Y, TEXTURES.chestClosed).setOrigin(0.5, 1).setScale(0.75);
-        // Placeholder idle: a slow breath. The full title-screen life comes in M4.
+        // A slow breath, and now and then the lid creaks open for a look round.
         this.tweens.add({ targets: chest, scaleY: 0.77, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+        const creak = (): void => {
+            chest.setTexture(TEXTURES.chestAjar);
+            playSound(this, 'titleCreak');
+            this.time.delayedCall(Phaser.Math.Between(700, 1200), () => {
+                chest.setTexture(TEXTURES.chestClosed);
+                this.time.delayedCall(Phaser.Math.Between(LID_EVERY_MS.min, LID_EVERY_MS.max), creak);
+            });
+        };
+        this.time.delayedCall(Phaser.Math.Between(2500, 4500), creak);
     }
 
     private addMenu(): void {
@@ -77,6 +101,10 @@ export class TitleScene extends Phaser.Scene {
         addPanel(this, DESIGN_WIDTH / 2, top + ((items.length - 1) * step) / 2, 540, items.length * step + SPACE.xl);
         const buttons = items.map((item, i) => new Button(this, DESIGN_WIDTH / 2, top + i * step, item.label, { onSelect: item.action }));
         new Menu(this, buttons);
+        // Until a first run has been played, a nudge towards How to Play.
+        if (profile().totals.runs === 0) {
+            addPulsingTag(this, DESIGN_WIDTH / 2 + 350, top + step, STRINGS.newHere);
+        }
     }
 
     /** The mimic's name and best score, once there's something to show. Settings can change both. */

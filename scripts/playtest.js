@@ -241,9 +241,24 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('settings'));
         assert((await snapshot()).paused.includes('game'), '/next/ Settings opens from the pause menu and Esc returns to it');
 
+        // Leaving the pause menu counts down 3-2-1 over the still-paused run (on by default in Settings);
+        // P during the count goes back to the pause menu.
         await page.keyboard.press('Escape');
-        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && s.game.playTimeMs > paused.game.playTimeMs);
-        assert(true, '/next/ Esc resumes the run');
+        await waitForSnapshot((s) => s.running.includes('countdown') && s.paused.includes('game') && !s.running.includes('pause'));
+        await page.keyboard.press('KeyP');
+        await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('countdown') && s.paused.includes('game'));
+        assert(true, '/next/ leaving the pause menu counts down first, and P during it goes back to the menu');
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown') && s.game.playTimeMs > paused.game.playTimeMs);
+        assert(true, '/next/ Esc resumes the run after the countdown');
+
+        // Losing focus mid-run (another tab or window) opens the pause menu.
+        await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+        await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game'));
+        assert(true, '/next/ losing focus mid-run pauses the game');
+        await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown'));
 
         // Abilities, unlocked through the debug shortcuts, with the normal spawns off so only the test's objects fall.
         const debug = (name, ...args) => page.evaluate(([fn, list]) => window.__mimicFeeder.debug[fn](...list), [name, args]);

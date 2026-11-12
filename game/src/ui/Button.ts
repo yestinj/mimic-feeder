@@ -3,6 +3,7 @@ import { playSound } from '../audio';
 import { MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import { SLICE, UI } from './kit';
 import { addText } from './text';
+import { POINTER_CURSOR } from './cursor';
 
 export type ButtonState = 'normal' | 'focus' | 'pressed' | 'disabled';
 
@@ -61,7 +62,7 @@ export class Button extends Phaser.GameObjects.Container {
         this.add([this.background, this.label]);
         this.setSize(width, height);
 
-        this.setInteractive({ useHandCursor: true });
+        this.setInteractive({ cursor: POINTER_CURSOR });
         this.on(Phaser.Input.Events.POINTER_OVER, () => this.onHover?.());
         this.on(Phaser.Input.Events.POINTER_DOWN, () => {
             if (this.enabled) {

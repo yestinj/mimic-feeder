@@ -25,6 +25,8 @@ export interface Settings {
     readonly muted: boolean;
     readonly screenShake: boolean;
     readonly reducedMotion: boolean;
+    /** A 3-2-1 before play carries on after the pause menu, or How to Play or Achievements opened mid-run. */
+    readonly resumeCountdown: boolean;
 }
 
 export interface HighScore {
@@ -92,7 +94,7 @@ export interface SaveData {
 
 /** Settings start from the system: reduced motion on, and screen shake off, when it asks for less motion. */
 export function defaultSettings(systemPrefersReducedMotion: boolean): Settings {
-    return { musicVolume: 1, effectsVolume: 1, muted: false, screenShake: !systemPrefersReducedMotion, reducedMotion: systemPrefersReducedMotion };
+    return { musicVolume: 1, effectsVolume: 1, muted: false, screenShake: !systemPrefersReducedMotion, reducedMotion: systemPrefersReducedMotion, resumeCountdown: true };
 }
 
 function zeroCounts<K extends string>(keys: readonly K[]): Record<K, number> {
@@ -190,6 +192,7 @@ function readSettings(value: unknown, defaults: Settings): Settings {
         muted: boolean(source.muted, defaults.muted),
         screenShake: boolean(source.screenShake, defaults.screenShake),
         reducedMotion: boolean(source.reducedMotion, defaults.reducedMotion),
+        resumeCountdown: boolean(source.resumeCountdown, defaults.resumeCountdown),
     };
 }
 
