@@ -16,7 +16,7 @@ const STEP_MS = 520;
  * The resume countdown (plan §3.1, a trial; switchable in Settings): 3, 2, 1
  * over the run, still paused but no longer blurred, so the player can see
  * where everything is before play carries on. P or Esc goes back to the pause
- * menu, and so does losing focus.
+ * menu, and so does losing focus or the page being hidden.
  */
 export class CountdownScene extends Phaser.Scene {
     private done = false;
@@ -46,8 +46,13 @@ export class CountdownScene extends Phaser.Scene {
 
         const backToPause = (): void => this.finish(() => game.reopenPause());
         onKeyDown(this, ['P', 'ESC'], backToPause);
+        // Losing focus, or the page being hidden, stops the count like it pauses play.
         this.game.events.on(Phaser.Core.Events.BLUR, backToPause);
-        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.game.events.off(Phaser.Core.Events.BLUR, backToPause));
+        this.game.events.on(Phaser.Core.Events.HIDDEN, backToPause);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            this.game.events.off(Phaser.Core.Events.BLUR, backToPause);
+            this.game.events.off(Phaser.Core.Events.HIDDEN, backToPause);
+        });
         markReady('countdown');
     }
 

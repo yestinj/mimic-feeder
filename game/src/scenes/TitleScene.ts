@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { TEXTURES, backgroundKey } from '../assets';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y } from '../config';
 import { playSound } from '../audio';
-import { Ambience, FLOOR_1_TORCHES, addTorchGlows } from '../game/ambience';
+import { Ambience, FLOOR_1_TORCHES } from '../game/ambience';
 import { warmUpRenderers } from '../game/warmUp';
 import { profile } from '../profile';
 import { formatScore } from '../rules/format';
@@ -55,9 +55,8 @@ export class TitleScene extends Phaser.Scene {
         background.enableFilters();
         background.filters?.internal.addVignette(0.5, 0.5, 0.8, 0.6);
         this.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.35).setOrigin(0).setDepth(DEPTH.backdrop);
-        // Torchlight and dust drifting through it.
-        addTorchGlows(this, FLOOR_1_TORCHES, DEPTH.air);
-        new Ambience(this, DEPTH.air);
+        // Torchlight, and dust drifting through it.
+        new Ambience(this, DEPTH.air, FLOOR_1_TORCHES);
     }
 
     private addTitle(): void {
@@ -101,10 +100,21 @@ export class TitleScene extends Phaser.Scene {
         addPanel(this, DESIGN_WIDTH / 2, top + ((items.length - 1) * step) / 2, 540, items.length * step + SPACE.xl);
         const buttons = items.map((item, i) => new Button(this, DESIGN_WIDTH / 2, top + i * step, item.label, { onSelect: item.action }));
         new Menu(this, buttons);
-        // Until a first run has been played, a nudge towards How to Play.
-        if (profile().totals.runs === 0) {
-            addPulsingTag(this, DESIGN_WIDTH / 2 + 350, top + step, STRINGS.newHere);
-        }
+        // Until a first run has been played, a nudge towards How to Play. Checked again on waking:
+        // erasing the save in Settings (opened over the title) makes it a first run again.
+        let nudge: Phaser.GameObjects.Container | null = null;
+        const showNudge = (): void => {
+            const wanted = profile().totals.runs === 0;
+            if (wanted && !nudge) {
+                nudge = addPulsingTag(this, DESIGN_WIDTH / 2 + 350, top + step, STRINGS.newHere);
+            } else if (!wanted && nudge) {
+                nudge.destroy();
+                nudge = null;
+            }
+        };
+        showNudge();
+        this.events.on(Phaser.Scenes.Events.WAKE, showNudge);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off(Phaser.Scenes.Events.WAKE, showNudge));
     }
 
     /** The mimic's name and best score, once there's something to show. Settings can change both. */
