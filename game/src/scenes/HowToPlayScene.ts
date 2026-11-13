@@ -82,6 +82,9 @@ export class HowToPlayScene extends Phaser.Scene {
         this.page = [];
         startScreen(this, data);
         const save = profile();
+        if (!save.howToPlayOpened) {
+            updateProfile((current) => ({ ...current, howToPlayOpened: true }));
+        }
         this.unseen = new Set(unseenDiscoveries(save));
         // During a run, something just met is the likeliest reason to look.
         const duringRun = data.from === 'game' || data.from === 'pause';

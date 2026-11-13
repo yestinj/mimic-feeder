@@ -1,8 +1,10 @@
-// The dungeon's air (plan §3.10): dust drifting on every floor, embers rising
-// from the Underworld Depths down, a faint flicker of firelight, and (on the
-// title) glows on the wall torches. Kept light; with reduced motion the
-// particles stop and the light holds steady, and that follows the setting
-// as it changes.
+// The dungeon's air (plan §3.10). Each floor has its own: dust near the top,
+// a few embers from the torches lower down, spores among the roots and
+// tombs, thick embers by the lava, and violet sparks at the edge of the
+// void. The light sources painted into each background (torches, lanterns,
+// spectral glows, lava, the void) glow and flicker or pulse in their own way.
+// With reduced motion the particles stop and the lights hold steady, and
+// that follows the setting as it changes.
 import * as Phaser from 'phaser';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y } from '../config';
 import { prefersReducedMotion } from '../motion';
@@ -10,51 +12,173 @@ import { onProfileChange } from '../profile';
 import { COLOURS } from '../theme';
 import { UI } from '../ui/kit';
 
-/** Embers fill the air from this floor down (the Underworld Depths). */
-const EMBERS_FROM_FLOOR = 7;
+type LightKind = 'torch' | 'lantern' | 'spectral' | 'lava' | 'void' | 'pool';
+type Air = 'dust' | 'embersLight' | 'spores' | 'embers' | 'sparks';
 
-/** The torches on Floor 1's walls (design px), for their glow on the title screen. */
-export const FLOOR_1_TORCHES: readonly { readonly x: number; readonly y: number }[] = [
-    { x: 150, y: 258 },
-    { x: 1770, y: 258 },
+/** How each kind of light looks and moves: colour, size, its alpha range, and how fast it wavers. */
+const LIGHT_LOOKS: Record<LightKind, { tint: number; size: number; low: number; high: number; change: number; ease: number }> = {
+    torch: { tint: 0xffa850, size: 320, low: 0.4, high: 0.75, change: 0.18, ease: 0.35 },
+    lantern: { tint: 0xffc070, size: 240, low: 0.4, high: 0.65, change: 0.08, ease: 0.2 },
+    spectral: { tint: 0x5fe0d0, size: 240, low: 0.25, high: 0.55, change: 0.03, ease: 0.06 },
+    lava: { tint: 0xff6a2a, size: 380, low: 0.3, high: 0.6, change: 0.03, ease: 0.06 },
+    void: { tint: 0x9a7bff, size: 520, low: 0.25, high: 0.5, change: 0.02, ease: 0.05 },
+    pool: { tint: 0xffd9a0, size: 700, low: 0.1, high: 0.2, change: 0.02, ease: 0.04 },
+};
+
+/** A light painted into a background, as fractions of the image (it's cropped and scaled to fit). */
+interface Light {
+    readonly u: number;
+    readonly v: number;
+    readonly kind: LightKind;
+}
+
+/** The light sources in each floor's background (by index in FLOORS), marked by eye. */
+const BACKGROUND_LIGHTS: readonly (readonly Light[])[] = [
+    // Upper Dungeon: two wall torches.
+    [{ u: 0.076, v: 0.438, kind: 'torch' }, { u: 0.923, v: 0.438, kind: 'torch' }],
+    // Ageing Lower Halls: a hanging lantern.
+    [{ u: 0.173, v: 0.438, kind: 'lantern' }],
+    // Lower Undercroft: two lanterns.
+    [{ u: 0.196, v: 0.545, kind: 'lantern' }, { u: 0.829, v: 0.322, kind: 'lantern' }],
+    // Buried Crypts: light pooling on the floor, and a faint glow down the side passages.
+    [{ u: 0.5, v: 0.77, kind: 'pool' }, { u: 0.207, v: 0.552, kind: 'spectral' }, { u: 0.794, v: 0.552, kind: 'spectral' }],
+    // Ancient Catacombs: spectral glows in the alcoves.
+    [{ u: 0.104, v: 0.626, kind: 'spectral' }, { u: 0.48, v: 0.442, kind: 'spectral' }, { u: 0.48, v: 0.681, kind: 'spectral' }, { u: 0.69, v: 0.635, kind: 'spectral' }],
+    // Root-Choked Necropolis: spectral glows, and embers in the cracks.
+    [{ u: 0.615, v: 0.331, kind: 'spectral' }, { u: 0.256, v: 0.424, kind: 'spectral' }, { u: 0.628, v: 0.598, kind: 'spectral' }, { u: 0.33, v: 0.69, kind: 'lava' }],
+    // Underworld Depths: lava falls.
+    [
+        { u: 0.076, v: 0.3, kind: 'lava' }, { u: 0.739, v: 0.424, kind: 'lava' }, { u: 0.918, v: 0.552, kind: 'lava' },
+        { u: 0.104, v: 0.626, kind: 'lava' }, { u: 0.283, v: 0.626, kind: 'lava' }, { u: 0.649, v: 0.608, kind: 'lava' },
+    ],
+    // Infernal Ruins: rivers of fire.
+    [
+        { u: 0.177, v: 0.516, kind: 'lava' }, { u: 0.815, v: 0.497, kind: 'lava' }, { u: 0.794, v: 0.727, kind: 'lava' },
+        { u: 0.076, v: 0.727, kind: 'lava' }, { u: 0.2, v: 0.313, kind: 'lava' }, { u: 0.905, v: 0.663, kind: 'lava' },
+    ],
+    // Void Threshold: lava at the edges, the void opening in the middle.
+    [
+        { u: 0.145, v: 0.424, kind: 'lava' }, { u: 0.849, v: 0.552, kind: 'lava' }, { u: 0.083, v: 0.681, kind: 'lava' },
+        { u: 0.829, v: 0.7, kind: 'lava' }, { u: 0.5, v: 0.608, kind: 'void' },
+    ],
+    // Abyss: the void's light.
+    [{ u: 0.5, v: 0.737, kind: 'void' }, { u: 0.5, v: 0.86, kind: 'void' }],
 ];
 
-/** Alpha ranges for the flicker, and the steady level with reduced motion. */
-const FIRELIGHT = { low: 0.02, high: 0.06, steady: 0.035 } as const;
-const TORCH = { low: 0.32, high: 0.58, steady: 0.45 } as const;
+/** What fills the air on each floor (Floor 1 first; deeper floors use the last). */
+const FLOOR_AIR: readonly (readonly Air[])[] = [
+    ['dust'], ['dust'],
+    ['dust', 'embersLight'], ['dust', 'embersLight'],
+    ['dust', 'spores'], ['spores', 'embersLight'],
+    ['embers'], ['embers'],
+    ['sparks', 'embersLight'], ['sparks'],
+];
+
+/** Every background is this size, scaled to cover the screen and anchored to its bottom edge. */
+const ART = { width: 1448, height: 1086 } as const;
+const ART_SCALE = Math.max(DESIGN_WIDTH / ART.width, DESIGN_HEIGHT / ART.height);
 
 /** Fades a particle in and out over its life, up to `peak`. */
 const fadeInOut = (peak: number) => ({
     onUpdate: (_particle: Phaser.GameObjects.Particles.Particle, _key: string, t: number) => Math.sin(Math.PI * t) * peak,
 });
 
+const AIR_CONFIGS: Record<Air, { config: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig; warm: number }> = {
+    dust: {
+        config: {
+            x: { min: 0, max: DESIGN_WIDTH },
+            y: { min: 100, max: GROUND_Y - 20 },
+            lifespan: { min: 5000, max: 9000 },
+            speedX: { min: -12, max: 12 },
+            speedY: { min: -10, max: 4 },
+            scale: { min: 0.05, max: 0.11 },
+            alpha: fadeInOut(0.6),
+            tint: 0xffe2b0,
+            frequency: 160,
+            maxAliveParticles: 55,
+        },
+        warm: 7000,
+    },
+    embersLight: {
+        config: {
+            x: { min: 0, max: DESIGN_WIDTH },
+            y: GROUND_Y + 10,
+            lifespan: { min: 2500, max: 4500 },
+            speedX: { min: -20, max: 20 },
+            speedY: { min: -90, max: -40 },
+            accelerationX: { min: -12, max: 12 },
+            scale: { start: 0.09, end: 0.015 },
+            alpha: { start: 0.9, end: 0 },
+            tint: [COLOURS.ember, 0xffb347],
+            frequency: 420,
+            maxAliveParticles: 14,
+        },
+        warm: 3000,
+    },
+    embers: {
+        config: {
+            x: { min: 0, max: DESIGN_WIDTH },
+            y: GROUND_Y + 10,
+            lifespan: { min: 2500, max: 4500 },
+            speedX: { min: -20, max: 20 },
+            speedY: { min: -110, max: -50 },
+            accelerationX: { min: -12, max: 12 },
+            scale: { start: 0.1, end: 0.015 },
+            alpha: { start: 1, end: 0 },
+            tint: [COLOURS.ember, 0xffb347, 0xff6a2a],
+            frequency: 100,
+            maxAliveParticles: 60,
+        },
+        warm: 3000,
+    },
+    spores: {
+        config: {
+            x: { min: 0, max: DESIGN_WIDTH },
+            y: { min: 200, max: GROUND_Y },
+            lifespan: { min: 7000, max: 11000 },
+            speedX: { min: -6, max: 6 },
+            speedY: { min: -14, max: -4 },
+            accelerationX: { min: -3, max: 3 },
+            scale: { min: 0.04, max: 0.08 },
+            alpha: fadeInOut(0.55),
+            tint: [0xc8f5e6, 0x9be8d8],
+            frequency: 200,
+            maxAliveParticles: 45,
+        },
+        warm: 9000,
+    },
+    sparks: {
+        config: {
+            x: { min: 0, max: DESIGN_WIDTH },
+            y: { min: 120, max: GROUND_Y },
+            lifespan: { min: 1800, max: 3200 },
+            speedX: { min: -8, max: 8 },
+            speedY: { min: -20, max: 6 },
+            scale: { min: 0.03, max: 0.07 },
+            alpha: fadeInOut(0.85),
+            tint: [0xb89bff, 0x9a7bff, 0xe0d4ff],
+            frequency: 90,
+            maxAliveParticles: 45,
+        },
+        warm: 3000,
+    },
+};
+
 interface Flickering {
-    readonly target: Phaser.GameObjects.GameObject & { alpha: number };
-    readonly low: number;
-    readonly high: number;
-    readonly steady: number;
+    readonly glow: Phaser.GameObjects.Image;
+    readonly look: (typeof LIGHT_LOOKS)[LightKind];
     goal: number;
 }
 
 export class Ambience {
-    private dust: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-    private embers: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-    private readonly flickering: Flickering[] = [];
+    private emitters: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
+    private lights: Flickering[] = [];
     private flickerTimer: Phaser.Time.TimerEvent | null = null;
-    private floor = 1;
+    private floor = 0;
+    private background = -1;
     private still = prefersReducedMotion();
 
-    constructor(private readonly scene: Phaser.Scene, private readonly depth: number, torches: readonly { readonly x: number; readonly y: number }[] = []) {
-        const light = scene.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ember, FIRELIGHT.steady)
-            .setOrigin(0)
-            .setBlendMode(Phaser.BlendModes.ADD)
-            .setDepth(depth + 0.1);
-        this.flickering.push({ target: light, ...FIRELIGHT, goal: FIRELIGHT.steady });
-        for (const { x, y } of torches) {
-            const glow = scene.add.image(x, y, UI.glow).setTint(0xffb060).setDisplaySize(320, 320).setAlpha(TORCH.steady).setBlendMode(Phaser.BlendModes.ADD).setDepth(depth);
-            this.flickering.push({ target: glow, ...TORCH, goal: TORCH.steady });
-        }
-        this.applyMotion();
+    constructor(private readonly scene: Phaser.Scene, private readonly depth: number) {
         // Reduced motion can change in Settings while this scene sits underneath.
         const stop = onProfileChange((save) => {
             if (save.settings.reducedMotion !== this.still) {
@@ -65,77 +189,84 @@ export class Ambience {
         scene.events.once(Phaser.Scenes.Events.SHUTDOWN, stop);
     }
 
-    /** Embers on the deepest floors. */
-    setFloor(floor: number): void {
-        this.floor = floor;
-        const wanted = floor >= EMBERS_FROM_FLOOR && !this.still;
-        if (wanted && !this.embers) {
-            this.embers = this.scene.add.particles(0, 0, UI.glow, {
-                x: { min: 0, max: DESIGN_WIDTH },
-                y: GROUND_Y + 10,
-                lifespan: { min: 2500, max: 4500 },
-                speedX: { min: -20, max: 20 },
-                speedY: { min: -110, max: -50 },
-                accelerationX: { min: -12, max: 12 },
-                scale: { start: 0.1, end: 0.015 },
-                alpha: { start: 1, end: 0 },
-                tint: [COLOURS.ember, 0xffb347, 0xff6a2a],
-                blendMode: Phaser.BlendModes.ADD,
-                frequency: 100,
-                maxAliveParticles: 60,
-            }).setDepth(this.depth);
-            this.embers.fastForward(3000);
-        } else if (!wanted && this.embers) {
-            this.embers.destroy();
-            this.embers = null;
+    /** The floor (for what's in the air) and the background showing (for its lights; it can lag while a floor loads). */
+    setFloor(floor: number, backgroundIndex: number): void {
+        if (floor !== this.floor) {
+            this.floor = floor;
+            this.setAir();
+        }
+        if (backgroundIndex !== this.background) {
+            this.background = backgroundIndex;
+            this.setLights();
         }
     }
 
-    /** Starts or stops what moves: the dust, the embers and the flicker. */
+    private setAir(): void {
+        this.emitters.forEach((emitter) => emitter.destroy());
+        this.emitters = [];
+        if (this.still || this.floor === 0) {
+            return;
+        }
+        const air = FLOOR_AIR[Math.min(this.floor, FLOOR_AIR.length) - 1] ?? ['dust'];
+        for (const kind of air) {
+            const { config, warm } = AIR_CONFIGS[kind];
+            const emitter = this.scene.add.particles(0, 0, UI.glow, { ...config, blendMode: Phaser.BlendModes.ADD }).setDepth(this.depth);
+            // Already drifting when it appears.
+            emitter.fastForward(warm);
+            this.emitters.push(emitter);
+        }
+    }
+
+    private setLights(): void {
+        this.lights.forEach(({ glow }) => {
+            this.scene.tweens.add({ targets: glow, alpha: 0, duration: 600, onComplete: () => glow.destroy() });
+        });
+        this.lights = (BACKGROUND_LIGHTS[this.background] ?? []).map(({ u, v, kind }) => {
+            const look = LIGHT_LOOKS[kind];
+            const x = DESIGN_WIDTH / 2 + (u - 0.5) * ART.width * ART_SCALE;
+            const y = DESIGN_HEIGHT - (1 - v) * ART.height * ART_SCALE;
+            const steady = (look.low + look.high) / 2;
+            const glow = this.scene.add.image(x, y, UI.glow).setTint(look.tint).setDisplaySize(look.size, look.size)
+                .setBlendMode(Phaser.BlendModes.ADD).setDepth(this.depth).setAlpha(0);
+            this.scene.tweens.add({ targets: glow, alpha: steady, duration: 600 });
+            return { glow, look, goal: steady };
+        });
+        this.applyMotion();
+    }
+
+    /** Starts or stops what moves: the particles and the lights' waver. */
     private applyMotion(): void {
         if (this.still) {
-            this.dust?.destroy();
-            this.dust = null;
             this.flickerTimer?.remove();
             this.flickerTimer = null;
-            this.flickering.forEach((item) => {
-                item.target.alpha = item.steady;
+            this.lights.forEach((light) => {
+                light.goal = (light.look.low + light.look.high) / 2;
+                // A light still fading in ends at this level anyway.
+                if (!this.scene.tweens.isTweening(light.glow)) {
+                    light.glow.setAlpha(light.goal);
+                }
             });
         } else {
-            this.dust ??= this.addDust();
-            // One timer eases each light towards a goal, and now and then picks a new one: a flame's waver.
+            // One timer eases each light towards a goal, and now and then picks a new one: a torch's quick
+            // flicker, a lantern's waver, the slow pulse of lava, spirits and the void.
             this.flickerTimer ??= this.scene.time.addEvent({
                 delay: 40,
                 loop: true,
                 callback: () => {
-                    for (const item of this.flickering) {
-                        if (Math.random() < 0.12) {
-                            item.goal = Phaser.Math.FloatBetween(item.low, item.high);
+                    for (const light of this.lights) {
+                        if (Math.random() < light.look.change) {
+                            light.goal = Phaser.Math.FloatBetween(light.look.low, light.look.high);
                         }
-                        item.target.alpha += (item.goal - item.target.alpha) * 0.3;
+                        if (!this.scene.tweens.isTweening(light.glow)) {
+                            light.glow.alpha += (light.goal - light.glow.alpha) * light.look.ease;
+                        }
                     }
                 },
             });
         }
-        this.setFloor(this.floor);
-    }
-
-    private addDust(): Phaser.GameObjects.Particles.ParticleEmitter {
-        const dust = this.scene.add.particles(0, 0, UI.glow, {
-            x: { min: 0, max: DESIGN_WIDTH },
-            y: { min: 120, max: GROUND_Y - 20 },
-            lifespan: { min: 5000, max: 9000 },
-            speedX: { min: -10, max: 10 },
-            speedY: { min: -8, max: 3 },
-            scale: { min: 0.03, max: 0.07 },
-            alpha: fadeInOut(0.4),
-            tint: 0xffe2b0,
-            blendMode: Phaser.BlendModes.ADD,
-            frequency: 220,
-            maxAliveParticles: 40,
-        }).setDepth(this.depth);
-        // Already drifting when it appears.
-        dust.fastForward(6000);
-        return dust;
+        // Particles go when motion is reduced and come back when it isn't (every floor has some).
+        if (this.still ? this.emitters.length > 0 : this.emitters.length === 0) {
+            this.setAir();
+        }
     }
 }

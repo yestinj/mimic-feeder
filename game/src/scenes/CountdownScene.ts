@@ -2,7 +2,6 @@ import * as Phaser from 'phaser';
 import { playSound } from '../audio';
 import { DESIGN_HEIGHT, DESIGN_WIDTH } from '../config';
 import { prefersReducedMotion } from '../motion';
-import { STRINGS } from '../strings';
 import { markReady } from '../testHook';
 import { TEXT_COLOURS, TYPE } from '../theme';
 import { onKeyDown } from '../ui/keys';
@@ -29,8 +28,6 @@ export class CountdownScene extends Phaser.Scene {
         this.done = false;
         const game = this.scene.get('game') as GameScene;
         const number = addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2 - 40, '', TYPE.hero * 1.4, { role: 'display', bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5);
-        const hint = addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2 + 90, STRINGS.countdown.hint, TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
-        hint.setAlpha(0.85);
 
         const show = (count: number): void => {
             number.setText(String(count)).setAlpha(1).setScale(1);

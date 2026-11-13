@@ -90,6 +90,8 @@ export interface SaveData {
     readonly discoveriesSeen: readonly string[];
     /** Abilities whose new-ability card has been shown. */
     readonly introduced: readonly Ability[];
+    /** How to Play has been opened at least once (the title stops pointing at it). */
+    readonly howToPlayOpened: boolean;
 }
 
 /** Settings start from the system: reduced motion on, and screen shake off, when it asks for less motion. */
@@ -136,6 +138,7 @@ export function defaultSave(systemPrefersReducedMotion: boolean): SaveData {
         discoveries: [],
         discoveriesSeen: [],
         introduced: [],
+        howToPlayOpened: false,
     };
 }
 
@@ -284,6 +287,7 @@ export function parseSave(raw: string | null, systemPrefersReducedMotion: boolea
         discoveries: readStrings(data.discoveries),
         discoveriesSeen: readStrings(data.discoveriesSeen),
         introduced: readStrings(data.introduced).filter((item): item is Ability => (ABILITIES as readonly string[]).includes(item)),
+        howToPlayOpened: data.howToPlayOpened === true,
     };
 }
 

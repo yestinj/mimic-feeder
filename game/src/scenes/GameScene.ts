@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { ANIMATIONS, MUSIC, backgroundKey, firstFrame, floorBackground } from '../assets';
+import { ANIMATIONS, MUSIC, backgroundKey, firstFrame, floorBackground, shownBackgroundIndex } from '../assets';
 import { MusicPlayer, playSound } from '../audio';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y, RUN_SCALE, SIZE_SCALE } from '../config';
 import { Boss } from '../game/Boss';
@@ -1118,7 +1118,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     private showFloorBackground(instant: boolean): void {
-        this.ambience.setFloor(this.run.floor);
+        // The air follows the floor; its lights follow the background actually showing.
+        this.ambience.setFloor(this.run.floor, shownBackgroundIndex(this.textures, this.run.floor));
         const key = floorBackground(this.textures, this.run.floor);
         if (key === this.shownBackground) {
             return;

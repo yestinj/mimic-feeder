@@ -63,6 +63,14 @@ describe('save', () => {
         expect(save?.introduced).toEqual(['shadowBolt']);
         expect(save?.achievementsSeen).toEqual(['first_blood']);
         expect(save?.discoveriesSeen).toEqual(['goblin']);
+        expect(save?.howToPlayOpened).toBe(false);
+    });
+
+    it('remembers How to Play being opened (true only)', () => {
+        const opened = (value: unknown) => parseSave(JSON.stringify({ version: SAVE_VERSION, howToPlayOpened: value }), false)?.howToPlayOpened;
+        expect(defaultSave(false).howToPlayOpened).toBe(false);
+        expect(opened(true)).toBe(true);
+        expect(opened('yes')).toBe(false);
     });
 
     it('cleans names: letters, digits and spaces, 12 at most, never empty', () => {

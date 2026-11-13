@@ -38,8 +38,8 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
   - Items: Play (selected by default), How to Play, Achievements, High Scores, Settings, Credits.
   - Shows the saved name and best score, plus one subtle hint line: "← → move · ↑ jump · Esc menu".
   - The first key press or click also unlocks audio.
-  - **It has life:** the mimic idles there, its lid creaking open now and then, with dust drifting through the torchlight.
-  - Until a first run has been played, a "New here? Start here" tag points at How to Play (M4c).
+  - **It has life:** the mimic breathes there, and now and then lifts its lid for a peek or flips it open with a hop and a wiggle, with dust drifting through the torchlight.
+  - A "New here? Start here" tag points at How to Play until it has been opened once, or three runs have been played (M4c).
 - **Pause menu** (P or Esc):
   - Items: Resume, How to Play, Achievements, Settings, Restart, Quit to menu. K stays a shortcut to Achievements, and H opens How to Play (agreed in M3c). During play both open straight over the run, and closing them goes back to play.
   - A "This run" panel shows floor and zone, time, level, and speed, size, drop-speed and spawn-rate percentages.
@@ -187,7 +187,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
 - **Built in M4b:** hit-stop on losing a heart (70 ms) and on a Shadow-Bolted bomb (45 ms), skipped with reduced motion; the lid snapping shut on every bite; squash and stretch on jumping, landing and biting, with dust on landing; shake tuned per event (hazard hits heaviest, good things lightest); and the boss card, rumble and camera push (no push with reduced motion).
 - **Sounds (M4b):** UI sounds (menu moves, select, back, tabs, toggles and sliders), the results' tally ticks and score landing, "New best!" and the boss rumble come from Kenney's CC0 packs (kenney.nl), chosen with the owner by ear. Each was trimmed, peak-normalised and converted to MP3 with ffmpeg; `game/src/assets.ts` notes the pack and file for each, and Credits thanks Kenney. The dash whoosh was made for the game (swept, filtered noise), since none of the packs had a real air whoosh.
 - **Ambient effects per floor:** dust, embers, flickering torchlight using Phaser 4 lighting. Kept light, and switched off by reduced motion where it moves a lot.
-  - Built in M4c without Phaser's lights (the backgrounds have no normal maps): dust on every floor, embers from Floor 7 down, and a faint warm flicker over everything; on the title, glows on the torches. With reduced motion the particles stop and the light holds steady.
+  - Built in M4c without Phaser's lights (the backgrounds have no normal maps). Each floor has its own air: dust on Floors 1-2, a few embers joining it on 3-4, pale spores on 5-6, thick embers on 7-8, violet sparks on 9-10. The light sources painted into each background (torches, lanterns, spectral glows, lava, the void) glow at their real positions, each kind flickering or pulsing at its own pace; the title shows Floor 1's. With reduced motion the particles stop and the lights hold steady.
 
 ### Later (not in this migration)
 

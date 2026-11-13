@@ -22,12 +22,17 @@ export function backgroundKey(index: number): string {
 
 /** A floor's background, or the closest earlier floor's while it's still loading. */
 export function floorBackground(textures: Phaser.Textures.TextureManager, floor: number): string {
+    return backgroundKey(shownBackgroundIndex(textures, floor));
+}
+
+/** Which background a floor shows (its index in FLOORS): its own, or the closest earlier one while it's still loading. */
+export function shownBackgroundIndex(textures: Phaser.Textures.TextureManager, floor: number): number {
     for (let index = floorIndex(floor); index > 0; index--) {
         if (textures.exists(backgroundKey(index))) {
-            return backgroundKey(index);
+            return index;
         }
     }
-    return backgroundKey(0);
+    return 0;
 }
 
 /** Still images for the falling objects. Animated ones are in OBJECT_ANIMATIONS. */

@@ -197,6 +197,10 @@ async function checkNextBuild(browser) {
         await page.waitForTimeout(400);
         await page.screenshot({ path: path.join(OUT_DIR, 'next-title.png') });
 
+        // The kit's cursor shows on the menus and hides during play (a bad cursor value would leave it hidden everywhere).
+        const cursor = () => page.evaluate(() => document.querySelector('canvas').style.cursor);
+        assert((await cursor()).includes('url('), '/next/ the title shows the menu cursor');
+
         // Play is focused on the title menu.
         await page.keyboard.press('Enter');
         await waitForSnapshot((s) => s.running.includes('game') && s.running.includes('hud') && s.game && s.game.playTimeMs > 0);
@@ -205,6 +209,7 @@ async function checkNextBuild(browser) {
             '/next/ Play starts a run on Floor 1 Zone 1 with three lives');
         await waitForSnapshot((s) => s.audio === 'running', 5000);
         assert(true, '/next/ audio is running after the first key press');
+        assert(await cursor() === 'none', '/next/ the cursor hides during play');
 
         // Held until it has moved: at a few frames per second a short tap can start and end within one frame.
         await page.keyboard.down('ArrowLeft');
@@ -222,6 +227,7 @@ async function checkNextBuild(browser) {
         assert(stillPaused.game.playTimeMs === paused.game.playTimeMs && stillPaused.game.objects === paused.game.objects,
             '/next/ pause freezes play time and spawning');
         assert(stillPaused.game.mimicX === paused.game.mimicX, '/next/ gameplay keys do nothing while paused');
+        assert((await cursor()).includes('url('), '/next/ the cursor comes back on the pause menu');
         await page.screenshot({ path: path.join(OUT_DIR, 'next-pause.png') });
 
         await page.keyboard.press('KeyM');

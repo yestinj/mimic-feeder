@@ -10,7 +10,7 @@ export const STRINGS = {
     pressToContinue: 'Press any key',
     keyHints: '← → move   ·   ↑ jump   ·   Esc menu',
     previewNotice: 'Preview of the new version. Work in progress.',
-    /** Beside How to Play on the title, until the first run has been played. */
+    /** Beside How to Play on the title, until it's been opened (or a few runs have been played). */
     newHere: 'New here? Start here',
     /** The title screen's line for a returning player. */
     profileLine: (name: string, best: string | null) => (best === null ? name : `${name}   ·   Best ${best}`),
@@ -237,9 +237,6 @@ export const STRINGS = {
         nameHint: 'Enter save   ·   Esc skip',
         savedAs: (name: string) => `Saved as ${name}`,
         renameHint: 'You can change the name in Settings',
-    },
-    countdown: {
-        hint: 'P or Esc to stay paused',
     },
     /**
      * How to Play (plan §3.4). Light on exact numbers, and the Ninefold
