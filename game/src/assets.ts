@@ -178,8 +178,10 @@ export const SOUNDS = {
      * quick swell and longer fade: something swooping past.
      */
     dashWhoosh: { file: 'dash_whoosh.mp3', volume: 0.35 },
-    /** The mimic's lid creaking open on the title screen (RPG Audio: creak1). */
-    titleCreak: { file: 'title_creak.mp3', volume: 0.3 },
+    /** The mimic's lid on the title screen: lifting (RPG Audio: bookOpen), flipping open (beltHandle1) and shutting (bookClose). */
+    lidLift: { file: 'lid_lift.mp3', volume: 0.35 },
+    lidOpen: { file: 'lid_open.mp3', volume: 0.35 },
+    lidShut: { file: 'lid_shut.mp3', volume: 0.3 },
     /** A boss arriving (Sci-Fi Sounds: lowFrequency_explosion_001). */
     bossRumble: { file: 'boss_rumble.mp3', volume: 0.6 },
 } as const;

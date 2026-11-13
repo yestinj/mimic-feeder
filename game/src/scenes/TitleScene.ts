@@ -89,18 +89,20 @@ export class TitleScene extends Phaser.Scene {
             chest.setTexture(TEXTURES.chestAjar);
             this.time.delayedCall(LID_SETTLE_MS, () => {
                 chest.setTexture(TEXTURES.chestClosed);
+                playSound(this, 'lidShut');
                 this.time.delayedCall(Phaser.Math.Between(LID_EVERY_MS.min, LID_EVERY_MS.max), look);
             });
         };
         const look = (): void => {
             chest.setTexture(TEXTURES.chestAjar);
-            playSound(this, 'titleCreak');
+            playSound(this, 'lidLift');
             if (Math.random() < LID_PEEK_ONLY) {
                 this.time.delayedCall(Phaser.Math.Between(700, 1100), close);
                 return;
             }
             this.time.delayedCall(Phaser.Math.Between(300, 450), () => {
                 chest.setTexture(TEXTURES.chestOpen);
+                playSound(this, 'lidOpen');
                 if (!prefersReducedMotion()) {
                     this.tweens.add({ targets: chest, y: GROUND_Y - 14, duration: 140, yoyo: true, ease: 'Quad.Out' });
                     this.tweens.add({ targets: chest, angle: { from: -3, to: 3 }, duration: 90, yoyo: true, repeat: 1, onComplete: () => chest.setAngle(0) });

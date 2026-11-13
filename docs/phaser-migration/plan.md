@@ -38,7 +38,7 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
   - Items: Play (selected by default), How to Play, Achievements, High Scores, Settings, Credits.
   - Shows the saved name and best score, plus one subtle hint line: "← → move · ↑ jump · Esc menu".
   - The first key press or click also unlocks audio.
-  - **It has life:** the mimic breathes there, and now and then lifts its lid for a peek or flips it open with a hop and a wiggle, with dust drifting through the torchlight.
+  - **It has life:** the mimic breathes there, and now and then lifts its lid for a peek or flips it open with a hop and a wiggle, with dust drifting through the torchlight. The lid's lift, flip and shut each have a soft sound from Kenney's RPG Audio (CC0), chosen with the owner by ear.
   - A "New here? Start here" tag points at How to Play until it has been opened once, or three runs have been played (M4c).
 - **Pause menu** (P or Esc):
   - Items: Resume, How to Play, Achievements, Settings, Restart, Quit to menu. K stays a shortcut to Achievements, and H opens How to Play (agreed in M3c). During play both open straight over the run, and closing them goes back to play.
