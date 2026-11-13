@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { formatScore } from './format';
 import {
     ACHIEVEMENTS,
     TIER_POINTS,
@@ -71,8 +72,15 @@ describe('achievements', () => {
         expect(progress(byId('cat_sanctuary'), both, noBests)).toBe(3);
     });
 
+    it('describes each goal with its own number, so a tuned goal and its text stay in step', () => {
+        for (const achievement of ACHIEVEMENTS.filter((entry) => entry.goal > 1)) {
+            const goal = achievement.stat === 'longestRun' ? `${achievement.goal / 60_000} minutes` : formatScore(achievement.goal);
+            expect(STRINGS.achievements.list[achievement.id]?.description, achievement.id).toContain(goal);
+        }
+    });
+
     it('measures milestones on a single run, through the bests', () => {
-        const bests = bestsWith(noBests, { score: 5200, floor: 3, zone: 1, level: 8, playTimeMs: 200_000, totals: emptyTotals() });
+        const bests = bestsWith(noBests, { score: 3000, floor: 3, zone: 1, level: 5, playTimeMs: 200_000, totals: emptyTotals() });
         expect(ids(newlyEarned({}, emptyTotals(), bests))).toEqual(['dungeon_explorer', 'survivor', 'high_score', 'level_up']);
     });
 

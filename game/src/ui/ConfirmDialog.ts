@@ -9,6 +9,8 @@ import { addText } from './text';
 
 export interface ConfirmOptions {
     readonly message: string;
+    /** A smaller line under the question: what confirming means. */
+    readonly detail?: string;
     readonly cancelLabel: string;
     readonly confirmLabel: string;
     /** The confirm button in red, for something that can't be undone. */
@@ -19,6 +21,8 @@ export interface ConfirmOptions {
 
 const WIDTH = 760;
 const HEIGHT = 300;
+/** Taller with a detail line under the question. */
+const HEIGHT_WITH_DETAIL = 350;
 
 /**
  * A modal question with Cancel (focused, the safe default) and a confirm
@@ -34,20 +38,26 @@ export class ConfirmDialog {
         const blocker = scene.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.55).setOrigin(0).setInteractive();
         const cx = DESIGN_WIDTH / 2;
         const cy = DESIGN_HEIGHT / 2;
+        const height = options.detail ? HEIGHT_WITH_DETAIL : HEIGHT;
         // A solid backing: the panel art is slightly see-through, which a modal shouldn't be.
-        const backing = scene.add.graphics().fillStyle(COLOURS.stone, 1).fillRoundedRect(cx - WIDTH / 2 + 3, cy - HEIGHT / 2 + 3, WIDTH - 6, HEIGHT - 6, 14);
-        const panel = addPanel(scene, cx, cy, WIDTH, HEIGHT);
-        const message = addText(scene, cx, cy - 56, options.message, TYPE.heading, {
+        const backing = scene.add.graphics().fillStyle(COLOURS.stone, 1).fillRoundedRect(cx - WIDTH / 2 + 3, cy - height / 2 + 3, WIDTH - 6, height - 6, 14);
+        const panel = addPanel(scene, cx, cy, WIDTH, height);
+        // With a detail line, the question moves up to make room for it, and the buttons down.
+        const message = addText(scene, cx, options.detail ? cy - 100 : cy - 56, options.message, TYPE.heading, {
             role: 'display',
             bold: true,
             colour: TEXT_COLOURS.gold,
             align: 'center',
             wrapWidth: WIDTH - 2 * SPACE.xl,
         }).setOrigin(0.5);
-        const cancel = new Button(scene, cx - 170, cy + 64, options.cancelLabel, { width: 300, onSelect: () => this.cancel() });
-        const confirm = new Button(scene, cx + 170, cy + 64, options.confirmLabel, { width: 300, danger: options.danger ?? false, onSelect: () => this.confirm() });
+        const detail = options.detail
+            ? [addText(scene, cx, cy - 42, options.detail, TYPE.small, { colour: TEXT_COLOURS.muted, align: 'center', wrapWidth: WIDTH - 2 * SPACE.xl }).setOrigin(0.5)]
+            : [];
+        const buttonY = options.detail ? cy + 80 : cy + 64;
+        const cancel = new Button(scene, cx - 170, buttonY, options.cancelLabel, { width: 300, onSelect: () => this.cancel() });
+        const confirm = new Button(scene, cx + 170, buttonY, options.confirmLabel, { width: 300, danger: options.danger ?? false, onSelect: () => this.confirm() });
         this.menu = new Menu(scene, [cancel, confirm], { horizontal: true });
-        this.container = scene.add.container(0, 0, [blocker, backing, panel, message, cancel, confirm]).setDepth(100).setAlpha(0);
+        this.container = scene.add.container(0, 0, [blocker, backing, panel, message, ...detail, cancel, confirm]).setDepth(100).setAlpha(0);
         scene.tweens.add({ targets: this.container, alpha: 1, duration: MOTION.fast });
         setDialogOpen(true);
         scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => setDialogOpen(false));

@@ -96,7 +96,7 @@ export interface SaveData {
 
 /** Settings start from the system: reduced motion on, and screen shake off, when it asks for less motion. */
 export function defaultSettings(systemPrefersReducedMotion: boolean): Settings {
-    return { musicVolume: 1, effectsVolume: 1, muted: false, screenShake: !systemPrefersReducedMotion, reducedMotion: systemPrefersReducedMotion, resumeCountdown: true };
+    return { musicVolume: 1, effectsVolume: 1, muted: false, screenShake: !systemPrefersReducedMotion, reducedMotion: systemPrefersReducedMotion, resumeCountdown: false };
 }
 
 function zeroCounts<K extends string>(keys: readonly K[]): Record<K, number> {

@@ -53,7 +53,7 @@ describe('save', () => {
         }), false);
         expect(save).not.toBeNull();
         expect(save?.name).toBe('Dr Chompers');
-        expect(save?.settings).toEqual({ musicVolume: 1, effectsVolume: 1, muted: true, screenShake: true, reducedMotion: false, resumeCountdown: true });
+        expect(save?.settings).toEqual({ musicVolume: 1, effectsVolume: 1, muted: true, screenShake: true, reducedMotion: false, resumeCountdown: false });
         expect(save?.highScores).toHaveLength(1);
         expect(save?.highScores[0]).toMatchObject({ name: 'A', score: 10, floor: 1, zone: 1, level: 1 });
         expect(save?.totals.runs).toBe(2);
