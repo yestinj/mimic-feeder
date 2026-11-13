@@ -258,13 +258,23 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown') && s.game.playTimeMs > paused.game.playTimeMs);
         assert(true, '/next/ Esc resumes the run after the countdown');
 
-        // Losing focus mid-run (another tab or window) opens the pause menu.
-        await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+        // Switching tab mid-run loses focus and hides the page in the same moment; it opens the pause menu
+        // once, and nothing of it (the blur) stays after resuming.
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+            window.dispatchEvent(new Event('blur'));
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+            document.dispatchEvent(new Event('visibilitychange'));
+            window.dispatchEvent(new Event('focus'));
+        });
         await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game'));
-        assert(true, '/next/ losing focus mid-run pauses the game');
-        await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+        assert((await snapshot()).game.cameraFilters === 1, '/next/ switching tab mid-run pauses the game (blurred once)');
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown'));
+        assert((await snapshot()).game.cameraFilters === 0, '/next/ resuming after switching tab leaves no blur behind');
 
         // Abilities, unlocked through the debug shortcuts, with the normal spawns off so only the test's objects fall.
         const debug = (name, ...args) => page.evaluate(([fn, list]) => window.__mimicFeeder.debug[fn](...list), [name, args]);

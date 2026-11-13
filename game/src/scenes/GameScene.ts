@@ -392,6 +392,7 @@ export class GameScene extends Phaser.Scene {
                 .filter((object) => isEdible(object.kind) && object.landedAt === null)
                 .map((object) => ({ x: Math.round(object.x), y: Math.round(object.y) }))
                 .sort((a, b) => b.y - a.y),
+            cameraFilters: this.cameras.main.filters.external.list.length,
         }));
 
         this.scene.launch('hud');
@@ -464,7 +465,7 @@ export class GameScene extends Phaser.Scene {
 
         // New abilities are introduced at the end of the frame, with the game paused,
         // except from a boss's defeat until the next floor is under way.
-        if (this.pendingCards.length > 0 && !this.ending && this.cardsCanOpen()) {
+        if (this.pendingCards.length > 0 && this.canOpenOverlay() && this.cardsCanOpen()) {
             const abilities = this.pendingCards.splice(0);
             abilities.forEach(markIntroduced);
             this.openOverlay('unlock', { abilities });
@@ -1187,7 +1188,7 @@ export class GameScene extends Phaser.Scene {
 
     /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card, How to Play, achievements); resumePlay undoes it. */
     private openOverlay(key: 'pause' | 'unlock' | 'howToPlay' | 'achievements', data: object = {}): void {
-        if (this.ending || !this.scene.isActive()) {
+        if (!this.canOpenOverlay()) {
             return;
         }
         this.pauseBlur = this.cameras.main.filters.external.addBlur(1, 2, 2, 1);
@@ -1197,6 +1198,17 @@ export class GameScene extends Phaser.Scene {
         showCursor(this, true);
         // Always some data: launched without any, Phaser hands the scene its previous launch's data.
         this.scene.launch(key, data);
+    }
+
+    /**
+     * An overlay can open: the run is in play and none has opened yet. Phaser
+     * pauses a scene at the start of the next frame, so until then it still
+     * counts as active; the blur marks an overlay already on its way (losing
+     * focus fires both BLUR and HIDDEN, and a second blur would stay after
+     * resuming).
+     */
+    private canOpenOverlay(): boolean {
+        return !this.ending && this.scene.isActive() && this.pauseBlur === null;
     }
 
     private onResume(): void {

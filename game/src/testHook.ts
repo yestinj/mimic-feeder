@@ -34,6 +34,8 @@ export interface GameView {
     readonly boltsCast: number;
     /** Falling creatures' centres, lowest first (lets a test chase food). */
     readonly food: readonly { readonly x: number; readonly y: number }[];
+    /** Filters on the playfield's camera: the blur while an overlay is up, none in play. */
+    readonly cameraFilters: number;
 }
 
 export interface GameSnapshot {

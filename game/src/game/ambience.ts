@@ -15,15 +15,49 @@ import { UI } from '../ui/kit';
 type LightKind = 'torch' | 'lantern' | 'spectral' | 'lava' | 'void' | 'pool';
 type Air = 'dust' | 'embersLight' | 'spores' | 'embers' | 'sparks';
 
-/** How each kind of light looks and moves: colour, size, its alpha range, and how fast it wavers. */
-const LIGHT_LOOKS: Record<LightKind, { tint: number; size: number; low: number; high: number; change: number; ease: number }> = {
-    torch: { tint: 0xffa850, size: 320, low: 0.4, high: 0.75, change: 0.18, ease: 0.35 },
-    lantern: { tint: 0xffc070, size: 240, low: 0.4, high: 0.65, change: 0.08, ease: 0.2 },
-    spectral: { tint: 0x5fe0d0, size: 240, low: 0.25, high: 0.55, change: 0.03, ease: 0.06 },
-    lava: { tint: 0xff6a2a, size: 380, low: 0.3, high: 0.6, change: 0.03, ease: 0.06 },
-    void: { tint: 0x9a7bff, size: 520, low: 0.25, high: 0.5, change: 0.02, ease: 0.05 },
-    pool: { tint: 0xffd9a0, size: 700, low: 0.1, high: 0.2, change: 0.02, ease: 0.04 },
+/**
+ * How each kind of light looks and moves: colour, size, its brightness range,
+ * and its waver as two layers of smooth noise: a slow sway (`rate` changes a
+ * second) and, for flames, a quicker flutter on top (`flutter` of the range, at
+ * `flutterRate`).
+ */
+interface LightLook {
+    readonly tint: number;
+    readonly size: number;
+    readonly low: number;
+    readonly high: number;
+    readonly rate: number;
+    readonly flutter: number;
+    readonly flutterRate: number;
+}
+
+const LIGHT_LOOKS: Record<LightKind, LightLook> = {
+    torch: { tint: 0xffa850, size: 320, low: 0.42, high: 0.72, rate: 1.8, flutter: 0.3, flutterRate: 7 },
+    lantern: { tint: 0xffc070, size: 240, low: 0.42, high: 0.62, rate: 1.1, flutter: 0.2, flutterRate: 4.5 },
+    spectral: { tint: 0x5fe0d0, size: 240, low: 0.25, high: 0.55, rate: 0.35, flutter: 0, flutterRate: 0 },
+    lava: { tint: 0xff6a2a, size: 380, low: 0.3, high: 0.6, rate: 0.4, flutter: 0.15, flutterRate: 1.5 },
+    void: { tint: 0x9a7bff, size: 520, low: 0.25, high: 0.5, rate: 0.25, flutter: 0, flutterRate: 0 },
+    pool: { tint: 0xffd9a0, size: 700, low: 0.1, high: 0.2, rate: 0.3, flutter: 0, flutterRate: 0 },
 };
+
+/** A light grows this much (as a fraction of its size) from its dimmest to its brightest. */
+const LIGHT_SWELL = 0.08;
+/** How long a light fades in or out when the background changes (ms). */
+const LIGHT_FADE_MS = 600;
+
+/** A repeatable random number in [0, 1) for each whole number and seed. */
+function hash(index: number, seed: number): number {
+    const x = Math.sin(index * 127.1 + seed * 311.7) * 43758.5453;
+    return x - Math.floor(x);
+}
+
+/** Smooth 1D noise in [0, 1): random values at whole numbers, eased between, so it never jumps. */
+function smoothNoise(t: number, seed: number): number {
+    const i = Math.floor(t);
+    const f = t - i;
+    const eased = f * f * (3 - 2 * f);
+    return hash(i, seed) + (hash(i + 1, seed) - hash(i, seed)) * eased;
+}
 
 /** A light painted into a background, as fractions of the image (it's cropped and scaled to fit). */
 interface Light {
@@ -91,11 +125,11 @@ const AIR_CONFIGS: Record<Air, { config: Phaser.Types.GameObjects.Particles.Part
             lifespan: { min: 5000, max: 9000 },
             speedX: { min: -12, max: 12 },
             speedY: { min: -10, max: 4 },
-            scale: { min: 0.05, max: 0.11 },
-            alpha: fadeInOut(0.6),
+            scale: { min: 0.05, max: 0.1 },
+            alpha: fadeInOut(0.5),
             tint: 0xffe2b0,
-            frequency: 160,
-            maxAliveParticles: 55,
+            frequency: 170,
+            maxAliveParticles: 48,
         },
         warm: 7000,
     },
@@ -166,14 +200,17 @@ const AIR_CONFIGS: Record<Air, { config: Phaser.Types.GameObjects.Particles.Part
 
 interface Flickering {
     readonly glow: Phaser.GameObjects.Image;
-    readonly look: (typeof LIGHT_LOOKS)[LightKind];
-    goal: number;
+    readonly look: LightLook;
+    /** Its own noise, so no two lights move together. */
+    readonly seed: number;
+    readonly scale: number;
+    /** 0 to 1 as it fades in. */
+    fade: number;
 }
 
 export class Ambience {
     private emitters: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
     private lights: Flickering[] = [];
-    private flickerTimer: Phaser.Time.TimerEvent | null = null;
     private floor = 0;
     private background = -1;
     private still = prefersReducedMotion();
@@ -186,7 +223,12 @@ export class Ambience {
                 this.applyMotion();
             }
         });
-        scene.events.once(Phaser.Scenes.Events.SHUTDOWN, stop);
+        // The lights are set every frame (and freeze with the scene when it's paused).
+        scene.events.on(Phaser.Scenes.Events.UPDATE, this.updateLights, this);
+        scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            stop();
+            scene.events.off(Phaser.Scenes.Events.UPDATE, this.updateLights, this);
+        });
     }
 
     /** The floor (for what's in the air) and the background showing (for its lights; it can lag while a floor loads). */
@@ -219,54 +261,43 @@ export class Ambience {
 
     private setLights(): void {
         this.lights.forEach(({ glow }) => {
-            this.scene.tweens.add({ targets: glow, alpha: 0, duration: 600, onComplete: () => glow.destroy() });
+            this.scene.tweens.add({ targets: glow, alpha: 0, duration: LIGHT_FADE_MS, onComplete: () => glow.destroy() });
         });
-        this.lights = (BACKGROUND_LIGHTS[this.background] ?? []).map(({ u, v, kind }) => {
+        this.lights = (BACKGROUND_LIGHTS[this.background] ?? []).map(({ u, v, kind }, i) => {
             const look = LIGHT_LOOKS[kind];
             const x = DESIGN_WIDTH / 2 + (u - 0.5) * ART.width * ART_SCALE;
             const y = DESIGN_HEIGHT - (1 - v) * ART.height * ART_SCALE;
-            const steady = (look.low + look.high) / 2;
             const glow = this.scene.add.image(x, y, UI.glow).setTint(look.tint).setDisplaySize(look.size, look.size)
                 .setBlendMode(Phaser.BlendModes.ADD).setDepth(this.depth).setAlpha(0);
-            this.scene.tweens.add({ targets: glow, alpha: steady, duration: 600 });
-            return { glow, look, goal: steady };
+            const light: Flickering = { glow, look, seed: this.background * 10 + i, scale: glow.scaleX, fade: 0 };
+            this.scene.tweens.add({ targets: light, fade: 1, duration: LIGHT_FADE_MS });
+            return light;
         });
-        this.applyMotion();
+        this.updateLights();
     }
 
-    /** Starts or stops what moves: the particles and the lights' waver. */
-    private applyMotion(): void {
-        if (this.still) {
-            this.flickerTimer?.remove();
-            this.flickerTimer = null;
-            this.lights.forEach((light) => {
-                light.goal = (light.look.low + light.look.high) / 2;
-                // A light still fading in ends at this level anyway.
-                if (!this.scene.tweens.isTweening(light.glow)) {
-                    light.glow.setAlpha(light.goal);
-                }
-            });
-        } else {
-            // One timer eases each light towards a goal, and now and then picks a new one: a torch's quick
-            // flicker, a lantern's waver, the slow pulse of lava, spirits and the void.
-            this.flickerTimer ??= this.scene.time.addEvent({
-                delay: 40,
-                loop: true,
-                callback: () => {
-                    for (const light of this.lights) {
-                        if (Math.random() < light.look.change) {
-                            light.goal = Phaser.Math.FloatBetween(light.look.low, light.look.high);
-                        }
-                        if (!this.scene.tweens.isTweening(light.glow)) {
-                            light.glow.alpha += (light.goal - light.glow.alpha) * light.look.ease;
-                        }
-                    }
-                },
-            });
+    /**
+     * Each light's brightness (and a touch of its size) follows its noise: a
+     * torch's sway and flutter, a lantern's waver, the slow pulse of lava,
+     * spirits and the void. With reduced motion they hold at the middle.
+     */
+    private updateLights(): void {
+        const seconds = this.scene.time.now / 1000;
+        for (const light of this.lights) {
+            const { look, seed } = light;
+            const level = this.still
+                ? 0.5
+                : (1 - look.flutter) * smoothNoise(seconds * look.rate, seed) + look.flutter * smoothNoise(seconds * look.flutterRate, seed + 0.5);
+            light.glow.setAlpha(light.fade * (look.low + (look.high - look.low) * level));
+            light.glow.setScale(light.scale * (1 - LIGHT_SWELL / 2 + LIGHT_SWELL * level));
         }
-        // Particles go when motion is reduced and come back when it isn't (every floor has some).
+    }
+
+    /** Particles go when motion is reduced and come back when it isn't (every floor has some); the lights follow on their next frame. */
+    private applyMotion(): void {
         if (this.still ? this.emitters.length > 0 : this.emitters.length === 0) {
             this.setAir();
         }
+        this.updateLights();
     }
 }
