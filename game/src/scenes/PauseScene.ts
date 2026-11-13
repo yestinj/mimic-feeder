@@ -39,6 +39,8 @@ export class PauseScene extends Phaser.Scene {
     create(): void {
         this.dialog = null;
         this.leaving = false;
+        // Restart and Quit switch input off while they fade out, and a scene keeps that between runs.
+        this.input.enabled = true;
         const run = (this.scene.get('game') as GameScene).currentRun;
 
         this.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.45).setOrigin(0);
@@ -132,24 +134,33 @@ export class PauseScene extends Phaser.Scene {
             return;
         }
         this.leaving = true;
-        (this.scene.get('game') as GameScene).resumePlay();
+        (this.scene.get('game') as GameScene).returnToPlay();
         this.scene.stop();
     }
 
     private restart(): void {
-        this.leaving = true;
-        (this.scene.get('game') as GameScene).abandonRun();
-        this.sound.stopAll();
-        this.scene.stop('hud');
-        this.scene.start('game');
+        this.abandonAndFade(() => {
+            this.scene.stop('hud');
+            this.scene.start('game');
+        });
     }
 
     private quit(): void {
+        this.abandonAndFade(() => {
+            this.scene.stop('hud');
+            this.scene.stop('game');
+            this.scene.start('title');
+        });
+    }
+
+    /** Saves the run as abandoned, then fades the screen to black before `then` moves on. */
+    private abandonAndFade(then: () => void): void {
         this.leaving = true;
+        this.menu.setEnabled(false);
         (this.scene.get('game') as GameScene).abandonRun();
         this.sound.stopAll();
-        this.scene.stop('hud');
-        this.scene.stop('game');
-        this.scene.start('title');
+        this.input.enabled = false;
+        this.cameras.main.fadeOut(MOTION.normal, 0, 0, 0);
+        this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, then);
     }
 }

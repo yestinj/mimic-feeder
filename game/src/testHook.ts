@@ -7,6 +7,7 @@ import { isMuted } from './audio';
 import { profile } from './profile';
 import { unseenAchievements } from './rules/achievements';
 import { unseenDiscoveries } from './rules/guide';
+import { practiceFloor } from './rules/practice';
 import type { Settings } from './rules/save';
 
 /** What the game scene reports about the run in progress. */
@@ -34,6 +35,8 @@ export interface GameView {
     readonly boltsCast: number;
     /** Falling creatures' centres, lowest first (lets a test chase food). */
     readonly food: readonly { readonly x: number; readonly y: number }[];
+    /** Filters on the playfield's camera: the blur while an overlay is up, none in play. */
+    readonly cameraFilters: number;
 }
 
 export interface GameSnapshot {
@@ -104,6 +107,8 @@ const query = new URLSearchParams(window.location.search);
 export const TEST_MODE = query.has('test');
 /** True with ?debug: physics bodies are outlined and frame times shown. */
 export const DEBUG_MODE = query.has('debug');
+/** With ?test&floor=N, every run is a practice run starting on Floor N (rules/practice.ts); otherwise null. */
+export const PRACTICE_FLOOR = TEST_MODE ? practiceFloor(query.get('floor')) : null;
 
 declare global {
     interface Window {

@@ -10,6 +10,14 @@ export const STRINGS = {
     pressToContinue: 'Press any key',
     keyHints: '← → move   ·   ↑ jump   ·   Esc menu',
     previewNotice: 'Preview of the new version. Work in progress.',
+    /** Beside How to Play on the title, until it's been opened (or a few runs have been played). */
+    newHere: 'New here? Start here',
+    /** Practice runs (?test&floor=N), a testing aid: never shown to players otherwise. */
+    practice: {
+        title: (floor: number) => `Practice: every run starts on Floor ${floor} and isn't saved`,
+        hud: 'Practice run',
+        notSaved: 'Practice run: not saved',
+    },
     /** The title screen's line for a returning player. */
     profileLine: (name: string, best: string | null) => (best === null ? name : `${name}   ·   Best ${best}`),
     menu: {
@@ -112,6 +120,8 @@ export const STRINGS = {
         display: 'Display',
         profile: 'Profile',
         data: 'Data',
+        play: 'Play',
+        resumeCountdown: 'Countdown after pausing',
         musicVolume: 'Music volume',
         effectsVolume: 'Effects volume',
         mute: 'Mute (M)',

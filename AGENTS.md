@@ -43,7 +43,7 @@ game/                 # Phaser + TypeScript rewrite, built to dist/next/ (served
   src/assets.ts       # Asset keys and files (shared src/assets, served at /assets/), animations
   src/audio.ts        # Sound effects, music and mute
   src/profile.ts      # The save (localStorage): settings, name, high scores, totals; loaded at boot
-  src/testHook.ts     # window.__mimicFeeder: ready scenes and a state snapshot for the playtest; with ?test, debug shortcuts (grant abilities, spawn objects)
+  src/testHook.ts     # window.__mimicFeeder: ready scenes and a state snapshot for the playtest; with ?test, debug shortcuts (grant abilities, spawn objects); ?test&floor=N makes every run a practice run from Floor N (rules/practice.ts), never saved
   src/theme.ts        # Colours, fonts, type scale, spacing, timings
   src/strings.ts      # All player-facing text
 docs/phaser-migration/  # Migration inventory and plan

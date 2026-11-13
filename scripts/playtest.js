@@ -197,6 +197,10 @@ async function checkNextBuild(browser) {
         await page.waitForTimeout(400);
         await page.screenshot({ path: path.join(OUT_DIR, 'next-title.png') });
 
+        // The kit's cursor shows on the menus and hides during play (a bad cursor value would leave it hidden everywhere).
+        const cursor = () => page.evaluate(() => document.querySelector('canvas').style.cursor);
+        assert((await cursor()).includes('url('), '/next/ the title shows the menu cursor');
+
         // Play is focused on the title menu.
         await page.keyboard.press('Enter');
         await waitForSnapshot((s) => s.running.includes('game') && s.running.includes('hud') && s.game && s.game.playTimeMs > 0);
@@ -205,6 +209,7 @@ async function checkNextBuild(browser) {
             '/next/ Play starts a run on Floor 1 Zone 1 with three lives');
         await waitForSnapshot((s) => s.audio === 'running', 5000);
         assert(true, '/next/ audio is running after the first key press');
+        assert(await cursor() === 'none', '/next/ the cursor hides during play');
 
         // Held until it has moved: at a few frames per second a short tap can start and end within one frame.
         await page.keyboard.down('ArrowLeft');
@@ -222,6 +227,7 @@ async function checkNextBuild(browser) {
         assert(stillPaused.game.playTimeMs === paused.game.playTimeMs && stillPaused.game.objects === paused.game.objects,
             '/next/ pause freezes play time and spawning');
         assert(stillPaused.game.mimicX === paused.game.mimicX, '/next/ gameplay keys do nothing while paused');
+        assert((await cursor()).includes('url('), '/next/ the cursor comes back on the pause menu');
         await page.screenshot({ path: path.join(OUT_DIR, 'next-pause.png') });
 
         await page.keyboard.press('KeyM');
@@ -241,9 +247,34 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('settings'));
         assert((await snapshot()).paused.includes('game'), '/next/ Settings opens from the pause menu and Esc returns to it');
 
+        // Leaving the pause menu counts down 3-2-1 over the still-paused run (on by default in Settings);
+        // P during the count goes back to the pause menu.
         await page.keyboard.press('Escape');
-        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && s.game.playTimeMs > paused.game.playTimeMs);
-        assert(true, '/next/ Esc resumes the run');
+        await waitForSnapshot((s) => s.running.includes('countdown') && s.paused.includes('game') && !s.running.includes('pause'));
+        await page.keyboard.press('KeyP');
+        await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('countdown') && s.paused.includes('game'));
+        assert(true, '/next/ leaving the pause menu counts down first, and P during it goes back to the menu');
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown') && s.game.playTimeMs > paused.game.playTimeMs);
+        assert(true, '/next/ Esc resumes the run after the countdown');
+
+        // Switching tab mid-run loses focus and hides the page in the same moment; it opens the pause menu
+        // once, and nothing of it (the blur) stays after resuming.
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+            window.dispatchEvent(new Event('blur'));
+            document.dispatchEvent(new Event('visibilitychange'));
+        });
+        await page.evaluate(() => {
+            Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+            document.dispatchEvent(new Event('visibilitychange'));
+            window.dispatchEvent(new Event('focus'));
+        });
+        await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game'));
+        assert((await snapshot()).game.cameraFilters === 1, '/next/ switching tab mid-run pauses the game (blurred once)');
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown'));
+        assert((await snapshot()).game.cameraFilters === 0, '/next/ resuming after switching tab leaves no blur behind');
 
         // Abilities, unlocked through the debug shortcuts, with the normal spawns off so only the test's objects fall.
         const debug = (name, ...args) => page.evaluate(([fn, list]) => window.__mimicFeeder.debug[fn](...list), [name, args]);
@@ -496,6 +527,24 @@ async function checkNextBuild(browser) {
         assert(erased.save.name === 'Mimic' && !erased.save.named && erased.save.runs === 0 && erased.save.settings.musicVolume === 1
             && erased.save.achievements.length === 0,
             '/next/ Erase save data asks first, then clears everything');
+
+        // A practice run (?test&floor=N, a testing aid) starts on that floor with a steady player's progress,
+        // and leaves the save alone.
+        await page.goto(BASE + '/next/?test&floor=7', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 20000 });
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Enter');
+        const practice = await waitForSnapshot((s) => s.running.includes('game') && s.game && s.game.playTimeMs > 0);
+        assert(practice.game.floor === 7 && practice.game.zone === 1 && practice.game.abilities.length === 4 && practice.game.level >= 5
+            && practice.game.score > 0 && practice.game.lives === practice.game.maxLives && practice.game.maxLives > 3,
+            '/next/ ?floor=7 starts a practice run on Floor 7 with a steady player\'s level, abilities, hearts and score');
+        await page.evaluate(() => window.__mimicFeeder.debug.die());
+        // The game-over hold is 1.8 s of game time, and for its first 120 frames after loading Phaser steps
+        // the game at most 1/60 s a frame: at CI's few frames a second, that's well over the usual 30 s.
+        const practiceOver = await waitForSnapshot((s) => s.running.includes('results'), 180000);
+        assert(practiceOver.save.runs === 0 && practiceOver.save.scores.length === 0 && practiceOver.save.achievements.length === 0
+            && practiceOver.save.discoveries.length === 0 && practiceOver.results.rank === null,
+            '/next/ a practice run leaves the save alone');
 
         if (cspViolations.length) {
             console.error('/next/ CSP violations:', cspViolations);

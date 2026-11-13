@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { ANIMATIONS, MUSIC, backgroundKey, firstFrame, floorBackground } from '../assets';
+import { ANIMATIONS, MUSIC, backgroundKey, firstFrame, floorBackground, shownBackgroundIndex } from '../assets';
 import { MusicPlayer, playSound } from '../audio';
 import { DESIGN_HEIGHT, DESIGN_WIDTH, GROUND_Y, RUN_SCALE, SIZE_SCALE } from '../config';
 import { Boss } from '../game/Boss';
@@ -8,6 +8,7 @@ import { Judgment } from '../game/Judgment';
 import { Mimic } from '../game/Mimic';
 import { ShadowBolts } from '../game/ShadowBolts';
 import { Tentacles } from '../game/Tentacles';
+import { Ambience } from '../game/ambience';
 import { GLOW_COLOURS, boltHit, explode, pointsPopup, shake, spawnGlow, splat } from '../game/effects';
 import { ABILITIES, Cooldowns, DoubleTap, nearestTargets, type Ability } from '../rules/abilities';
 import { BOSS } from '../rules/boss';
@@ -26,7 +27,8 @@ import { addTotals, bestsBeaten, bestsWith, recordRun } from '../rules/save';
 import { GUIDE_ENTRIES, type GuideKey } from '../rules/guide';
 import { TIER_POINTS, newlyEarned, withUnlocked } from '../rules/achievements';
 import { markDiscovered, markIntroduced, wasIntroduced } from '../session';
-import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
+import { DEBUG_MODE, PRACTICE_FLOOR, markReady, setDebugApi, setGameView } from '../testHook';
+import { showCursor } from '../ui/cursor';
 import { onKeyDown } from '../ui/keys';
 import { COLOURS, MOTION } from '../theme';
 import type { HudScene } from './HudScene';
@@ -61,7 +63,7 @@ export interface BossHealth {
     readonly max: number;
 }
 
-const DEPTH = { background: -10, ground: -9, shade: -6, apparition: -5, glow: -1, objects: 0, boss: 0.25, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
+const DEPTH = { background: -10, ground: -9, ambience: -8, shade: -6, apparition: -5, glow: -1, objects: 0, boss: 0.25, chains: 0.5, mimic: 1, bolts: 1.5, effects: 2, popups: 3 } as const;
 /** Dash distance from the p5 game (100 px), across the wider screen. */
 const DASH_DISTANCE = 100 * RUN_SCALE;
 /** Magnetised objects fly at the mimic at 5× their fall speed. */
@@ -105,6 +107,7 @@ export class GameScene extends Phaser.Scene {
     private objects!: Phaser.Physics.Arcade.Group;
     private bolts!: ShadowBolts;
     private tentacles!: Tentacles;
+    private ambience!: Ambience;
     private boss: Boss | null = null;
     private bossFireballs!: Phaser.Physics.Arcade.Group;
     /** Normal music waits while the boss's death cue plays. */
@@ -161,6 +164,10 @@ export class GameScene extends Phaser.Scene {
      * with its date and adds its points; `announce` shows it on the HUD.
      */
     private checkAchievements(announce: boolean): void {
+        // Practice runs leave the save alone.
+        if (PRACTICE_FLOOR !== null) {
+            return;
+        }
         const save = profile();
         const run = this.run.record();
         const earned = newlyEarned(save.achievements, addTotals(save.totals, run.totals), bestsWith(save.bests, run));
@@ -210,7 +217,8 @@ export class GameScene extends Phaser.Scene {
         const before = profile();
         const record = this.run.record();
         let rank: number | null = null;
-        if (!this.recorded) {
+        const practice = PRACTICE_FLOOR !== null;
+        if (!this.recorded && !practice) {
             this.recorded = true;
             const result = recordRun(before, record, gameOver, date);
             updateProfile(() => result.save);
@@ -219,15 +227,16 @@ export class GameScene extends Phaser.Scene {
         return {
             ...this.run.summary(),
             rank,
-            newBest: this.run.score > 0 && this.run.score > before.bests.score,
-            bestBefore: before.bests.score,
+            newBest: !practice && this.run.score > 0 && this.run.score > before.bests.score,
+            bestBefore: practice ? 0 : before.bests.score,
             date,
             totals: record.totals,
             detonated: { ...this.run.detonated },
             size: this.run.growth.size,
-            bestsBeaten: bestsBeaten(before.bests, before.totals.runs, record),
+            bestsBeaten: practice ? [] : bestsBeaten(before.bests, before.totals.runs, record),
             achievements: [...this.unlockedThisRun],
             discoveries: [...this.metThisRun],
+            practice,
         };
     }
 
@@ -247,7 +256,7 @@ export class GameScene extends Phaser.Scene {
 
     /** Records meeting something; creatures, items and the boss met for the first time are a highlight of the results. */
     private meet(key: string): void {
-        if (markDiscovered(key) && GUIDE_ENTRIES.some((entry) => entry.key === key)) {
+        if (PRACTICE_FLOOR === null && markDiscovered(key) && GUIDE_ENTRIES.some((entry) => entry.key === key)) {
             this.metThisRun.push(key as GuideKey);
         }
     }
@@ -277,6 +286,10 @@ export class GameScene extends Phaser.Scene {
     create(): void {
         // The scene object is reused on restart, so reset everything here.
         this.run = new Run();
+        // A practice run (?test&floor=N) starts deeper, with a steady player's progress.
+        if (PRACTICE_FLOOR !== null) {
+            this.run.startOn(PRACTICE_FLOOR);
+        }
         this.history = new SpawnHistory(SPAWNING.recentPositions);
         this.cooldowns = new Cooldowns();
         this.doubleTap = new DoubleTap();
@@ -287,7 +300,7 @@ export class GameScene extends Phaser.Scene {
         this.achievementCheckMs = 0;
         this.unlockedThisRun = [];
         this.metThisRun = [];
-        this.bestToBeat = profile().bests.score;
+        this.bestToBeat = PRACTICE_FLOOR === null ? profile().bests.score : 0;
         this.bestAnnounced = false;
         this.pauseBlur = null;
         this.pendingCards = [];
@@ -304,6 +317,7 @@ export class GameScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, DESIGN_WIDTH, GROUND_Y);
         this.addBackground();
         this.mimic = new Mimic(this, DESIGN_WIDTH / 2);
+        this.mimic.applyGrowth(this.run.growth);
         this.mimic.sprite.setDepth(DEPTH.mimic);
         this.objects = this.physics.add.group();
         // Grabbed objects belong to the tentacles until they reach the mouth; rescued cats are leaving.
@@ -324,9 +338,18 @@ export class GameScene extends Phaser.Scene {
         const onDeferredLoaded = (key: string): void => this.onDeferredLoaded(key);
         this.game.events.on(GAME_EVENTS.deferredLoaded, onDeferredLoaded);
         this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
+        // Auto-pause: losing focus (another tab, another window) mid-run opens the pause menu.
+        const onFocusLost = (): void => this.openOverlay('pause');
+        this.game.events.on(Phaser.Core.Events.BLUR, onFocusLost);
+        this.game.events.on(Phaser.Core.Events.HIDDEN, onFocusLost);
+        // No cursor during play; the menu one comes back whenever play stops.
+        showCursor(this, false);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             this.game.events.off(GAME_EVENTS.deferredLoaded, onDeferredLoaded);
             this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
+            this.game.events.off(Phaser.Core.Events.BLUR, onFocusLost);
+            this.game.events.off(Phaser.Core.Events.HIDDEN, onFocusLost);
+            showCursor(this, true);
             setGameView(null);
             setDebugApi(null);
         });
@@ -380,6 +403,7 @@ export class GameScene extends Phaser.Scene {
                 .filter((object) => isEdible(object.kind) && object.landedAt === null)
                 .map((object) => ({ x: Math.round(object.x), y: Math.round(object.y) }))
                 .sort((a, b) => b.y - a.y),
+            cameraFilters: this.cameras.main.filters.external.list.length,
         }));
 
         this.scene.launch('hud');
@@ -452,9 +476,11 @@ export class GameScene extends Phaser.Scene {
 
         // New abilities are introduced at the end of the frame, with the game paused,
         // except from a boss's defeat until the next floor is under way.
-        if (this.pendingCards.length > 0 && !this.ending && this.cardsCanOpen()) {
+        if (this.pendingCards.length > 0 && this.canOpenOverlay() && this.cardsCanOpen()) {
             const abilities = this.pendingCards.splice(0);
-            abilities.forEach(markIntroduced);
+            if (PRACTICE_FLOOR === null) {
+                abilities.forEach(markIntroduced);
+            }
             this.openOverlay('unlock', { abilities });
         }
     }
@@ -1096,6 +1122,7 @@ export class GameScene extends Phaser.Scene {
             .setOrigin(0.5, 1)
             .setDepth(DEPTH.background);
         this.backgrounds = [make(), make().setVisible(false)];
+        this.ambience = new Ambience(this, DEPTH.ambience);
         this.showFloorBackground(true);
 
         // A soft shadow along the floor, so things land on something.
@@ -1105,6 +1132,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     private showFloorBackground(instant: boolean): void {
+        // The air follows the floor; its lights follow the background actually showing.
+        this.ambience.setFloor(this.run.floor, shownBackgroundIndex(this.textures, this.run.floor));
         const key = floorBackground(this.textures, this.run.floor);
         if (key === this.shownBackground) {
             return;
@@ -1143,25 +1172,67 @@ export class GameScene extends Phaser.Scene {
         this.scene.resume('hud');
     }
 
-    /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card, How to Play, achievements); resumePlay undoes it. */
-    private openOverlay(key: 'pause' | 'unlock' | 'howToPlay' | 'achievements', data: object = {}): void {
-        if (this.ending || !this.scene.isActive()) {
+    /**
+     * Leaving the pause menu, or How to Play or Achievements opened mid-run:
+     * with the resume countdown on (Settings), a 3-2-1 over the unblurred run
+     * first; otherwise straight back to play.
+     */
+    returnToPlay(): void {
+        if (!profile().settings.resumeCountdown) {
+            this.resumePlay();
             return;
         }
-        this.pauseBlur = this.cameras.main.filters.external.addBlur(1, 2, 2, 1);
-        this.sound.pauseAll();
-        this.scene.pause();
-        this.scene.pause('hud');
-        // Always some data: launched without any, Phaser hands the scene its previous launch's data.
-        this.scene.launch(key, data);
+        this.removePauseBlur();
+        this.scene.launch('countdown');
     }
 
-    private onResume(): void {
+    /** The countdown was cut short (P, Esc, or losing focus): back to the pause menu. */
+    reopenPause(): void {
+        this.addPauseBlur();
+        this.scene.launch('pause', {});
+    }
+
+    /** The playfield's blur under an overlay (once, however often it's asked for). */
+    private addPauseBlur(): void {
+        this.pauseBlur ??= this.cameras.main.filters.external.addBlur(1, 2, 2, 1);
+    }
+
+    private removePauseBlur(): void {
         if (this.pauseBlur) {
             this.cameras.main.filters.external.remove(this.pauseBlur);
             this.pauseBlur = null;
         }
+    }
+
+    /** Freezes and blurs the game and HUD under an overlay scene (pause menu, new-ability card, How to Play, achievements); resumePlay undoes it. */
+    private openOverlay(key: 'pause' | 'unlock' | 'howToPlay' | 'achievements', data: object = {}): void {
+        if (!this.canOpenOverlay()) {
+            return;
+        }
+        this.addPauseBlur();
+        this.sound.pauseAll();
+        this.scene.pause();
+        this.scene.pause('hud');
+        showCursor(this, true);
+        // Always some data: launched without any, Phaser hands the scene its previous launch's data.
+        this.scene.launch(key, data);
+    }
+
+    /**
+     * An overlay can open: the run is in play and none has opened yet. Phaser
+     * pauses a scene at the start of the next frame, so until then it still
+     * counts as active; the blur marks an overlay already on its way (losing
+     * focus fires both BLUR and HIDDEN, and a second blur would stay after
+     * resuming).
+     */
+    private canOpenOverlay(): boolean {
+        return !this.ending && this.scene.isActive() && this.pauseBlur === null;
+    }
+
+    private onResume(): void {
+        this.removePauseBlur();
         this.sound.resumeAll();
+        showCursor(this, false);
     }
 
     /** The last life is gone: freeze, blur, then show the results. */
@@ -1170,6 +1241,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         this.ending = true;
+        showCursor(this, true);
         // Anything earned with the last life still counts (and its points reach the score).
         this.checkAchievements(false);
         // Saved at once, so closing the tab during the results loses nothing.

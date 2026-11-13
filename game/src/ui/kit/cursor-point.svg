@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Over something clickable: the arrow, brighter, with a glint by its tip (hotspot 3,2). -->
+  <path d="M3 2 L3 25 L9.5 19 L13.5 28.5 L17.5 26.8 L13.6 17.6 L22.5 17.6 Z" fill="#ffd98a" stroke="#1a120b" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M5.5 7 L5.5 19.5" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M25 3 L26.2 6.3 L29.5 7.5 L26.2 8.7 L25 12 L23.8 8.7 L20.5 7.5 L23.8 6.3 Z" fill="#fff0c4" stroke="#1a120b" stroke-width="1" stroke-linejoin="round"/>
+</svg>

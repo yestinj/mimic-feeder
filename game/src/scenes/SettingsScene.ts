@@ -41,6 +41,7 @@ export class SettingsScene extends Phaser.Scene {
     private fullscreen!: ToggleRow;
     private shake!: ToggleRow;
     private motion!: ToggleRow;
+    private countdown!: ToggleRow;
     private nameRow!: TextRow;
     private hint!: Phaser.GameObjects.Text;
 
@@ -144,13 +145,17 @@ export class SettingsScene extends Phaser.Scene {
             this.notify(s.settingsReset);
         });
         const erase = new ActionRow(this, RIGHT_X, PANEL_TOP + 314, ROW_WIDTH, s.eraseSave, () => this.confirmErase(erase), { danger: true });
-        addText(this, RIGHT_X, PANEL_TOP + PANEL_HEIGHT - 56, s.autosave, TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
-        return [this.nameRow, reset, erase];
+
+        this.addHeading(RIGHT_X, PANEL_TOP + 390, s.play);
+        const onOff = { on: s.on, off: s.off };
+        this.countdown = new ToggleRow(this, RIGHT_X, PANEL_TOP + 452, ROW_WIDTH, s.resumeCountdown, profile().settings.resumeCountdown, onOff, (on) => this.changeSettings({ resumeCountdown: on }));
+        addText(this, RIGHT_X, PANEL_TOP + PANEL_HEIGHT - 40, s.autosave, TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
+        return [this.nameRow, reset, erase, this.countdown];
     }
 
-    /** Confirmations appear in the empty space under the Data rows, clear of the Back button. */
+    /** Confirmations appear in the space under the Play row, clear of the Back button. */
     private notify(message: string): void {
-        showToast(this, message, { x: RIGHT_X, y: PANEL_TOP + 440 });
+        showToast(this, message, { x: RIGHT_X, y: PANEL_TOP + 516 });
     }
 
     private changeSettings(change: Partial<Settings>): void {
@@ -165,6 +170,7 @@ export class SettingsScene extends Phaser.Scene {
         this.effects.setValue(save.settings.effectsVolume);
         this.shake.setValue(save.settings.screenShake);
         this.motion.setValue(save.settings.reducedMotion);
+        this.countdown.setValue(save.settings.resumeCountdown);
         this.nameRow.field.setValue(save.named ? save.name : '');
     }
 

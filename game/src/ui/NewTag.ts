@@ -18,11 +18,15 @@ export function addTag(scene: Phaser.Scene, x: number, y: number, text: string):
 
 /**
  * A "New" tag centred on (x, y), for something earned or met since the
- * player last looked (achievements, How to Play's creatures and items). It
- * pulses gently, unless motion is reduced; the pulse stops with the tag.
+ * player last looked (achievements, How to Play's creatures and items).
  */
 export function addNewTag(scene: Phaser.Scene, x: number, y: number): Phaser.GameObjects.Container {
-    const tag = addTag(scene, x, y, STRINGS.newTag);
+    return addPulsingTag(scene, x, y, STRINGS.newTag);
+}
+
+/** A tag that pulses gently, unless motion is reduced; the pulse stops with the tag. */
+export function addPulsingTag(scene: Phaser.Scene, x: number, y: number, text: string): Phaser.GameObjects.Container {
+    const tag = addTag(scene, x, y, text);
     if (!prefersReducedMotion()) {
         const pulse = scene.tweens.add({ targets: tag, scale: 1.08, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
         tag.once(Phaser.GameObjects.Events.DESTROY, () => pulse.remove());

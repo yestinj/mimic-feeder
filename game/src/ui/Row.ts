@@ -7,6 +7,7 @@ import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import type { Focusable } from './Menu';
 import { TextField, type TextFieldOptions } from './TextField';
 import { addText } from './text';
+import { POINTER_CURSOR } from './cursor';
 
 export const ROW_HEIGHT = 60;
 const INSET = 20;
@@ -29,7 +30,7 @@ abstract class Row extends Phaser.GameObjects.Container implements Focusable {
         this.label = addText(scene, -rowWidth / 2 + INSET, 0, text, TYPE.body, { bold: true }).setOrigin(0, 0.5);
         this.add([this.highlight, this.label]);
         this.setSize(rowWidth, ROW_HEIGHT);
-        this.setInteractive({ useHandCursor: true });
+        this.setInteractive({ cursor: POINTER_CURSOR });
         this.on(Phaser.Input.Events.POINTER_OVER, () => this.onHover?.());
         scene.add.existing(this);
         this.paintRow();

@@ -46,7 +46,7 @@ export function closeScreen(scene: Phaser.Scene, data: ScreenData): void {
     scene.cameras.main.fadeOut(MOTION.fast, 0, 0, 0);
     scene.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
         if (data.from === 'game') {
-            (scene.scene.get('game') as GameScene).resumePlay();
+            (scene.scene.get('game') as GameScene).returnToPlay();
         } else {
             scene.scene.wake(data.from);
         }

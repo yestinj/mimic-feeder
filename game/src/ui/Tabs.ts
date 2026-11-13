@@ -4,6 +4,7 @@ import { DESIGN_WIDTH } from '../config';
 import { COLOURS, MOTION, TEXT_COLOURS, TYPE } from '../theme';
 import { onKeyDown } from './keys';
 import { addText } from './text';
+import { POINTER_CURSOR } from './cursor';
 
 /** Anything that can be dimmed: an image, a container. */
 export interface TabIcon {
@@ -53,7 +54,7 @@ export class Tabs {
             this.labels.push(label);
             this.dots.push(spec.dot ? scene.add.circle(label.x + label.width + 12, y - 14, 7, COLOURS.goldBright).setStrokeStyle(2, COLOURS.ink, 0.9) : null);
             scene.add.zone(centre, y, tabWidth, 60)
-                .setInteractive({ useHandCursor: true })
+                .setInteractive({ cursor: POINTER_CURSOR })
                 .on(Phaser.Input.Events.POINTER_UP, () => this.show(i));
         });
         scene.add.rectangle(this.left, y + 34, specs.length * tabWidth, 2, COLOURS.goldDim, 0.5).setOrigin(0, 0.5);

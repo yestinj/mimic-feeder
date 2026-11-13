@@ -25,6 +25,8 @@ export interface Settings {
     readonly muted: boolean;
     readonly screenShake: boolean;
     readonly reducedMotion: boolean;
+    /** A 3-2-1 before play carries on after the pause menu, or How to Play or Achievements opened mid-run. */
+    readonly resumeCountdown: boolean;
 }
 
 export interface HighScore {
@@ -88,11 +90,13 @@ export interface SaveData {
     readonly discoveriesSeen: readonly string[];
     /** Abilities whose new-ability card has been shown. */
     readonly introduced: readonly Ability[];
+    /** How to Play has been opened at least once (the title stops pointing at it). */
+    readonly howToPlayOpened: boolean;
 }
 
 /** Settings start from the system: reduced motion on, and screen shake off, when it asks for less motion. */
 export function defaultSettings(systemPrefersReducedMotion: boolean): Settings {
-    return { musicVolume: 1, effectsVolume: 1, muted: false, screenShake: !systemPrefersReducedMotion, reducedMotion: systemPrefersReducedMotion };
+    return { musicVolume: 1, effectsVolume: 1, muted: false, screenShake: !systemPrefersReducedMotion, reducedMotion: systemPrefersReducedMotion, resumeCountdown: true };
 }
 
 function zeroCounts<K extends string>(keys: readonly K[]): Record<K, number> {
@@ -134,6 +138,7 @@ export function defaultSave(systemPrefersReducedMotion: boolean): SaveData {
         discoveries: [],
         discoveriesSeen: [],
         introduced: [],
+        howToPlayOpened: false,
     };
 }
 
@@ -190,6 +195,7 @@ function readSettings(value: unknown, defaults: Settings): Settings {
         muted: boolean(source.muted, defaults.muted),
         screenShake: boolean(source.screenShake, defaults.screenShake),
         reducedMotion: boolean(source.reducedMotion, defaults.reducedMotion),
+        resumeCountdown: boolean(source.resumeCountdown, defaults.resumeCountdown),
     };
 }
 
@@ -281,6 +287,7 @@ export function parseSave(raw: string | null, systemPrefersReducedMotion: boolea
         discoveries: readStrings(data.discoveries),
         discoveriesSeen: readStrings(data.discoveriesSeen),
         introduced: readStrings(data.introduced).filter((item): item is Ability => (ABILITIES as readonly string[]).includes(item)),
+        howToPlayOpened: data.howToPlayOpened === true,
     };
 }
 

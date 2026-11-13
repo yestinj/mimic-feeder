@@ -22,12 +22,17 @@ export function backgroundKey(index: number): string {
 
 /** A floor's background, or the closest earlier floor's while it's still loading. */
 export function floorBackground(textures: Phaser.Textures.TextureManager, floor: number): string {
+    return backgroundKey(shownBackgroundIndex(textures, floor));
+}
+
+/** Which background a floor shows (its index in FLOORS): its own, or the closest earlier one while it's still loading. */
+export function shownBackgroundIndex(textures: Phaser.Textures.TextureManager, floor: number): number {
     for (let index = floorIndex(floor); index > 0; index--) {
         if (textures.exists(backgroundKey(index))) {
-            return backgroundKey(index);
+            return index;
         }
     }
-    return backgroundKey(0);
+    return 0;
 }
 
 /** Still images for the falling objects. Animated ones are in OBJECT_ANIMATIONS. */
@@ -173,6 +178,10 @@ export const SOUNDS = {
      * quick swell and longer fade: something swooping past.
      */
     dashWhoosh: { file: 'dash_whoosh.mp3', volume: 0.35 },
+    /** The mimic's lid on the title screen: lifting (RPG Audio: bookOpen), flipping open (beltHandle1) and shutting (bookClose). */
+    lidLift: { file: 'lid_lift.mp3', volume: 0.35 },
+    lidOpen: { file: 'lid_open.mp3', volume: 0.35 },
+    lidShut: { file: 'lid_shut.mp3', volume: 0.3 },
     /** A boss arriving (Sci-Fi Sounds: lowFrequency_explosion_001). */
     bossRumble: { file: 'boss_rumble.mp3', volume: 0.6 },
 } as const;

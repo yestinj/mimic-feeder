@@ -6,7 +6,7 @@ import { floorTitle } from '../rules/floors';
 import { formatScore } from '../rules/format';
 import { GROWTH, type Run, type RunEvent } from '../rules/run';
 import { STRINGS } from '../strings';
-import { markReady } from '../testHook';
+import { PRACTICE_FLOOR, markReady } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import type { Ability } from '../rules/abilities';
 import type { Achievement } from '../rules/achievements';
@@ -176,6 +176,9 @@ export class HudScene extends Phaser.Scene {
         const label = addText(this, MARGIN, 34, 'SCORE', TYPE.tiny, { colour: TEXT_COLOURS.muted, letterSpacing: 4, bold: true });
         this.scoreText = addText(this, MARGIN, 56, '0', TYPE.title, { colour: TEXT_COLOURS.gold, bold: true });
         this.floorText = addText(this, MARGIN, 136, '', TYPE.small, { colour: TEXT_COLOURS.primary });
+        if (PRACTICE_FLOOR !== null) {
+            addText(this, MARGIN, 166, STRINGS.practice.hud, TYPE.small, { colour: TEXT_COLOURS.muted });
+        }
         this.muteIcon = this.add.image(MARGIN + 22, 196, UI.soundOff).setVisible(isMuted());
         this.blocks.push({ parts: [label, this.scoreText, this.floorText, this.muteIcon], faded: false });
     }

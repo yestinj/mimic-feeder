@@ -53,7 +53,7 @@ describe('save', () => {
         }), false);
         expect(save).not.toBeNull();
         expect(save?.name).toBe('Dr Chompers');
-        expect(save?.settings).toEqual({ musicVolume: 1, effectsVolume: 1, muted: true, screenShake: true, reducedMotion: false });
+        expect(save?.settings).toEqual({ musicVolume: 1, effectsVolume: 1, muted: true, screenShake: true, reducedMotion: false, resumeCountdown: true });
         expect(save?.highScores).toHaveLength(1);
         expect(save?.highScores[0]).toMatchObject({ name: 'A', score: 10, floor: 1, zone: 1, level: 1 });
         expect(save?.totals.runs).toBe(2);
@@ -63,6 +63,14 @@ describe('save', () => {
         expect(save?.introduced).toEqual(['shadowBolt']);
         expect(save?.achievementsSeen).toEqual(['first_blood']);
         expect(save?.discoveriesSeen).toEqual(['goblin']);
+        expect(save?.howToPlayOpened).toBe(false);
+    });
+
+    it('remembers How to Play being opened (true only)', () => {
+        const opened = (value: unknown) => parseSave(JSON.stringify({ version: SAVE_VERSION, howToPlayOpened: value }), false)?.howToPlayOpened;
+        expect(defaultSave(false).howToPlayOpened).toBe(false);
+        expect(opened(true)).toBe(true);
+        expect(opened('yes')).toBe(false);
     });
 
     it('cleans names: letters, digits and spaces, 12 at most, never empty', () => {

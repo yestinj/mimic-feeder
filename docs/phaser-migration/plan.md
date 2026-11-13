@@ -38,16 +38,17 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
   - Items: Play (selected by default), How to Play, Achievements, High Scores, Settings, Credits.
   - Shows the saved name and best score, plus one subtle hint line: "← → move · ↑ jump · Esc menu".
   - The first key press or click also unlocks audio.
-  - **It has life:** the mimic idles there, its lid creaking open now and then, with dust drifting through the torchlight.
+  - **It has life:** the mimic breathes there, and now and then lifts its lid for a peek or flips it open with a hop and a wiggle, with dust drifting through the torchlight. The lid's lift, flip and shut each have a soft sound from Kenney's RPG Audio (CC0), chosen with the owner by ear.
+  - A "New here? Start here" tag points at How to Play until it has been opened once, or three runs have been played (M4c).
 - **Pause menu** (P or Esc):
   - Items: Resume, How to Play, Achievements, Settings, Restart, Quit to menu. K stays a shortcut to Achievements, and H opens How to Play (agreed in M3c). During play both open straight over the run, and closing them goes back to play.
   - A "This run" panel shows floor and zone, time, level, and speed, size, drop-speed and spawn-rate percentages.
   - Restart and Quit ask "Abandon this run?", with Cancel selected by default.
 - **The same controls on every screen:** arrows or W/S to move, Enter to select, Esc to go back, and full mouse support. The selected item is clearly highlighted. Multi-page screens use tabs.
 - **Quick fades** between screens.
-- **Auto-pause:** losing focus (switching tabs, clicking another window) opens the pause menu.
-- **Resume countdown (experiment):** 3-2-1 after leaving pause. Easy to remove if it doesn't feel right.
-- **Cursor:** hidden during play; a themed cursor in menus.
+- **Auto-pause:** losing focus (switching tabs, clicking another window) opens the pause menu. Always on (agreed in M4c).
+- **Resume countdown (experiment):** 3-2-1 after leaving pause. Easy to remove if it doesn't feel right. Built in M4c as a Settings switch, "Countdown after pausing" (on by default, agreed in M4c): after the pause menu and after How to Play or Achievements opened mid-run, over the run unblurred; P, Esc or losing focus go back to the pause menu.
+- **Cursor:** hidden during play; a themed cursor in menus. Built in M4c: a gold arrow, and a brighter one over anything clickable.
 
 ### 3.2 HUD
 
@@ -186,6 +187,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
 - **Built in M4b:** hit-stop on losing a heart (70 ms) and on a Shadow-Bolted bomb (45 ms), skipped with reduced motion; the lid snapping shut on every bite; squash and stretch on jumping, landing and biting, with dust on landing; shake tuned per event (hazard hits heaviest, good things lightest); and the boss card, rumble and camera push (no push with reduced motion).
 - **Sounds (M4b):** UI sounds (menu moves, select, back, tabs, toggles and sliders), the results' tally ticks and score landing, "New best!" and the boss rumble come from Kenney's CC0 packs (kenney.nl), chosen with the owner by ear. Each was trimmed, peak-normalised and converted to MP3 with ffmpeg; `game/src/assets.ts` notes the pack and file for each, and Credits thanks Kenney. The dash whoosh was made for the game (swept, filtered noise), since none of the packs had a real air whoosh.
 - **Ambient effects per floor:** dust, embers, flickering torchlight using Phaser 4 lighting. Kept light, and switched off by reduced motion where it moves a lot.
+  - Built in M4c without Phaser's lights (the backgrounds have no normal maps). Each floor has its own air: dust on Floors 1-2, a few embers joining it on 3-4, pale spores on 5-6, thick embers on 7-8, violet sparks on 9-10. The light sources painted into each background (torches, lanterns, spectral glows, lava, the void) glow at their real positions, each kind flickering or pulsing at its own pace; the title shows Floor 1's. With reduced motion the particles stop and the lights hold steady.
 
 ### Later (not in this migration)
 
@@ -228,6 +230,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
   - Pause freezes the game and blocks input; auto-pause on blur.
   - Menu navigation and save/erase.
   - It drives the game through a small test hook the game exposes, instead of p5's bare globals.
+- **Practice runs (M4c), for testing by hand:** `/next/?test&floor=N` (2 to 20) starts every run on Floor N with what a steady player would have by then: the score and levels from clearing each zone before it and beating each boss, the hearts from the humans eaten, and the Staff and Magnet once their floors have passed. Nothing about them is saved (no high scores, totals, achievements, discoveries or new-ability cards), and the title, HUD and results say so.
 - **The post-deploy live check** stays; it gains a `/next/` check until the swap and then moves to the root.
 - **CI:** the "Lint, build, smoke, playtest" job keeps its name (the ruleset requires it) and runs the new steps.
 
