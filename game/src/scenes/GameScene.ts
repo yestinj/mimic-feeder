@@ -27,7 +27,7 @@ import { addTotals, bestsBeaten, bestsWith, recordRun } from '../rules/save';
 import { GUIDE_ENTRIES, type GuideKey } from '../rules/guide';
 import { TIER_POINTS, newlyEarned, withUnlocked } from '../rules/achievements';
 import { markDiscovered, markIntroduced, wasIntroduced } from '../session';
-import { DEBUG_MODE, markReady, setDebugApi, setGameView } from '../testHook';
+import { DEBUG_MODE, PRACTICE_FLOOR, markReady, setDebugApi, setGameView } from '../testHook';
 import { showCursor } from '../ui/cursor';
 import { onKeyDown } from '../ui/keys';
 import { COLOURS, MOTION } from '../theme';
@@ -164,6 +164,10 @@ export class GameScene extends Phaser.Scene {
      * with its date and adds its points; `announce` shows it on the HUD.
      */
     private checkAchievements(announce: boolean): void {
+        // Practice runs leave the save alone.
+        if (PRACTICE_FLOOR !== null) {
+            return;
+        }
         const save = profile();
         const run = this.run.record();
         const earned = newlyEarned(save.achievements, addTotals(save.totals, run.totals), bestsWith(save.bests, run));
@@ -213,7 +217,8 @@ export class GameScene extends Phaser.Scene {
         const before = profile();
         const record = this.run.record();
         let rank: number | null = null;
-        if (!this.recorded) {
+        const practice = PRACTICE_FLOOR !== null;
+        if (!this.recorded && !practice) {
             this.recorded = true;
             const result = recordRun(before, record, gameOver, date);
             updateProfile(() => result.save);
@@ -222,15 +227,16 @@ export class GameScene extends Phaser.Scene {
         return {
             ...this.run.summary(),
             rank,
-            newBest: this.run.score > 0 && this.run.score > before.bests.score,
-            bestBefore: before.bests.score,
+            newBest: !practice && this.run.score > 0 && this.run.score > before.bests.score,
+            bestBefore: practice ? 0 : before.bests.score,
             date,
             totals: record.totals,
             detonated: { ...this.run.detonated },
             size: this.run.growth.size,
-            bestsBeaten: bestsBeaten(before.bests, before.totals.runs, record),
+            bestsBeaten: practice ? [] : bestsBeaten(before.bests, before.totals.runs, record),
             achievements: [...this.unlockedThisRun],
             discoveries: [...this.metThisRun],
+            practice,
         };
     }
 
@@ -250,7 +256,7 @@ export class GameScene extends Phaser.Scene {
 
     /** Records meeting something; creatures, items and the boss met for the first time are a highlight of the results. */
     private meet(key: string): void {
-        if (markDiscovered(key) && GUIDE_ENTRIES.some((entry) => entry.key === key)) {
+        if (PRACTICE_FLOOR === null && markDiscovered(key) && GUIDE_ENTRIES.some((entry) => entry.key === key)) {
             this.metThisRun.push(key as GuideKey);
         }
     }
@@ -280,6 +286,10 @@ export class GameScene extends Phaser.Scene {
     create(): void {
         // The scene object is reused on restart, so reset everything here.
         this.run = new Run();
+        // A practice run (?test&floor=N) starts deeper, with a steady player's progress.
+        if (PRACTICE_FLOOR !== null) {
+            this.run.startOn(PRACTICE_FLOOR);
+        }
         this.history = new SpawnHistory(SPAWNING.recentPositions);
         this.cooldowns = new Cooldowns();
         this.doubleTap = new DoubleTap();
@@ -290,7 +300,7 @@ export class GameScene extends Phaser.Scene {
         this.achievementCheckMs = 0;
         this.unlockedThisRun = [];
         this.metThisRun = [];
-        this.bestToBeat = profile().bests.score;
+        this.bestToBeat = PRACTICE_FLOOR === null ? profile().bests.score : 0;
         this.bestAnnounced = false;
         this.pauseBlur = null;
         this.pendingCards = [];
@@ -307,6 +317,7 @@ export class GameScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, DESIGN_WIDTH, GROUND_Y);
         this.addBackground();
         this.mimic = new Mimic(this, DESIGN_WIDTH / 2);
+        this.mimic.applyGrowth(this.run.growth);
         this.mimic.sprite.setDepth(DEPTH.mimic);
         this.objects = this.physics.add.group();
         // Grabbed objects belong to the tentacles until they reach the mouth; rescued cats are leaving.
@@ -467,7 +478,9 @@ export class GameScene extends Phaser.Scene {
         // except from a boss's defeat until the next floor is under way.
         if (this.pendingCards.length > 0 && this.canOpenOverlay() && this.cardsCanOpen()) {
             const abilities = this.pendingCards.splice(0);
-            abilities.forEach(markIntroduced);
+            if (PRACTICE_FLOOR === null) {
+                abilities.forEach(markIntroduced);
+            }
             this.openOverlay('unlock', { abilities });
         }
     }

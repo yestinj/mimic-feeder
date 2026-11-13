@@ -528,6 +528,22 @@ async function checkNextBuild(browser) {
             && erased.save.achievements.length === 0,
             '/next/ Erase save data asks first, then clears everything');
 
+        // A practice run (?test&floor=N, a testing aid) starts on that floor with a steady player's progress,
+        // and leaves the save alone.
+        await page.goto(BASE + '/next/?test&floor=7', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 20000 });
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Enter');
+        const practice = await waitForSnapshot((s) => s.running.includes('game') && s.game && s.game.playTimeMs > 0);
+        assert(practice.game.floor === 7 && practice.game.zone === 1 && practice.game.abilities.length === 4 && practice.game.level >= 5
+            && practice.game.score > 0 && practice.game.lives === practice.game.maxLives && practice.game.maxLives > 3,
+            '/next/ ?floor=7 starts a practice run on Floor 7 with a steady player\'s level, abilities, hearts and score');
+        await page.evaluate(() => window.__mimicFeeder.debug.die());
+        const practiceOver = await waitForSnapshot((s) => s.running.includes('results'));
+        assert(practiceOver.save.runs === 0 && practiceOver.save.scores.length === 0 && practiceOver.save.achievements.length === 0
+            && practiceOver.save.discoveries.length === 0 && practiceOver.results.rank === null,
+            '/next/ a practice run leaves the save alone');
+
         if (cspViolations.length) {
             console.error('/next/ CSP violations:', cspViolations);
         }

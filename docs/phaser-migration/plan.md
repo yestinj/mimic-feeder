@@ -230,6 +230,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
   - Pause freezes the game and blocks input; auto-pause on blur.
   - Menu navigation and save/erase.
   - It drives the game through a small test hook the game exposes, instead of p5's bare globals.
+- **Practice runs (M4c), for testing by hand:** `/next/?test&floor=N` (2 to 20) starts every run on Floor N with what a steady player would have by then: the score and levels from clearing each zone before it and beating each boss, the hearts from the humans eaten, and the Staff and Magnet once their floors have passed. Nothing about them is saved (no high scores, totals, achievements, discoveries or new-ability cards), and the title, HUD and results say so.
 - **The post-deploy live check** stays; it gains a `/next/` check until the swap and then moves to the root.
 - **CI:** the "Lint, build, smoke, playtest" job keeps its name (the ruleset requires it) and runs the new steps.
 

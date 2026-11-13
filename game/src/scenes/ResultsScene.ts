@@ -43,6 +43,8 @@ export interface ResultsData extends RunSummary {
     readonly bestsBeaten: readonly BestKind[];
     readonly achievements: readonly string[];
     readonly discoveries: readonly GuideKey[];
+    /** A practice run (?test&floor=N): nothing was saved. */
+    readonly practice?: boolean;
 }
 
 const GAP = 30;
@@ -212,6 +214,9 @@ export class ResultsScene extends Phaser.Scene {
         if (results.newBest || placed) {
             this.pop([addText(this, cx, lineY, results.newBest ? text.newBest : (placed ?? ''), TYPE.body, { bold: true, colour: TEXT_COLOURS.gold }).setOrigin(0.5)], at + 950);
             lineY += 34;
+        }
+        if (results.practice) {
+            this.pop([addText(this, cx, lineY, STRINGS.practice.notSaved, TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5)], at + 950);
         }
         if (!results.newBest && results.bestBefore > 0) {
             this.pop([addText(this, cx, lineY, text.best(formatScore(results.bestBefore)), TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5)], at + 1000);

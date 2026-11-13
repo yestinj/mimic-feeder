@@ -12,6 +12,12 @@ export const STRINGS = {
     previewNotice: 'Preview of the new version. Work in progress.',
     /** Beside How to Play on the title, until it's been opened (or a few runs have been played). */
     newHere: 'New here? Start here',
+    /** Practice runs (?test&floor=N), a testing aid: never shown to players otherwise. */
+    practice: {
+        title: (floor: number) => `Practice: every run starts on Floor ${floor} and isn't saved`,
+        hud: 'Practice run',
+        notSaved: 'Practice run: not saved',
+    },
     /** The title screen's line for a returning player. */
     profileLine: (name: string, best: string | null) => (best === null ? name : `${name}   ·   Best ${best}`),
     menu: {

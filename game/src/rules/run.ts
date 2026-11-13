@@ -6,7 +6,8 @@ import { BOSS, isBossZone } from './boss';
 import { CAT_RESCUE_POINTS } from './cats';
 import { JUDGMENT } from './judgment';
 import { EDIBLE_KINDS, HAZARD_KINDS, OBJECTS, POWER_UP_KINDS, SHINY_KINDS, type CreatureKind, type EdibleKind, type HazardKind, type ObjectKind, type PowerUpKind, type ShinyKind } from './objects';
-import { pickPowerUp } from './offers';
+import { MAGNET_FROM_FLOOR, STAFF_FROM_FLOOR, pickPowerUp } from './offers';
+import { typicalProgress } from './practice';
 import { CREATURES_PER_ZONE, gameLevel, nextZone } from './progression';
 import type { RunRecord } from './save';
 import type { Rng } from './spawner';
@@ -214,6 +215,25 @@ export class Run {
             shiniesCollected: this.shiniesCollected,
             causeOfDeath: this.isOver ? this.lastLoss : null,
         };
+    }
+
+    /**
+     * Moves a new run on to the start of `floor` with a steady player's
+     * progress (practice runs): their score and the levels it brings, the
+     * hearts from the humans eaten (all full), and the Staff and Magnet once
+     * their floors have passed. Nothing is counted as eaten or beaten.
+     */
+    startOn(floor: number): void {
+        const { points, humans } = typicalProgress(floor);
+        this.floor = floor;
+        this.zone = 1;
+        this.gain(points);
+        this.maxLives = START_LIVES + Math.floor(humans / HUMANS_PER_EXTRA_LIFE);
+        this.lives = this.maxLives;
+        this.hasStaff = floor > STAFF_FROM_FLOOR;
+        this.hasMagnet = floor > MAGNET_FROM_FLOOR;
+        // The last potion fell on the way here, not owed straight away.
+        this.lastPotionLevel = this.gameLevel;
     }
 
     /** Active play time. Call only while the run is being played (not paused, not over). */
