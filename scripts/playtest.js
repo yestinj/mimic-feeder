@@ -539,7 +539,9 @@ async function checkNextBuild(browser) {
             && practice.game.score > 0 && practice.game.lives === practice.game.maxLives && practice.game.maxLives > 3,
             '/next/ ?floor=7 starts a practice run on Floor 7 with a steady player\'s level, abilities, hearts and score');
         await page.evaluate(() => window.__mimicFeeder.debug.die());
-        const practiceOver = await waitForSnapshot((s) => s.running.includes('results'));
+        // The game-over hold is 1.8 s of game time, and for its first 120 frames after loading Phaser steps
+        // the game at most 1/60 s a frame: at CI's few frames a second, that's well over the usual 30 s.
+        const practiceOver = await waitForSnapshot((s) => s.running.includes('results'), 180000);
         assert(practiceOver.save.runs === 0 && practiceOver.save.scores.length === 0 && practiceOver.save.achievements.length === 0
             && practiceOver.save.discoveries.length === 0 && practiceOver.results.rank === null,
             '/next/ a practice run leaves the save alone');
