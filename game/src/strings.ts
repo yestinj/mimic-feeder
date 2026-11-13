@@ -266,12 +266,12 @@ export const STRINGS = {
         hint: '← → change tab   ·   Esc back',
         back: 'Back',
         basics: [
-            { title: 'Eat from above', text: 'Creatures fall from the top of the dungeon. Catch them in your open mouth: stand beneath them, or jump to meet them.' },
-            { title: 'Waste nothing', text: 'A creature that hits the floor, or bumps into your side, costs you a heart. Lose them all and the run is over.' },
-            { title: 'Treasure', text: 'Crowns and diamonds are worth more than any creature. Any touch takes them, and nothing is lost if they shatter.' },
-            { title: 'Hazards', text: 'Bombs, and later worse, cost a heart if they touch you. Dodge them, or find a way to blast them first.' },
-            { title: 'Grow stronger', text: 'Everything you eat or collect brings experience. Level up to grow bigger and faster and to gain new powers. Potions restore a heart.' },
-            { title: 'Go deeper', text: 'Clear each zone by eating, then go deeper. The dungeon gets faster, and stranger, the further down you go.' },
+            { title: 'Feed the mimic', text: 'Creatures fall from above. Catch them in your open mouth: get underneath, or jump to meet them.' },
+            { title: 'Waste nothing', text: 'Let a creature hit the floor or smash against your side, and it costs a heart. Run out of hearts and it’s over.' },
+            { title: 'Hoard the shinies', text: 'Shiny things fall too. Grab what you can, and don’t worry about the ones you can’t.' },
+            { title: 'Not food', text: 'Not everything that falls is food. Bombs cost a heart if they touch you.' },
+            { title: 'Grow stronger', text: 'Feed well and you’ll grow: bigger and faster with every level.' },
+            { title: 'Go deeper', text: 'Eat your fill to clear each zone and head deeper. The deeper you go, the faster it gets.' },
         ],
         controls: {
             moving: 'Moving',
