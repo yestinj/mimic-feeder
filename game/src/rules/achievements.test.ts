@@ -72,7 +72,7 @@ describe('achievements', () => {
     });
 
     it('measures milestones on a single run, through the bests', () => {
-        const bests = bestsWith(noBests, { score: 5200, floor: 3, zone: 1, level: 8, playTimeMs: 200_000, totals: emptyTotals() });
+        const bests = bestsWith(noBests, { score: 3000, floor: 3, zone: 1, level: 5, playTimeMs: 200_000, totals: emptyTotals() });
         expect(ids(newlyEarned({}, emptyTotals(), bests))).toEqual(['dungeon_explorer', 'survivor', 'high_score', 'level_up']);
     });
 

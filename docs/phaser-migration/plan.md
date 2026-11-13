@@ -47,7 +47,7 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
 - **The same controls on every screen:** arrows or W/S to move, Enter to select, Esc to go back, and full mouse support. The selected item is clearly highlighted. Multi-page screens use tabs.
 - **Quick fades** between screens.
 - **Auto-pause:** losing focus (switching tabs, clicking another window) opens the pause menu. Always on (agreed in M4c).
-- **Resume countdown (experiment):** 3-2-1 after leaving pause. Easy to remove if it doesn't feel right. Built in M4c as a Settings switch, "Countdown after pausing" (on by default, agreed in M4c): after the pause menu and after How to Play or Achievements opened mid-run, over the run unblurred; P, Esc or losing focus go back to the pause menu.
+- **Resume countdown:** 3-2-1 after leaving pause. Built in M4c as a Settings switch, "Countdown after pausing": after the pause menu and after How to Play or Achievements opened mid-run, over the run unblurred; P, Esc or losing focus go back to the pause menu. Tried in M4c, then kept but off by default (M4d).
 - **Cursor:** hidden during play; a themed cursor in menus. Built in M4c: a gold arrow, and a brighter one over anything clickable.
 
 ### 3.2 HUD
@@ -105,15 +105,13 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
 - **The moment:** gameplay slows and blurs, "Game Over" appears with the existing sound. About 1.5 s, skippable.
 - **Results** tell the story of the run:
   - **Backdrop:** the floor where the run ended, blurred. Header: "Your run ended on Floor 4: Buried Crypts".
-  - **Cause of death:** from new tracking of what cost the last life. Draft lines:
+  - **Cause of death:** from new tracking of what cost the last life (kept as they were in the M4d text review):
     - "Let a perfectly good goblin go to waste"
     - "Blown apart by a bomb"
     - "Scorched by a falling fireball"
     - "Burned by the Flying Demon"
     - "Judged by the dungeon" (only possible once the player has seen the Judgment)
-
-    Final wording gets reviewed with the owner.
-  - **The tally, in stages with soft ticks:** "The mimic devoured…" (creature icons and counts), shinies, hazards detonated, bosses. Then the final score lands with a rank ribbon ("New best!", "#3 on the board").
+  - **The tally, in stages with soft ticks:** "The mimic devoured…" (creature icons and counts), shinies, hazards detonated, bosses. Then the final score lands with a rank ribbon ("New best!", "3rd on the high scores").
   - **The mimic's growth:** its final size next to its starting size, plus level and time played.
   - **Highlights:** personal bests broken, achievements unlocked this run, new discoveries.
   - Any key skips the animation. Buttons: Play again (default), High Scores, Menu.
@@ -127,16 +125,16 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
 - **Screen:** a grid of medal cards by tier. Each medal shows what it's for (the game's own sprite where there is one), in its tier's metal once earned and dark iron before, with the score it's worth in a tag. The header shows how many are unlocked, the points they've earned and a bar for the whole set. Unlocked cards show the date; locked ones sink back.
 - **Progress** is shown on locked measurable achievements, as a bar and a count ("6 / 10").
 - **Grind achievements count across all runs:** bolts, dashes, Tentacle uses, hazards detonated, cats rescued, dragons eaten, bosses, total collected, and similar. Milestones (floor, score, level, time survived) stay per run.
-- **Secret achievements** show as "???", with a cryptic hint, until earned. Five new ones, on their own tab (agreed in M3b; names and hints are drafts for the M4 text review):
+- **Secret achievements** show as "???", with a cryptic hint, until earned. Five new ones, on their own tab (agreed in M3b; names and hints settled in the M4d text review):
   - Judged and Spared (gold): survive the Ninefold Judgment.
   - Flawless Hunt (gold): defeat a boss without losing a heart during the fight.
   - Hanging by a Thread (silver): reach a new floor with one heart left.
   - Hot Snack (bronze): pull a bomb into the mouth with Magnetism.
   - Feline Felon (bronze): bring the Ninefold Judgment on yourself.
-- **Tabs:** Bronze, Silver and Gold (the p5 game's Early, Mid and Late tiers), and Secret. The thresholds stay as they were, so the grind ones come sooner now that they count across runs. The screen opens from the title and pause menus, and with K straight over the run (closing it goes back to play).
+- **Tabs:** Bronze, Silver and Gold (the p5 game's Early, Mid and Late tiers), and Secret. The grind ones come sooner now that they count across runs. The screen opens from the title and pause menus, and with K straight over the run (closing it goes back to play).
 - **The score reward stays** (+25, +50 or +100).
 - **Unlocking:** a notice with the medal, its name and points. Anything unlocked since the screen was last opened is marked "New" there, with a dot on its tab, and the screen opens on the first tab with something new. A save that has already earned achievements it doesn't have (from runs played before they existed, or after a goal is lowered) unlocks them quietly when it loads, without notices or points.
-- **Left for M4:** tune the grind goals once they've been played across runs, and show what was unlocked in the run on the results screen.
+- **Goals tuned in M4d** against what a steady run earns (each level needs twice the experience of the last, so levels nearly stop after about Floor 7): Veteran Level 5 (was 8), Apex Mimic Level 6 (was 12), Score Chaser 2,500 (was 5,000), Score Legend 5,000 (was 20,000, and renamed from Legend Score), Long Haul 15 minutes (was 30), Iron Stomach 2,500 things (was 300), Boss Slayer 10 bosses (was 3), Tentacle Tactician 30 uses (was 50), Tentacle Overlord 100 (was 150). The results screen shows what was unlocked in the run (M4a).
 
 ### 3.7 Settings
 
@@ -192,7 +190,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
 ### Later (not in this migration)
 
 - New 16:9 backgrounds, character sprites, and possibly the animated mimic sets in `src/assets/_unused/mimic/`.
-- Balance tuning, such as the mimic growing 5% per level without limit.
+- Balance tuning after the swap: experience and levelling (each level needs twice the experience of the last, so levels nearly stop after about Floor 7), and the mimic growing 5% per level without limit. The level and score achievements were tuned to the current curve in M4d and would need another look with it.
 - Gamepad support.
 
 ## 4. Technical approach
@@ -251,5 +249,4 @@ The p5 game stays live and unchanged until M5. `AGENTS.md` gets a short note abo
 
 ## 6. Open items
 
-- **Final wording** for cause-of-death lines, banners, cards and secret achievements: reviewed with the owner in M4.
-- **The resume countdown:** kept or removed after trying it in M4.
+None right now.

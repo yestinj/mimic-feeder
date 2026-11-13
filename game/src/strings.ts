@@ -1,6 +1,13 @@
 // Every piece of player-facing text lives here, so wording can be reviewed and
 // changed in one place.
 
+/** 1st, 2nd, 3rd, 4th… 11th, 12th, 13th… 21st. */
+function ordinal(n: number): string {
+    const tens = n % 100;
+    const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+    return `${n}${suffix}`;
+}
+
 export const STRINGS = {
     gameTitle: 'Mimic Feeder',
     tagline: 'Feed the mimic. Hoard the shinies. Mind the bombs.',
@@ -8,13 +15,13 @@ export const STRINGS = {
     newTag: 'New',
     loading: 'Waking the mimic…',
     pressToContinue: 'Press any key',
-    keyHints: '← → move   ·   ↑ jump   ·   Esc menu',
+    keyHints: '← → move   ·   ↑ jump   ·   Esc pause',
     previewNotice: 'Preview of the new version. Work in progress.',
     /** Beside How to Play on the title, until it's been opened (or a few runs have been played). */
-    newHere: 'New here? Start here',
+    newHere: 'First time? Start here',
     /** Practice runs (?test&floor=N), a testing aid: never shown to players otherwise. */
     practice: {
-        title: (floor: number) => `Practice: every run starts on Floor ${floor} and isn't saved`,
+        title: (floor: number) => `Practice: every run starts on Floor ${floor} and isn’t saved`,
         hud: 'Practice run',
         notSaved: 'Practice run: not saved',
     },
@@ -37,14 +44,15 @@ export const STRINGS = {
         levelUpDetail: (speed: number, size: number) => `Speed +${speed}%   \u00b7   Size +${size}%`,
         newBest: 'New best!',
         newBestDetail: (best: string) => `Past your best of ${best}`,
-        extraLife: 'Extra life!',
-        extraLifeDetail: 'One more heart',
+        extraLife: 'Extra heart!',
+        /** Every 50 humans eaten bring a heart: the total so far. */
+        extraLifeDetail: (humans: number) => `${humans} humans eaten`,
         press: 'Press',
         /** Above the boss's name as it arrives. */
         bossFight: 'Boss fight',
-        bossDefeated: 'Boss Defeated!',
-        tentaclesGrow: 'Tentacles +1',
-        tentaclesGrowDetail: (reach: number) => `They grab ${reach} at once`,
+        bossDefeated: 'Boss defeated!',
+        tentaclesGrow: 'Another tentacle!',
+        tentaclesGrowDetail: (reach: number) => `Now they grab ${reach} at once`,
     },
     /** Ability names, their keys on the ability bar, and how the unlock notice says to use them. */
     abilities: {
@@ -76,7 +84,7 @@ export const STRINGS = {
         elf: 'elf',
         dragon: 'dragon',
     },
-    /** What cost the last life, on the results (draft wording, reviewed in M4). */
+    /** What cost the last life, on the results. */
     causes: {
         wasted: (creature: string) => `Let a perfectly good ${creature} go to waste`,
         bomb: 'Blown apart by a bomb',
@@ -99,8 +107,8 @@ export const STRINGS = {
         zone: 'Zone',
         time: 'Time',
         level: 'Level',
-        speed: 'Speed',
-        size: 'Size',
+        speed: 'Mimic speed',
+        size: 'Mimic size',
         dropSpeed: 'Drop speed',
         spawnRate: 'Spawn rate',
         percent: (value: number) => `${value}%`,
@@ -108,10 +116,12 @@ export const STRINGS = {
     },
     confirm: {
         abandon: 'Abandon this run?',
+        abandonDetail: 'It still counts towards your totals, but not the high scores',
         cancel: 'Cancel',
         restart: 'Restart',
         quit: 'Quit',
-        erase: "This erases all your progress and can't be undone",
+        erase: 'Erase everything?',
+        eraseDetail: "Scores, achievements, totals and settings. This can’t be undone",
         eraseConfirm: 'Erase',
     },
     settings: {
@@ -120,7 +130,7 @@ export const STRINGS = {
         display: 'Display',
         profile: 'Profile',
         data: 'Data',
-        play: 'Play',
+        play: 'Gameplay',
         resumeCountdown: 'Countdown after pausing',
         musicVolume: 'Music volume',
         effectsVolume: 'Effects volume',
@@ -134,7 +144,7 @@ export const STRINGS = {
         on: 'On',
         off: 'Off',
         back: 'Back',
-        autosave: 'Changes are saved as you make them.',
+        autosave: 'Changes are saved as you make them',
         hint: '↑ ↓ choose   ·   ← → change   ·   Enter select   ·   Esc back',
         typingHint: 'Type a name   ·   Enter save   ·   Esc cancel',
         settingsReset: 'Settings are back to their defaults',
@@ -143,7 +153,7 @@ export const STRINGS = {
     },
     achievements: {
         title: 'Achievements',
-        unlocked: 'Achievement Unlocked!',
+        unlocked: 'Achievement unlocked!',
         header: (unlocked: number, total: number, points: number) => `${unlocked} / ${total} unlocked   ·   ${points} points earned`,
         tabs: { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', secret: 'Secret' },
         unlockedOn: (date: string) => `Unlocked ${date}`,
@@ -153,7 +163,7 @@ export const STRINGS = {
         progress: (value: string, goal: string) => `${value} / ${goal}`,
         hint: '← → change tab   ·   Esc back',
         back: 'Back',
-        /** Names and descriptions (the original 32 from the p5 game; final wording in M4). */
+        /** Names and descriptions (the original 32 from the p5 game, reworded in M4d), with the goals in rules/achievements.ts. */
         list: {
             first_blood: { name: 'First Blood', description: 'Eat your first human' },
             staff_initiate: { name: 'Staff Initiate', description: 'Find the Wizard Staff' },
@@ -166,33 +176,33 @@ export const STRINGS = {
             bomb_squad: { name: 'Bomb Squad', description: 'Detonate 25 hazards' },
             diamond_collector: { name: 'Diamond Collector', description: 'Collect 5 diamonds' },
             dragon_slayer: { name: 'Dragon Slayer', description: 'Eat 10 dragons' },
-            high_score: { name: 'Score Chaser', description: 'Score 5,000 points in one run' },
-            level_up: { name: 'Veteran', description: 'Reach level 8 in one run' },
+            high_score: { name: 'Score Chaser', description: 'Score 2,500 points in one run' },
+            level_up: { name: 'Veteran', description: 'Reach Level 5 in one run' },
             dungeon_delver: { name: 'Dungeon Delver', description: 'Reach Floor 5 in one run' },
-            demolisher: { name: 'Demolisher', description: 'Destroy 75 objects' },
+            demolisher: { name: 'Demolisher', description: 'Destroy 75 falling things' },
             cat_sanctuary: { name: 'Cat Sanctuary', description: 'Rescue 10 cats' },
             boss_hunter: { name: 'Boss Hunter', description: 'Defeat a boss' },
             spell_slinger: { name: 'Spell Slinger', description: 'Cast 250 Shadow Bolts' },
-            tentacle_tactician: { name: 'Tentacle Tactician', description: 'Use Tentacles 50 times' },
+            tentacle_tactician: { name: 'Tentacle Tactician', description: 'Use Tentacles 30 times' },
             blink_striker: { name: 'Blink Striker', description: 'Dash 125 times' },
             abyss_walker: { name: 'Abyss Walker', description: 'Reach Floor 8 in one run' },
-            apex_mimic: { name: 'Apex Mimic', description: 'Reach level 12 in one run' },
+            apex_mimic: { name: 'Apex Mimic', description: 'Reach Level 6 in one run' },
             dragon_feast: { name: 'Dragon Feast', description: 'Eat 25 dragons' },
-            legend_score: { name: 'Legend Score', description: 'Score 20,000 points in one run' },
-            iron_stomach: { name: 'Iron Stomach', description: 'Eat or collect 300 things' },
+            legend_score: { name: 'Score Legend', description: 'Score 5,000 points in one run' },
+            iron_stomach: { name: 'Iron Stomach', description: 'Eat or collect 2,500 things' },
             cat_kingdom: { name: 'Cat Kingdom', description: 'Rescue 25 cats' },
-            long_haul: { name: 'Long Haul', description: 'Last 30 minutes in one run' },
-            boss_slayer: { name: 'Boss Slayer', description: 'Defeat 3 bosses' },
+            long_haul: { name: 'Long Haul', description: 'Last 15 minutes in one run' },
+            boss_slayer: { name: 'Boss Slayer', description: 'Defeat 10 bosses' },
             arcane_battery: { name: 'Arcane Battery', description: 'Cast 600 Shadow Bolts' },
-            tentacle_overlord: { name: 'Tentacle Overlord', description: 'Use Tentacles 150 times' },
+            tentacle_overlord: { name: 'Tentacle Overlord', description: 'Use Tentacles 100 times' },
             dash_phantom: { name: 'Dash Phantom', description: 'Dash 300 times' },
             hazard_warden: { name: 'Hazard Warden', description: 'Detonate 60 hazards' },
             // The secrets also have a hint, shown in place of the description until they're earned.
-            feline_felon: { name: 'Feline Felon', description: 'Bring the Ninefold Judgment on yourself', hint: 'Some lives are not yours to take.' },
-            hot_snack: { name: 'Hot Snack', description: 'Pull a bomb into your mouth with Magnetism', hint: 'Some meals bite back.' },
-            hanging_by_a_thread: { name: 'Hanging by a Thread', description: 'Reach a new floor with one heart left', hint: 'One heart is all it takes to go deeper.' },
-            judged_and_spared: { name: 'Judged and Spared', description: 'Survive the Ninefold Judgment', hint: 'Some sentences can be survived.' },
-            flawless_hunt: { name: 'Flawless Hunt', description: 'Defeat a boss without losing a heart', hint: 'Hunt the hunter without a scratch.' },
+            feline_felon: { name: 'Feline Felon', description: 'Bring the Ninefold Judgment on yourself', hint: 'Some lives are not yours to take' },
+            hot_snack: { name: 'Hot Snack', description: 'Pull a bomb into your mouth with Magnetism', hint: 'Some meals bite back' },
+            hanging_by_a_thread: { name: 'Hanging by a Thread', description: 'Reach a new floor with one heart left', hint: 'One heart is all it takes to go deeper' },
+            judged_and_spared: { name: 'Judged and Spared', description: 'Survive the Ninefold Judgment', hint: 'Some sentences can be survived' },
+            flawless_hunt: { name: 'Flawless Hunt', description: 'Defeat a boss without losing a heart', hint: 'Hunt the hunter without a scratch' },
         } as Record<string, { readonly name: string; readonly description: string; readonly hint?: string }>,
     },
     highScores: {
@@ -216,11 +226,11 @@ export const STRINGS = {
         title: 'Game Over',
         endedOn: (floorTitle: string) => `Your run ended on ${floorTitle}`,
         score: 'Score',
-        /** The tally, in stages (drafts for the M4 text review). */
+        /** The tally, in stages. */
         devoured: 'The mimic devoured\u2026',
-        nothingEaten: 'Nothing at all.',
+        nothingEaten: 'Nothing at all',
         alongTheWay: 'Along the way',
-        nothingElse: 'Nothing else to report.',
+        nothingElse: 'Nothing else to report',
         /** Under the counts along the way. */
         tallyLabels: { crown: 'crowns', diamond: 'diamonds', detonated: 'set off', burst: 'burst', rescued: 'rescued', defeated: 'defeated' },
         grew: (times: string) => `Grew to ${times}\u00d7 its starting size`,
@@ -238,7 +248,7 @@ export const STRINGS = {
         menu: 'Menu',
         newBest: 'New best!',
         best: (score: string) => `Best ${score}`,
-        onBoard: (rank: number) => `#${rank} on the board`,
+        onBoard: (rank: number) => `${ordinal(rank)} on the high scores`,
         namePrompt: 'Name your mimic',
         nameHint: 'Enter save   ·   Esc skip',
         savedAs: (name: string) => `Saved as ${name}`,
@@ -246,7 +256,7 @@ export const STRINGS = {
     },
     /**
      * How to Play (plan §3.4). Light on exact numbers, and the Ninefold
-     * Judgment is never mentioned (a test checks). Drafts for the M4 text review.
+     * Judgment is never mentioned (a test checks). The creature and item lines hint rather than explain.
      */
     howToPlay: {
         title: 'How to Play',
@@ -257,10 +267,10 @@ export const STRINGS = {
         back: 'Back',
         basics: [
             { title: 'Eat from above', text: 'Creatures fall from the top of the dungeon. Catch them in your open mouth: stand beneath them, or jump to meet them.' },
-            { title: 'Waste nothing', text: 'A creature that hits the floor, or bumps into the side of the chest, costs you a heart. Lose them all and the run is over.' },
+            { title: 'Waste nothing', text: 'A creature that hits the floor, or bumps into your side, costs you a heart. Lose them all and the run is over.' },
             { title: 'Treasure', text: 'Crowns and diamonds are worth more than any creature. Any touch takes them, and nothing is lost if they shatter.' },
             { title: 'Hazards', text: 'Bombs, and later worse, cost a heart if they touch you. Dodge them, or find a way to blast them first.' },
-            { title: 'Grow stronger', text: 'Every meal brings experience. Level up to grow bigger and faster and to gain new powers. Potions restore a heart.' },
+            { title: 'Grow stronger', text: 'Everything you eat or collect brings experience. Level up to grow bigger and faster and to gain new powers. Potions restore a heart.' },
             { title: 'Go deeper', text: 'Clear each zone by eating, then go deeper. The dungeon gets faster, and stranger, the further down you go.' },
         ],
         controls: {
@@ -289,44 +299,44 @@ export const STRINGS = {
         points: (points: number) => `+${points}`,
         /** One line for each, shown once it's been met. */
         entries: {
-            goblin: { name: 'Goblin', text: 'The dungeon’s most common snack.' },
-            dwarf: { name: 'Dwarf', text: 'Sturdier fare, and there’s plenty of it.' },
-            wraith: { name: 'Wraith', text: 'Rarer, and worth a little more.' },
-            human: { name: 'Human', text: 'Adventurers. Eat enough of them and you’ll grow an extra heart.' },
-            elf: { name: 'Elf', text: 'Rare and well worth catching.' },
-            dragon: { name: 'Dragon', text: 'Flies off when you get close. Corner it, or meet it with a jump.' },
-            cat: { name: 'Cat', text: 'Cats always land on their feet. Let them.' },
-            crown: { name: 'Crown', text: 'Glints as it falls. Treasure for the taking.' },
+            goblin: { name: 'Goblin', text: 'The dungeon’s bread and butter.' },
+            dwarf: { name: 'Dwarf', text: 'Stout, bearded, and surprisingly chewy.' },
+            wraith: { name: 'Wraith', text: 'Half there. Wholly edible.' },
+            human: { name: 'Human', text: 'They came for the treasure. They stayed for dinner.' },
+            elf: { name: 'Elf', text: 'Graceful, elusive, delicious.' },
+            dragon: { name: 'Dragon', text: 'Too proud to be eaten without a chase.' },
+            cat: { name: 'Cat', text: 'Nobody knows how they got down here.' },
+            crown: { name: 'Crown', text: 'Heavy is the head. Heavier the hoard.' },
             diamond: { name: 'Diamond', text: 'The finest treasure in the dungeon.' },
-            bomb: { name: 'Bomb', text: 'Costs a heart if it touches you. A Shadow Bolt sets it off safely.' },
-            fireball: { name: 'Fireball', text: 'Falls fast and burns. Shadow Bolts pass straight through it.' },
-            potion: { name: 'Health Potion', text: 'Restores a heart.' },
+            bomb: { name: 'Bomb', text: 'Handle with care. Or not at all.' },
+            fireball: { name: 'Fireball', text: 'Some things can’t be stopped. Only avoided.' },
+            potion: { name: 'Health Potion', text: 'Tastes awful. Works wonders.' },
             staff: { name: 'Wizard Staff', text: 'Grants the Shadow Bolt.' },
-            magnet: { name: 'Magnet', text: 'Grants Magnetism.' },
-            boss: { name: 'The Flying Demon', text: 'Only its fireballs hurt you. Only Shadow Bolts hurt it.' },
+            magnet: { name: 'Magnet', text: 'Attracts treasure. Attracts trouble.' },
+            boss: { name: 'The Flying Demon', text: 'It answers to no one. Least of all your teeth.' },
         } as Record<string, { readonly name: string; readonly text: string }>,
         /** The Abilities tab: what each does, and a vague hint while it's still locked. */
         abilities: {
             dash: { text: 'A burst of speed to either side. Double-tap a direction.', hint: '' },
             shadowBolt: { text: 'Fires a bolt straight up. It destroys what it hits and sets off bombs.', hint: 'Lies somewhere in the dungeon.' },
-            tentacles: { text: 'Chains grab the nearest creatures and reel them in. They reach more as you grow.', hint: 'Grows with experience.' },
+            tentacles: { text: 'Chains grab the nearest creatures and reel them in. They grab more as you grow.', hint: 'Grows with experience.' },
             magnetism: { text: 'Pulls in the treasure on screen… and any bombs. Use it with care.', hint: 'Lies deeper in the dungeon.' },
         },
         lockedName: '???',
     },
     credits: {
         title: 'Credits',
-        by: 'A game by Yestin',
+        /** Who made it: just the name, small, in the screen's bottom-right corner. */
+        author: 'Yestin',
         thanksTitle: 'Special thanks',
         thanks: ['Rob M', 'hypn', 'benefit'],
         thanksNote: 'Alpha testers',
         version: (version: string) => `Version ${version}`,
-        beta: 'A playable beta: a portfolio and learning project, updated when time allows.',
         builtTitle: 'Made with',
         built: [
             'Phaser (MIT licence)',
             'Grenze Gotisch and Barlow fonts (SIL Open Font Licence)',
-            'Interface sounds by Kenney (kenney.nl), CC0',
+            'Interface and some game sounds by Kenney (kenney.nl), CC0',
             'Other art, sound and music: original, public domain, or under free licences',
         ],
         hint: 'Esc back',

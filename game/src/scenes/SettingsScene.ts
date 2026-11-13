@@ -178,6 +178,7 @@ export class SettingsScene extends Phaser.Scene {
         this.menu.setEnabled(false);
         this.dialog = new ConfirmDialog(this, {
             message: STRINGS.confirm.erase,
+            detail: STRINGS.confirm.eraseDetail,
             cancelLabel: STRINGS.confirm.cancel,
             confirmLabel: STRINGS.confirm.eraseConfirm,
             danger: true,

@@ -119,6 +119,7 @@ export class PauseScene extends Phaser.Scene {
         this.menu.setEnabled(false);
         this.dialog = new ConfirmDialog(this, {
             message: STRINGS.confirm.abandon,
+            detail: STRINGS.confirm.abandonDetail,
             cancelLabel: STRINGS.confirm.cancel,
             confirmLabel,
             onConfirm,

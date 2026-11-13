@@ -242,12 +242,19 @@ async function checkNextBuild(browser) {
             await page.keyboard.press('ArrowDown');
         }
         await page.keyboard.press('Enter');
-        await waitForSnapshot((s) => s.running.includes('settings') && !s.running.includes('pause') && s.paused.includes('game'));
+        const settings = await waitForSnapshot((s) => s.running.includes('settings') && !s.running.includes('pause') && s.paused.includes('game'));
+        // The resume countdown is off by default; switch it on (the tenth row) for the checks below.
+        assert(settings.save.settings.resumeCountdown === false, '/next/ the resume countdown is off by default');
+        for (let i = 0; i < 9; i++) {
+            await page.keyboard.press('ArrowDown');
+        }
+        await page.keyboard.press('Enter');
+        await waitForSnapshot((s) => s.save.settings.resumeCountdown === true, 5000);
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('settings'));
-        assert((await snapshot()).paused.includes('game'), '/next/ Settings opens from the pause menu and Esc returns to it');
+        assert((await snapshot()).paused.includes('game'), '/next/ Settings opens from the pause menu, switches the countdown on, and Esc returns to it');
 
-        // Leaving the pause menu counts down 3-2-1 over the still-paused run (on by default in Settings);
+        // With it on, leaving the pause menu counts down 3-2-1 over the still-paused run;
         // P during the count goes back to the pause menu.
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('countdown') && s.paused.includes('game') && !s.running.includes('pause'));
