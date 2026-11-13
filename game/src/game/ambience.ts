@@ -108,6 +108,11 @@ const FLOOR_AIR: readonly (readonly Air[])[] = [
     ['sparks', 'embersLight'], ['sparks'],
 ];
 
+/** What fills the air on a floor (from Floor 1). */
+function airFor(floor: number): readonly Air[] {
+    return FLOOR_AIR[Math.min(floor, FLOOR_AIR.length) - 1] ?? ['dust'];
+}
+
 /** Every background is this size, scaled to cover the screen and anchored to its bottom edge. */
 const ART = { width: 1448, height: 1086 } as const;
 const ART_SCALE = Math.max(DESIGN_WIDTH / ART.width, DESIGN_HEIGHT / ART.height);
@@ -234,8 +239,12 @@ export class Ambience {
     /** The floor (for what's in the air) and the background showing (for its lights; it can lag while a floor loads). */
     setFloor(floor: number, backgroundIndex: number): void {
         if (floor !== this.floor) {
+            // Floors with the same air keep it drifting rather than starting it over.
+            const same = this.floor > 0 && airFor(floor).join() === airFor(this.floor).join();
             this.floor = floor;
-            this.setAir();
+            if (!same) {
+                this.setAir();
+            }
         }
         if (backgroundIndex !== this.background) {
             this.background = backgroundIndex;
@@ -249,8 +258,7 @@ export class Ambience {
         if (this.still || this.floor === 0) {
             return;
         }
-        const air = FLOOR_AIR[Math.min(this.floor, FLOOR_AIR.length) - 1] ?? ['dust'];
-        for (const kind of air) {
+        for (const kind of airFor(this.floor)) {
             const { config, warm } = AIR_CONFIGS[kind];
             const emitter = this.scene.add.particles(0, 0, UI.glow, { ...config, blendMode: Phaser.BlendModes.ADD }).setDepth(this.depth);
             // Already drifting when it appears.

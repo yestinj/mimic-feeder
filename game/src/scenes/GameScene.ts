@@ -1188,8 +1188,13 @@ export class GameScene extends Phaser.Scene {
 
     /** The countdown was cut short (P, Esc, or losing focus): back to the pause menu. */
     reopenPause(): void {
-        this.pauseBlur ??= this.cameras.main.filters.external.addBlur(1, 2, 2, 1);
+        this.addPauseBlur();
         this.scene.launch('pause', {});
+    }
+
+    /** The playfield's blur under an overlay (once, however often it's asked for). */
+    private addPauseBlur(): void {
+        this.pauseBlur ??= this.cameras.main.filters.external.addBlur(1, 2, 2, 1);
     }
 
     private removePauseBlur(): void {
@@ -1204,7 +1209,7 @@ export class GameScene extends Phaser.Scene {
         if (!this.canOpenOverlay()) {
             return;
         }
-        this.pauseBlur = this.cameras.main.filters.external.addBlur(1, 2, 2, 1);
+        this.addPauseBlur();
         this.sound.pauseAll();
         this.scene.pause();
         this.scene.pause('hud');
