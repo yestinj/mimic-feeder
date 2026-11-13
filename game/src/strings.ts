@@ -46,7 +46,7 @@ export const STRINGS = {
         newBestDetail: (best: string) => `Past your best of ${best}`,
         extraLife: 'Extra heart!',
         /** Every 50 humans eaten bring a heart: the total so far. */
-        extraLifeDetail: (humans: number) => `${humans} humans eaten`,
+        extraLifeDetail: (humans: string) => `${humans} humans eaten`,
         press: 'Press',
         /** Above the boss's name as it arrives. */
         bossFight: 'Boss fight',

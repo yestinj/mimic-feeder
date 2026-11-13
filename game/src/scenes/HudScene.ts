@@ -277,7 +277,7 @@ export class HudScene extends Phaser.Scene {
                 this.notifications.toast(STRINGS.notices.levelUp(event.level), STRINGS.notices.levelUpDetail(percentGain(GROWTH.speed), percentGain(GROWTH.size)), 'levelUp');
                 break;
             case 'extraLife':
-                this.notifications.toast(STRINGS.notices.extraLife, STRINGS.notices.extraLifeDetail(this.run.eaten.human));
+                this.notifications.toast(STRINGS.notices.extraLife, STRINGS.notices.extraLifeDetail(formatScore(this.run.eaten.human)));
                 break;
             case 'tentaclesGrow':
                 this.notifications.toast(STRINGS.notices.tentaclesGrow, STRINGS.notices.tentaclesGrowDetail(event.reach), 'tentacles');

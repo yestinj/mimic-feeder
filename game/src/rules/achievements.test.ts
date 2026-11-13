@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { formatScore } from './format';
 import {
     ACHIEVEMENTS,
     TIER_POINTS,
@@ -69,6 +70,13 @@ describe('achievements', () => {
         const both = addTotals(runOne, runTwo);
         expect(ids(newlyEarned({}, both, noBests))).toEqual(expect.arrayContaining(['cat_lover', 'spell_slinger']));
         expect(progress(byId('cat_sanctuary'), both, noBests)).toBe(3);
+    });
+
+    it('describes each goal with its own number, so a tuned goal and its text stay in step', () => {
+        for (const achievement of ACHIEVEMENTS.filter((entry) => entry.goal > 1)) {
+            const goal = achievement.stat === 'longestRun' ? `${achievement.goal / 60_000} minutes` : formatScore(achievement.goal);
+            expect(STRINGS.achievements.list[achievement.id]?.description, achievement.id).toContain(goal);
+        }
     });
 
     it('measures milestones on a single run, through the bests', () => {
