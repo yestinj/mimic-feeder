@@ -366,14 +366,54 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.game.shiniesCollected > before.game.shiniesCollected);
         assert(true, '/next/ Magnetism pulls treasure to the mimic');
 
-        // Cats land safely and are rescued; dragons fly off when the mimic is beneath them.
+        // Pausing (the countdown is on, so resuming counts down first) for longer than any of the
+        // game's own waits: a cat's three seconds on the floor, a dragon's flight of up to two.
+        const LONG_PAUSE_MS = 3500;
+        const playing = (s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown');
+        /** Pauses with `open`, waits, resumes, and returns the game once play has moved on by at least a frame. */
+        const pauseAWhile = async (open) => {
+            await open();
+            const paused = await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game'));
+            await page.waitForTimeout(LONG_PAUSE_MS);
+            await page.keyboard.press('Escape');
+            return waitForSnapshot((s) => playing(s) && s.game.playTimeMs > paused.game.playTimeMs);
+        };
+        const switchTabAndBack = async () => {
+            await page.evaluate(() => {
+                Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+                window.dispatchEvent(new Event('blur'));
+                document.dispatchEvent(new Event('visibilitychange'));
+            });
+            await page.evaluate(() => {
+                Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+                document.dispatchEvent(new Event('visibilitychange'));
+                window.dispatchEvent(new Event('focus'));
+            });
+        };
+
+        // Cats land safely and are rescued after three seconds of play: time spent paused doesn't count.
+        // (Each check allows for slow frames: it only expects the cat to be waiting still while less
+        // than its three seconds of play have passed since it was seen on the floor.)
         before = await snapshot();
         await debug('spawn', 'cat', awayX);
-        await waitForSnapshot((s) => s.game.catsRescued > before.game.catsRescued, 60000);
-        assert((await snapshot()).game.lives === before.game.lives, '/next/ a cat lands safely and is rescued');
+        const landed = await waitForSnapshot((s) => s.game.waitingCats > 0, 60000);
+        const catPlayMs = (s) => s.game.playTimeMs - landed.game.playTimeMs;
+        const stillWaiting = (s) => s.game.catsRescued === before.game.catsRescued || catPlayMs(s) >= 2500;
+        let resumed = await pauseAWhile(() => page.keyboard.press('KeyP'));
+        assert(stillWaiting(resumed), `/next/ a cat on the floor isn't rescued while the game is paused (${Math.round(catPlayMs(resumed))} ms of play since it landed)`);
+        resumed = await pauseAWhile(switchTabAndBack);
+        assert(stillWaiting(resumed), `/next/ nor while the game is paused by switching tab (${Math.round(catPlayMs(resumed))} ms of play since it landed)`);
+        const rescued = await waitForSnapshot((s) => s.game.catsRescued > before.game.catsRescued, 60000);
+        assert(catPlayMs(rescued) >= 2000, `/next/ a cat is rescued after three seconds of play (${Math.round(catPlayMs(rescued))} ms since it was seen on the floor)`);
+        assert(rescued.game.lives === before.game.lives, '/next/ a cat lands safely and is rescued');
+
+        // Dragons fly off when the mimic is beneath them, for at least a second of play.
         await debug('spawn', 'dragon');
-        await waitForSnapshot((s) => s.game.flyingDragons > 0, 60000);
+        const fleeing = await waitForSnapshot((s) => s.game.flyingDragons > 0, 60000);
         assert(true, '/next/ a dragon flies off when the mimic is beneath it');
+        resumed = await pauseAWhile(() => page.keyboard.press('KeyP'));
+        const flightPlayMs = resumed.game.playTimeMs - fleeing.game.playTimeMs;
+        assert(resumed.game.flyingDragons > 0 || flightPlayMs >= 1000, `/next/ a dragon's flight doesn't run out while the game is paused (${Math.round(flightPlayMs)} ms of play since it took off)`);
 
         // Zone 5 of an even floor is a boss fight; beating the boss moves on a floor.
         await debug('startBoss');
