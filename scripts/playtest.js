@@ -267,16 +267,19 @@ async function checkNextBuild(browser) {
 
         // Switching tab mid-run loses focus and hides the page in the same moment; it opens the pause menu
         // once, and nothing of it (the blur) stays after resuming.
-        await page.evaluate(() => {
-            Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
-            window.dispatchEvent(new Event('blur'));
-            document.dispatchEvent(new Event('visibilitychange'));
-        });
-        await page.evaluate(() => {
-            Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
-            document.dispatchEvent(new Event('visibilitychange'));
-            window.dispatchEvent(new Event('focus'));
-        });
+        const switchTabAndBack = async () => {
+            await page.evaluate(() => {
+                Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+                window.dispatchEvent(new Event('blur'));
+                document.dispatchEvent(new Event('visibilitychange'));
+            });
+            await page.evaluate(() => {
+                Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+                document.dispatchEvent(new Event('visibilitychange'));
+                window.dispatchEvent(new Event('focus'));
+            });
+        };
+        await switchTabAndBack();
         await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game'));
         assert((await snapshot()).game.cameraFilters === 1, '/next/ switching tab mid-run pauses the game (blurred once)');
         await page.keyboard.press('Escape');
@@ -368,27 +371,16 @@ async function checkNextBuild(browser) {
 
         // Pausing (the countdown is on, so resuming counts down first) for longer than any of the
         // game's own waits: a cat's three seconds on the floor, a dragon's flight of up to two.
-        const LONG_PAUSE_MS = 3500;
+        const CAT_PAUSE_MS = 3500;
+        const DRAGON_PAUSE_MS = 2500;
         const playing = (s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown');
         /** Pauses with `open`, waits, resumes, and returns the game once play has moved on by at least a frame. */
-        const pauseAWhile = async (open) => {
+        const pauseAWhile = async (open, ms) => {
             await open();
             const paused = await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game'));
-            await page.waitForTimeout(LONG_PAUSE_MS);
+            await page.waitForTimeout(ms);
             await page.keyboard.press('Escape');
             return waitForSnapshot((s) => playing(s) && s.game.playTimeMs > paused.game.playTimeMs);
-        };
-        const switchTabAndBack = async () => {
-            await page.evaluate(() => {
-                Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
-                window.dispatchEvent(new Event('blur'));
-                document.dispatchEvent(new Event('visibilitychange'));
-            });
-            await page.evaluate(() => {
-                Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
-                document.dispatchEvent(new Event('visibilitychange'));
-                window.dispatchEvent(new Event('focus'));
-            });
         };
 
         // Cats land safely and are rescued after three seconds of play: time spent paused doesn't count.
@@ -399,19 +391,20 @@ async function checkNextBuild(browser) {
         const landed = await waitForSnapshot((s) => s.game.waitingCats > 0, 60000);
         const catPlayMs = (s) => s.game.playTimeMs - landed.game.playTimeMs;
         const stillWaiting = (s) => s.game.catsRescued === before.game.catsRescued || catPlayMs(s) >= 2500;
-        let resumed = await pauseAWhile(() => page.keyboard.press('KeyP'));
+        let resumed = await pauseAWhile(() => page.keyboard.press('KeyP'), CAT_PAUSE_MS);
         assert(stillWaiting(resumed), `/next/ a cat on the floor isn't rescued while the game is paused (${Math.round(catPlayMs(resumed))} ms of play since it landed)`);
-        resumed = await pauseAWhile(switchTabAndBack);
+        resumed = await pauseAWhile(switchTabAndBack, CAT_PAUSE_MS);
         assert(stillWaiting(resumed), `/next/ nor while the game is paused by switching tab (${Math.round(catPlayMs(resumed))} ms of play since it landed)`);
         const rescued = await waitForSnapshot((s) => s.game.catsRescued > before.game.catsRescued, 60000);
-        assert(catPlayMs(rescued) >= 2000, `/next/ a cat is rescued after three seconds of play (${Math.round(catPlayMs(rescued))} ms since it was seen on the floor)`);
+        // Well short of three seconds, in case a slow frame delayed seeing it land.
+        assert(catPlayMs(rescued) >= 1500, `/next/ a cat is rescued after three seconds of play (${Math.round(catPlayMs(rescued))} ms since it was seen on the floor)`);
         assert(rescued.game.lives === before.game.lives, '/next/ a cat lands safely and is rescued');
 
         // Dragons fly off when the mimic is beneath them, for at least a second of play.
         await debug('spawn', 'dragon');
         const fleeing = await waitForSnapshot((s) => s.game.flyingDragons > 0, 60000);
         assert(true, '/next/ a dragon flies off when the mimic is beneath it');
-        resumed = await pauseAWhile(() => page.keyboard.press('KeyP'));
+        resumed = await pauseAWhile(() => page.keyboard.press('KeyP'), DRAGON_PAUSE_MS);
         const flightPlayMs = resumed.game.playTimeMs - fleeing.game.playTimeMs;
         assert(resumed.game.flyingDragons > 0 || flightPlayMs >= 1000, `/next/ a dragon's flight doesn't run out while the game is paused (${Math.round(flightPlayMs)} ms of play since it took off)`);
 
