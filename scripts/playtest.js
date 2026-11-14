@@ -230,6 +230,12 @@ async function checkNextBuild(browser) {
         assert((await cursor()).includes('url('), '/next/ the cursor comes back on the pause menu');
         await page.screenshot({ path: path.join(OUT_DIR, 'next-pause.png') });
 
+        // From here the run would play on, unattended, between checks. The game runs at real speed even on
+        // CI's slow software rendering (main.ts), so turn the normal spawns off (clearing what's falling) to keep
+        // the run alive until the checks that need them. Later sections turn them back on.
+        const debug = (name, ...args) => page.evaluate(([fn, list]) => window.__mimicFeeder.debug[fn](...list), [name, args]);
+        await debug('setSpawning', false);
+
         await page.keyboard.press('KeyM');
         await waitForSnapshot((s) => s.muted === true, 2000);
         await page.keyboard.press('KeyM');
@@ -283,9 +289,7 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown'));
         assert((await snapshot()).game.cameraFilters === 0, '/next/ resuming after switching tab leaves no blur behind');
 
-        // Abilities, unlocked through the debug shortcuts, with the normal spawns off so only the test's objects fall.
-        const debug = (name, ...args) => page.evaluate(([fn, list]) => window.__mimicFeeder.debug[fn](...list), [name, args]);
-        await debug('setSpawning', false);
+        // Abilities, unlocked through the debug shortcuts, with the normal spawns still off so only the test's objects fall.
         // The first unlock of each ability pauses the game on a card that only its own key (or Enter) closes.
         await debug('grant', 'shadowBolt');
         await waitForSnapshot((s) => s.card && s.card.ability === 'shadowBolt' && s.paused.includes('game'));
@@ -542,8 +546,9 @@ async function checkNextBuild(browser) {
         await page.waitForTimeout(400);
         await page.keyboard.press('Enter');
         const practice = await waitForSnapshot((s) => s.running.includes('game') && s.game && s.game.playTimeMs > 0);
+        // Full hearts at the start is a unit test (practice.test.ts): at real speed a heart can go before this reads it.
         assert(practice.game.floor === 7 && practice.game.zone === 1 && practice.game.abilities.length === 4 && practice.game.level >= 5
-            && practice.game.score > 0 && practice.game.lives === practice.game.maxLives && practice.game.maxLives > 3,
+            && practice.game.score > 0 && practice.game.maxLives > 3,
             '/next/ ?floor=7 starts a practice run on Floor 7 with a steady player\'s level, abilities, hearts and score');
         await page.evaluate(() => window.__mimicFeeder.debug.die());
         // The game-over hold is 1.8 s of game time; CI's software rendering runs at a few frames a second,
