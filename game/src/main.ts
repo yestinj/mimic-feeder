@@ -41,10 +41,11 @@ const game = new Phaser.Game({
     // Load images with plain <img> requests. Phaser's default (XHR + blob: URLs)
     // would need blob: in the CSP's img-src.
     loader: { imageLoadType: 'HTMLImageElement' },
-    // For its first 120 frames (and after the page is shown again) Phaser moves game time at most 1/60 s a
-    // frame. In CI's software rendering, at a few frames a second, that makes every wait after a page load
-    // crawl; with ?test (the playtest) the game keeps up with real time from the start. Players never see it.
-    ...(TEST_MODE ? { fps: { panicMax: 0 } } : {}),
+    // Phaser moves game time at most 1/60 s a frame for its first 120 frames, and whenever a frame takes
+    // longer than 200 ms (below 5 frames a second). CI draws in software at a frame or two a second, so the
+    // playtest's game ran about 40 times slower than real time. With ?test (the playtest only; players never
+    // load it) game time keeps up: no startup clamp, and frames up to 2 s count in full.
+    ...(TEST_MODE ? { fps: { panicMax: 0, min: 0.5 } } : {}),
     // Listed bottom to top: the HUD draws over the game, the pause menu and new-ability card over both,
     // and the menu screens (How to Play, Achievements, High Scores, Settings, Credits) over whichever screen opened them.
     scene: [BootScene, PreloadScene, TitleScene, GameScene, HudScene, PauseScene, UnlockScene, ResultsScene, CountdownScene, SettingsScene, HighScoresScene, AchievementsScene, HowToPlayScene, CreditsScene, SystemScene],
