@@ -140,10 +140,11 @@ export function setDebugApi(api: DebugApi | null): void {
         delete hook().debug;
     }
 }
-let dialogOpen = false;
+let dialogsOpen = 0;
 
+/** A confirm dialog opened or closed. Counted, so a dialog left behind by a second one still shows as open. */
 export function setDialogOpen(open: boolean): void {
-    dialogOpen = open;
+    dialogsOpen = Math.max(0, dialogsOpen + (open ? 1 : -1));
 }
 
 let card: (() => GameSnapshot['card']) | null = null;
@@ -196,7 +197,7 @@ export function installTestHook(game: Phaser.Game): void {
             game: gameView ? gameView() : null,
             audio: context ? context.state : 'none',
             muted: isMuted(),
-            dialog: dialogOpen,
+            dialog: dialogsOpen > 0,
             card: card ? card() : null,
             howToPlay,
             results,

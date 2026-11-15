@@ -21,6 +21,9 @@ const LABEL_COLOURS: Record<ButtonState, string> = {
     disabled: TEXT_COLOURS.dim,
 };
 
+/** After a button's action runs, how long it ignores further presses (ms). */
+const SETTLE_MS = 250;
+
 export interface ButtonOptions {
     readonly width?: number;
     readonly enabled?: boolean;
@@ -44,6 +47,8 @@ export class Button extends Phaser.GameObjects.Container {
     private readonly quiet: boolean;
     private focused = false;
     private enabled: boolean;
+    /** Pressed: further presses are ignored until its action has run and had time to take effect. */
+    private pressing = false;
 
     /** Called when the pointer moves onto the button (Menu uses it to move focus). */
     onHover: (() => void) | null = null;
@@ -65,7 +70,8 @@ export class Button extends Phaser.GameObjects.Container {
         this.setInteractive({ cursor: POINTER_CURSOR });
         this.on(Phaser.Input.Events.POINTER_OVER, () => this.onHover?.());
         this.on(Phaser.Input.Events.POINTER_DOWN, () => {
-            if (this.enabled) {
+            // Not while a press is being ignored: nothing would repaint it afterwards.
+            if (this.enabled && !this.pressing) {
                 this.paint('pressed');
             }
         });
@@ -90,19 +96,59 @@ export class Button extends Phaser.GameObjects.Container {
         return this;
     }
 
-    /** Runs the action with a short press animation. Ignored while disabled. */
+    /**
+     * Runs the action with a short press animation. Ignored while disabled,
+     * and while an earlier press is still playing out, so a double click or a
+     * quick second Enter counts once. (Otherwise the action ran twice, and if
+     * the first run put the scene to sleep, the second ran when it woke.)
+     *
+     * The button stays deaf for a moment after its action too: what the
+     * action starts (another screen opening over this one, a dialog) only
+     * takes effect a frame or two later, and a second click landing in that
+     * gap would otherwise still get through. The wait is on the scene's
+     * clock, so it holds for as long as the scene sleeps (see settle()).
+     */
     select(): void {
-        if (!this.enabled) {
+        if (!this.enabled || this.pressing) {
             return;
         }
+        this.pressing = true;
         if (!this.quiet) {
             playSound(this.scene, 'uiSelect');
         }
         this.paint('pressed');
         this.scene.time.delayedCall(MOTION.fast, () => {
+            // Gone in the meantime (its dialog was closed with Esc, say): nothing to repaint or run.
+            if (!this.active) {
+                return;
+            }
             this.paint(this.currentState());
             this.onSelect();
+            this.settle();
         });
+    }
+
+    /**
+     * Listens for presses again once the action has had time to take effect,
+     * or as soon as the scene wakes: a press from before it slept can't
+     * arrive after that, and the player may want the same button straight away.
+     */
+    private settle(): void {
+        // The action may have destroyed the button, which leaves it without a scene.
+        const scene = this.scene as Phaser.Scene | undefined;
+        if (!scene) {
+            return;
+        }
+        const release = (): void => {
+            this.pressing = false;
+            timer.remove();
+            scene.events.off(Phaser.Scenes.Events.WAKE, release);
+            this.off(Phaser.GameObjects.Events.DESTROY, release);
+        };
+        const timer = scene.time.delayedCall(SETTLE_MS, release);
+        scene.events.once(Phaser.Scenes.Events.WAKE, release);
+        // The scene's event emitter outlives the button, so the listener goes with it.
+        this.once(Phaser.GameObjects.Events.DESTROY, release);
     }
 
     private currentState(): ButtonState {
