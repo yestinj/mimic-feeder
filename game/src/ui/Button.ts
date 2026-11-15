@@ -109,6 +109,10 @@ export class Button extends Phaser.GameObjects.Container {
         this.paint('pressed');
         this.scene.time.delayedCall(MOTION.fast, () => {
             this.pressing = false;
+            // Gone in the meantime (its dialog was closed with Esc, say): nothing to repaint or run.
+            if (!this.active) {
+                return;
+            }
             this.paint(this.currentState());
             this.onSelect();
         });

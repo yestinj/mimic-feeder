@@ -34,7 +34,7 @@ export class ConfirmDialog {
     private readonly menu: Menu;
     private closed = false;
 
-    constructor(scene: Phaser.Scene, private readonly options: ConfirmOptions) {
+    constructor(private readonly scene: Phaser.Scene, private readonly options: ConfirmOptions) {
         const blocker = scene.add.rectangle(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT, COLOURS.ink, 0.55).setOrigin(0).setInteractive();
         const cx = DESIGN_WIDTH / 2;
         const cy = DESIGN_HEIGHT / 2;
@@ -61,13 +61,15 @@ export class ConfirmDialog {
         scene.tweens.add({ targets: this.container, alpha: 1, duration: MOTION.fast });
         setDialogOpen(true);
         // The scene ending with the dialog still up closes it too.
-        scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-            if (!this.closed) {
-                this.closed = true;
-                setDialogOpen(false);
-            }
-        });
+        scene.events.once(Phaser.Scenes.Events.SHUTDOWN, this.onSceneShutdown);
     }
+
+    private readonly onSceneShutdown = (): void => {
+        if (!this.closed) {
+            this.closed = true;
+            setDialogOpen(false);
+        }
+    };
 
     cancel(): void {
         if (this.close()) {
@@ -87,6 +89,7 @@ export class ConfirmDialog {
         }
         this.closed = true;
         setDialogOpen(false);
+        this.scene.events.off(Phaser.Scenes.Events.SHUTDOWN, this.onSceneShutdown);
         this.menu.destroy();
         this.container.destroy();
         return true;
