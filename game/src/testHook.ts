@@ -29,6 +29,8 @@ export interface GameView {
     readonly catsRescued: number;
     /** Dragons flying off right now. */
     readonly flyingDragons: number;
+    /** Cats on the floor, waiting to be rescued. */
+    readonly waitingCats: number;
     readonly boss: { readonly health: number; readonly max: number; readonly phase: string } | null;
     /** The Ninefold Judgment, while it's on. */
     readonly judgment: { readonly phase: string; readonly gap: number | null } | null;

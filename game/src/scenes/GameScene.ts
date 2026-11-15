@@ -143,8 +143,8 @@ export class GameScene extends Phaser.Scene {
     private pauseBlur: Phaser.Filters.Blur | null = null;
     /** Abilities unlocked for the first time, waiting to be introduced on a card. */
     private pendingCards: Ability[] = [];
-    /** After a boss: cards wait until this scene time and for the HUD's banners to finish. */
-    private cardsAfterBoss: number | null = null;
+    /** After a boss: cards wait this much more play time (ms), and for the HUD's banners to finish. */
+    private cardsWaitMs: number | null = null;
     /** Points scored at the mouth this frame, shown as one pop-up at the end of it. */
     private mouthPoints = { points: 0, treasure: false };
     private readonly random = Math.random;
@@ -304,7 +304,7 @@ export class GameScene extends Phaser.Scene {
         this.bestAnnounced = false;
         this.pauseBlur = null;
         this.pendingCards = [];
-        this.cardsAfterBoss = null;
+        this.cardsWaitMs = null;
         this.mouthPoints = { points: 0, treasure: false };
         this.boss = null;
         this.musicHeld = false;
@@ -395,12 +395,13 @@ export class GameScene extends Phaser.Scene {
             shiniesCollected: this.run.shiniesCollected,
             hazardsDetonated: this.run.hazardsDetonated,
             catsRescued: this.run.catsRescued,
-            flyingDragons: this.activeObjects().filter((object) => object.flightEndsAt !== null).length,
+            flyingDragons: this.activeObjects().filter((object) => object.flightLeftMs !== null).length,
+            waitingCats: this.activeObjects().filter((object) => object.waitedMs !== null && !object.rescued).length,
             boss: this.boss ? { health: this.boss.health, max: this.boss.maxHealth, phase: this.boss.phase } : null,
             judgment: this.judgment ? { phase: this.judgment.phase, gap: this.judgment.gap } : null,
             boltsCast: this.run.uses.shadowBolt,
             food: this.activeObjects()
-                .filter((object) => isEdible(object.kind) && object.landedAt === null)
+                .filter((object) => isEdible(object.kind) && object.waitedMs === null)
                 .map((object) => ({ x: Math.round(object.x), y: Math.round(object.y) }))
                 .sort((a, b) => b.y - a.y),
             cameraFilters: this.cameras.main.filters.external.list.length,
@@ -458,9 +459,9 @@ export class GameScene extends Phaser.Scene {
         for (const object of this.activeObjects()) {
             object.steerTowards(this.mimic.centerX, this.mimic.centerY);
             if (object.kind === 'dragon') {
-                this.updateDragon(object);
-            } else if (object.landedAt !== null) {
-                this.updateWaitingCat(object);
+                this.updateDragon(object, delta);
+            } else if (object.waitedMs !== null) {
+                this.updateWaitingCat(object, delta);
                 continue;
             }
             if (!object.grabbed && object.body.bottom >= GROUND_Y) {
@@ -474,6 +475,9 @@ export class GameScene extends Phaser.Scene {
             this.mouthPoints = { points: 0, treasure: false };
         }
 
+        if (this.cardsWaitMs !== null) {
+            this.cardsWaitMs = Math.max(0, this.cardsWaitMs - delta);
+        }
         // New abilities are introduced at the end of the frame, with the game paused,
         // except from a boss's defeat until the next floor is under way.
         if (this.pendingCards.length > 0 && this.canOpenOverlay() && this.cardsCanOpen()) {
@@ -667,7 +671,7 @@ export class GameScene extends Phaser.Scene {
         if (object.grabbed || object.rescued) {
             return false;
         }
-        if (object.kind === 'dragon' && object.flightEndsAt === null && this.dragonShouldFlee(object)) {
+        if (object.kind === 'dragon' && object.flightLeftMs === null && this.dragonShouldFlee(object)) {
             this.startDragonFlight(object);
             return false;
         }
@@ -729,7 +733,7 @@ export class GameScene extends Phaser.Scene {
         const kind = object.kind;
         if (kind === 'cat') {
             // Cats land safely and wait to be rescued.
-            object.land(GROUND_Y, this.time.now);
+            object.land(GROUND_Y);
             return;
         }
         let events: RunEvent[] = [];
@@ -760,10 +764,18 @@ export class GameScene extends Phaser.Scene {
         this.apply(events, false);
     }
 
-    /** A cat on the floor is rescued after a while, scores 100 and fades away. */
-    private updateWaitingCat(cat: FallingObject): void {
+    /**
+     * A cat on the floor is rescued after a while, scores 100 and fades away.
+     * Its wait counts play time (each frame's delta), so it stops while the
+     * game is paused or the cat is set aside for the Ninefold Judgment.
+     */
+    private updateWaitingCat(cat: FallingObject, delta: number): void {
         // A cat a tentacle has hold of is on its way to the mouth, not waiting to be rescued.
-        if (cat.rescued || cat.grabbed || cat.landedAt === null || this.time.now - cat.landedAt < CAT_RESCUE_MS) {
+        if (cat.rescued || cat.grabbed || cat.waitedMs === null) {
+            return;
+        }
+        cat.waitedMs += delta;
+        if (cat.waitedMs < CAT_RESCUE_MS) {
             return;
         }
         cat.rescued = true;
@@ -778,22 +790,27 @@ export class GameScene extends Phaser.Scene {
 
     private startDragonFlight(dragon: FallingObject): void {
         const { vx, vy, ms } = flight(DRAGON.flightSpeed * this.dropSpeed(), this.random);
-        dragon.fly(vx, vy, this.time.now + ms);
+        dragon.fly(vx, vy, ms);
     }
 
-    /** Dragons take fright when the mimic gets close, and fly off until their flight ends or they reach a wall. */
-    private updateDragon(dragon: FallingObject): void {
+    /**
+     * Dragons take fright when the mimic gets close, and fly off until their
+     * flight ends or they reach a wall. A flight lasts so much play time
+     * (each frame's delta), so it stops while the game is paused.
+     */
+    private updateDragon(dragon: FallingObject, delta: number): void {
         if (dragon.grabbed) {
             return;
         }
-        if (dragon.flightEndsAt === null) {
+        if (dragon.flightLeftMs === null) {
             if (this.dragonShouldFlee(dragon)) {
                 this.startDragonFlight(dragon);
             }
             return;
         }
+        dragon.flightLeftMs -= delta;
         const half = dragon.displayWidth / 2;
-        if (this.time.now >= dragon.flightEndsAt || dragon.x - half < 0 || dragon.x + half > DESIGN_WIDTH) {
+        if (dragon.flightLeftMs <= 0 || dragon.x - half < 0 || dragon.x + half > DESIGN_WIDTH) {
             dragon.endFlight(this.dropSpeed());
         } else if (dragon.y - dragon.displayHeight / 2 < 0 && dragon.body.velocity.y < 0) {
             // At the top it carries on sideways.
@@ -916,7 +933,7 @@ export class GameScene extends Phaser.Scene {
         this.boss?.destroy();
         this.boss = null;
         this.emitBossHealth();
-        this.cardsAfterBoss = this.time.now + CARDS_AFTER_BOSS_MS;
+        this.cardsWaitMs = CARDS_AFTER_BOSS_MS;
         this.apply(this.run.finishBossFloor(), false);
     }
 
@@ -929,14 +946,14 @@ export class GameScene extends Phaser.Scene {
         if (this.boss !== null && !this.boss.alive) {
             return false;
         }
-        if (this.cardsAfterBoss === null) {
+        if (this.cardsWaitMs === null) {
             return true;
         }
         const hud = this.scene.get('hud') as HudScene;
-        if (this.time.now < this.cardsAfterBoss || hud.bannersBusy) {
+        if (this.cardsWaitMs > 0 || hud.bannersBusy) {
             return false;
         }
-        this.cardsAfterBoss = null;
+        this.cardsWaitMs = null;
         return true;
     }
 

@@ -19,10 +19,11 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
     magnetSpeed: number | null = null;
     /** Claimed by a tentacle until it's pulled into the mouth: no contact or floor checks. */
     grabbed = false;
-    /** A dragon flying off: when its flight ends (scene time), or null while it falls. */
-    flightEndsAt: number | null = null;
-    /** A cat waiting on the floor: when it landed (scene time), or null. */
-    landedAt: number | null = null;
+    // Both count time in play only (the scene adds each frame's delta), so they stop while the game is paused.
+    /** A dragon flying off: how much of its flight is left (ms), or null while it falls. */
+    flightLeftMs: number | null = null;
+    /** A cat waiting on the floor: how long it has waited (ms), or null until it lands. */
+    waitedMs: number | null = null;
     /** A rescued cat, fading out: nothing touches it any more. */
     rescued = false;
     declare body: Phaser.Physics.Arcade.Body;
@@ -53,31 +54,31 @@ export class FallingObject extends Phaser.Physics.Arcade.Sprite {
      * kept a flying dragon's fall speed, so jumping into one eats it.
      */
     get falling(): boolean {
-        return this.body.velocity.y > 0 || this.flightEndsAt !== null;
+        return this.body.velocity.y > 0 || this.flightLeftMs !== null;
     }
 
     /** Sets the fall speed from the current drop speed (design px/s). Magnetised and grabbed objects keep moving their own way. */
     setDropSpeed(dropSpeed: number): void {
-        if (this.magnetSpeed === null && !this.grabbed && this.flightEndsAt === null && this.landedAt === null) {
+        if (this.magnetSpeed === null && !this.grabbed && this.flightLeftMs === null && this.waitedMs === null) {
             this.setVelocity(0, dropSpeed * this.variation * this.def.fallSpeed);
         }
     }
 
-    /** A dragon takes fright: it flies at (vx, vy) until `until` (scene time). */
-    fly(vx: number, vy: number, until: number): void {
-        this.flightEndsAt = until;
+    /** A dragon takes fright: it flies at (vx, vy) for `ms` of play. */
+    fly(vx: number, vy: number, ms: number): void {
+        this.flightLeftMs = ms;
         this.setVelocity(vx, vy);
     }
 
     /** A dragon's flight is over: it falls again at the current drop speed. */
     endFlight(dropSpeed: number): void {
-        this.flightEndsAt = null;
+        this.flightLeftMs = null;
         this.setDropSpeed(dropSpeed);
     }
 
-    /** A cat lands on the floor at `groundY` and waits there. */
-    land(groundY: number, time: number): void {
-        this.landedAt = time;
+    /** A cat lands on the floor at `groundY` and starts its wait there. */
+    land(groundY: number): void {
+        this.waitedMs = 0;
         this.settle(groundY);
     }
 
