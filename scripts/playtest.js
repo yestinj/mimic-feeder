@@ -178,6 +178,27 @@ async function checkNextBuild(browser) {
         }
         throw new Error(`Timed out waiting for the /next/ game state; last snapshot: ${JSON.stringify(last)}`);
     };
+    /**
+     * Two presses of Enter in the same instant (a second one landing before the first has done anything),
+     * sent as page events so no frame can fall between them.
+     */
+    const pressEnterTwice = () => page.evaluate(() => {
+        for (let i = 0; i < 2; i++) {
+            for (const type of ['keydown', 'keyup']) {
+                window.dispatchEvent(new KeyboardEvent(type, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+            }
+        }
+    });
+    /** How many times a scene has opened. */
+    const timesOpened = (scene) => page.evaluate((key) => window.__mimicFeeder.ready.filter((ready) => ready === key).length, scene);
+    /** Double-clicks a point given in the game's 1920×1080 design pixels. */
+    const doubleClick = async (x, y) => {
+        const box = await page.evaluate(() => {
+            const rect = document.querySelector('canvas').getBoundingClientRect();
+            return { left: rect.left, top: rect.top, scale: rect.width / 1920 };
+        });
+        await page.mouse.dblclick(box.left + x * box.scale, box.top + y * box.scale);
+    };
     const holdKey = async (key, ms) => {
         await page.keyboard.down(key);
         await page.waitForTimeout(ms);
@@ -424,6 +445,13 @@ async function checkNextBuild(browser) {
         for (let i = 0; i < 4; i++) {
             await page.keyboard.press('ArrowDown');
         }
+        // Pressed twice, it still asks once: Esc closes the dialog, with none left behind.
+        await pressEnterTwice();
+        await waitForSnapshot((s) => s.dialog);
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => !s.dialog, 5000);
+        assert((await snapshot()).running.includes('pause'), '/next/ pressing Enter twice on Restart opens one dialog, which Esc closes');
         await page.keyboard.press('Enter');
         await waitForSnapshot((s) => s.dialog);
         await page.keyboard.press('Enter');
@@ -535,22 +563,29 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('howToPlay'));
 
         // Achievements (third on the title menu, one below How to Play) open from the title too.
+        // Enter pressed twice still opens them once: a second press used to open them again after they closed.
         await page.keyboard.press('ArrowDown');
-        await page.keyboard.press('Enter');
+        let opensBefore = await timesOpened('achievements');
+        await pressEnterTwice();
         await waitForSnapshot((s) => s.running.includes('achievements') && !s.running.includes('title'));
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('achievements'));
         assert(true, '/next/ Achievements opens from the title menu and Esc returns to it');
+        // Time for a second opening, if one were waiting, to happen.
+        await page.waitForTimeout(800);
+        assert((await snapshot()).running.includes('title') && await timesOpened('achievements') === opensBefore + 1,
+            '/next/ pressing Enter twice on a menu button opens its screen once');
 
-        // Credits (last on the title menu, three below Achievements).
-        for (let i = 0; i < 3; i++) {
-            await page.keyboard.press('ArrowDown');
-        }
-        await page.keyboard.press('Enter');
+        // Credits (last on the title menu, at 960, 810), double-clicked: once, too.
+        opensBefore = await timesOpened('credits');
+        await doubleClick(960, 810);
         await waitForSnapshot((s) => s.running.includes('credits') && !s.running.includes('title'));
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('credits'));
         assert(true, '/next/ Credits opens from the title menu and Esc returns to it');
+        await page.waitForTimeout(800);
+        assert((await snapshot()).running.includes('title') && await timesOpened('credits') === opensBefore + 1,
+            '/next/ double-clicking a menu button opens its screen once');
 
         // Erase save data (ninth row) asks first, then starts over. Settings is one above Credits.
         await page.keyboard.press('ArrowUp');

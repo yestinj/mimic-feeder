@@ -44,6 +44,8 @@ export class Button extends Phaser.GameObjects.Container {
     private readonly quiet: boolean;
     private focused = false;
     private enabled: boolean;
+    /** Pressed, with its action still to run: further presses are ignored until it has. */
+    private pressing = false;
 
     /** Called when the pointer moves onto the button (Menu uses it to move focus). */
     onHover: (() => void) | null = null;
@@ -90,16 +92,23 @@ export class Button extends Phaser.GameObjects.Container {
         return this;
     }
 
-    /** Runs the action with a short press animation. Ignored while disabled. */
+    /**
+     * Runs the action with a short press animation. Ignored while disabled,
+     * and while an earlier press is still playing out: a double click or a
+     * quick second Enter counts once. (Otherwise the action ran twice, and if
+     * the first run put the scene to sleep, the second ran when it woke.)
+     */
     select(): void {
-        if (!this.enabled) {
+        if (!this.enabled || this.pressing) {
             return;
         }
+        this.pressing = true;
         if (!this.quiet) {
             playSound(this.scene, 'uiSelect');
         }
         this.paint('pressed');
         this.scene.time.delayedCall(MOTION.fast, () => {
+            this.pressing = false;
             this.paint(this.currentState());
             this.onSelect();
         });

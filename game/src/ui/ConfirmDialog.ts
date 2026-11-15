@@ -60,7 +60,13 @@ export class ConfirmDialog {
         this.container = scene.add.container(0, 0, [blocker, backing, panel, message, ...detail, cancel, confirm]).setDepth(100).setAlpha(0);
         scene.tweens.add({ targets: this.container, alpha: 1, duration: MOTION.fast });
         setDialogOpen(true);
-        scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => setDialogOpen(false));
+        // The scene ending with the dialog still up closes it too.
+        scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            if (!this.closed) {
+                this.closed = true;
+                setDialogOpen(false);
+            }
+        });
     }
 
     cancel(): void {
