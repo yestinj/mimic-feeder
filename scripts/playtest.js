@@ -192,18 +192,23 @@ async function checkNextBuild(browser) {
     /** How many times a scene has opened. */
     const timesOpened = (scene) => page.evaluate((key) => window.__mimicFeeder.ready.filter((ready) => ready === key).length, scene);
     /**
-     * Clicks a point (in the game's 1920×1080 design pixels) over and over for `ms`: whatever a
-     * double click's timing, one of these lands there. A button's action only takes effect a
-     * frame or two after it runs, and a second click in that gap used to get through.
+     * Clicks a point (in the game's 1920×1080 design pixels) over and over until `scene` has opened,
+     * and for a little longer: whatever a double click's timing, one of these lands there. A button's
+     * action only takes effect a frame or two after it runs, and a second click in that gap used to get through.
      */
-    const clickRepeatedly = async (x, y, ms) => {
+    const clickUntilOpen = async (x, y, scene) => {
         const box = await page.evaluate(() => {
             const rect = document.querySelector('canvas').getBoundingClientRect();
             return { left: rect.left, top: rect.top, scale: rect.width / 1920 };
         });
-        const until = Date.now() + ms;
-        while (Date.now() < until) {
+        const opensBefore = await timesOpened(scene);
+        const giveUp = Date.now() + 30000;
+        let until = null;
+        for (let clicks = 0; Date.now() < (until ?? giveUp); clicks++) {
             await page.mouse.click(box.left + x * box.scale, box.top + y * box.scale);
+            if (until === null && clicks % 10 === 9 && await timesOpened(scene) > opensBefore) {
+                until = Date.now() + 300;
+            }
         }
     };
     const holdKey = async (key, ms) => {
@@ -589,7 +594,7 @@ async function checkNextBuild(browser) {
         // Credits (last on the title menu, at 960, 810; nothing on the Credits screen is clickable there),
         // clicked again and again as it opens: once, too.
         opensBefore = await timesOpened('credits');
-        await clickRepeatedly(960, 810, 700);
+        await clickUntilOpen(960, 810, 'credits');
         await waitForSnapshot((s) => s.running.includes('credits') && !s.running.includes('title'));
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('credits'));

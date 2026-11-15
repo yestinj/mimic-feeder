@@ -70,7 +70,8 @@ export class Button extends Phaser.GameObjects.Container {
         this.setInteractive({ cursor: POINTER_CURSOR });
         this.on(Phaser.Input.Events.POINTER_OVER, () => this.onHover?.());
         this.on(Phaser.Input.Events.POINTER_DOWN, () => {
-            if (this.enabled) {
+            // Not while a press is being ignored: nothing would repaint it afterwards.
+            if (this.enabled && !this.pressing) {
                 this.paint('pressed');
             }
         });
@@ -105,7 +106,7 @@ export class Button extends Phaser.GameObjects.Container {
      * action starts (another screen opening over this one, a dialog) only
      * takes effect a frame or two later, and a second click landing in that
      * gap would otherwise still get through. The wait is on the scene's
-     * clock, so it holds for as long as the scene sleeps.
+     * clock, so it holds for as long as the scene sleeps (see settle()).
      */
     select(): void {
         if (!this.enabled || this.pressing) {
@@ -123,14 +124,31 @@ export class Button extends Phaser.GameObjects.Container {
             }
             this.paint(this.currentState());
             this.onSelect();
-            // The action may have destroyed the button, which leaves it without a scene.
-            const scene = this.scene as Phaser.Scene | undefined;
-            if (scene) {
-                scene.time.delayedCall(SETTLE_MS, () => {
-                    this.pressing = false;
-                });
-            }
+            this.settle();
         });
+    }
+
+    /**
+     * Listens for presses again once the action has had time to take effect,
+     * or as soon as the scene wakes: a press from before it slept can't
+     * arrive after that, and the player may want the same button straight away.
+     */
+    private settle(): void {
+        // The action may have destroyed the button, which leaves it without a scene.
+        const scene = this.scene as Phaser.Scene | undefined;
+        if (!scene) {
+            return;
+        }
+        const release = (): void => {
+            this.pressing = false;
+            timer.remove();
+            scene.events.off(Phaser.Scenes.Events.WAKE, release);
+            this.off(Phaser.GameObjects.Events.DESTROY, release);
+        };
+        const timer = scene.time.delayedCall(SETTLE_MS, release);
+        scene.events.once(Phaser.Scenes.Events.WAKE, release);
+        // The scene's event emitter outlives the button, so the listener goes with it.
+        this.once(Phaser.GameObjects.Events.DESTROY, release);
     }
 
     private currentState(): ButtonState {
