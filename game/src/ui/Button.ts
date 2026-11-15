@@ -21,6 +21,9 @@ const LABEL_COLOURS: Record<ButtonState, string> = {
     disabled: TEXT_COLOURS.dim,
 };
 
+/** After a button's action runs, how long it ignores further presses (ms). */
+const SETTLE_MS = 250;
+
 export interface ButtonOptions {
     readonly width?: number;
     readonly enabled?: boolean;
@@ -44,7 +47,7 @@ export class Button extends Phaser.GameObjects.Container {
     private readonly quiet: boolean;
     private focused = false;
     private enabled: boolean;
-    /** Pressed, with its action still to run: further presses are ignored until it has. */
+    /** Pressed: further presses are ignored until its action has run and had time to take effect. */
     private pressing = false;
 
     /** Called when the pointer moves onto the button (Menu uses it to move focus). */
@@ -94,9 +97,15 @@ export class Button extends Phaser.GameObjects.Container {
 
     /**
      * Runs the action with a short press animation. Ignored while disabled,
-     * and while an earlier press is still playing out: a double click or a
+     * and while an earlier press is still playing out, so a double click or a
      * quick second Enter counts once. (Otherwise the action ran twice, and if
      * the first run put the scene to sleep, the second ran when it woke.)
+     *
+     * The button stays deaf for a moment after its action too: what the
+     * action starts (another screen opening over this one, a dialog) only
+     * takes effect a frame or two later, and a second click landing in that
+     * gap would otherwise still get through. The wait is on the scene's
+     * clock, so it holds for as long as the scene sleeps.
      */
     select(): void {
         if (!this.enabled || this.pressing) {
@@ -108,13 +117,19 @@ export class Button extends Phaser.GameObjects.Container {
         }
         this.paint('pressed');
         this.scene.time.delayedCall(MOTION.fast, () => {
-            this.pressing = false;
             // Gone in the meantime (its dialog was closed with Esc, say): nothing to repaint or run.
             if (!this.active) {
                 return;
             }
             this.paint(this.currentState());
             this.onSelect();
+            // The action may have destroyed the button, which leaves it without a scene.
+            const scene = this.scene as Phaser.Scene | undefined;
+            if (scene) {
+                scene.time.delayedCall(SETTLE_MS, () => {
+                    this.pressing = false;
+                });
+            }
         });
     }
 

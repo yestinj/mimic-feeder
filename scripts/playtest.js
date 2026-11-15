@@ -191,13 +191,20 @@ async function checkNextBuild(browser) {
     });
     /** How many times a scene has opened. */
     const timesOpened = (scene) => page.evaluate((key) => window.__mimicFeeder.ready.filter((ready) => ready === key).length, scene);
-    /** Double-clicks a point given in the game's 1920×1080 design pixels. */
-    const doubleClick = async (x, y) => {
+    /**
+     * Clicks a point (in the game's 1920×1080 design pixels) over and over for `ms`: whatever a
+     * double click's timing, one of these lands there. A button's action only takes effect a
+     * frame or two after it runs, and a second click in that gap used to get through.
+     */
+    const clickRepeatedly = async (x, y, ms) => {
         const box = await page.evaluate(() => {
             const rect = document.querySelector('canvas').getBoundingClientRect();
             return { left: rect.left, top: rect.top, scale: rect.width / 1920 };
         });
-        await page.mouse.dblclick(box.left + x * box.scale, box.top + y * box.scale);
+        const until = Date.now() + ms;
+        while (Date.now() < until) {
+            await page.mouse.click(box.left + x * box.scale, box.top + y * box.scale);
+        }
     };
     const holdKey = async (key, ms) => {
         await page.keyboard.down(key);
@@ -576,16 +583,17 @@ async function checkNextBuild(browser) {
         assert((await snapshot()).running.includes('title') && await timesOpened('achievements') === opensBefore + 1,
             '/next/ pressing Enter twice on a menu button opens its screen once');
 
-        // Credits (last on the title menu, at 960, 810), double-clicked: once, too.
+        // Credits (last on the title menu, at 960, 810; nothing on the Credits screen is clickable there),
+        // clicked again and again as it opens: once, too.
         opensBefore = await timesOpened('credits');
-        await doubleClick(960, 810);
+        await clickRepeatedly(960, 810, 700);
         await waitForSnapshot((s) => s.running.includes('credits') && !s.running.includes('title'));
         await page.keyboard.press('Escape');
         await waitForSnapshot((s) => s.running.includes('title') && !s.running.includes('credits'));
         assert(true, '/next/ Credits opens from the title menu and Esc returns to it');
         await page.waitForTimeout(800);
         assert((await snapshot()).running.includes('title') && await timesOpened('credits') === opensBefore + 1,
-            '/next/ double-clicking a menu button opens its screen once');
+            '/next/ clicking a menu button repeatedly opens its screen once');
 
         // Erase save data (ninth row) asks first, then starts over. Settings is one above Credits.
         await page.keyboard.press('ArrowUp');
