@@ -26,7 +26,22 @@ export class JudgmentPanel {
     private shownPhase: JudgmentView['phase'] | null = null;
     private header: Phaser.GameObjects.Text | null = null;
 
-    constructor(private readonly scene: Phaser.Scene) {}
+    /** Holds every panel, the one fading out included, so they hide together. */
+    private readonly layer: Phaser.GameObjects.Container;
+
+    constructor(private readonly scene: Phaser.Scene) {
+        this.layer = scene.add.container(0, 0).setDepth(20);
+    }
+
+    /** Hides the panels while an overlay is open over the run (as the HUD's other notices are). */
+    setCovered(covered: boolean): void {
+        this.layer.setVisible(!covered);
+    }
+
+    /** Whether the panel on screen can be seen; null when there is none (for the playtest). */
+    get seen(): boolean | null {
+        return this.shown ? this.layer.visible : null;
+    }
 
     show(view: JudgmentView | null): void {
         if (!view) {
@@ -81,7 +96,7 @@ export class JudgmentPanel {
         }
         this.shown = next;
         if (next) {
-            next.setAlpha(0).setDepth(20);
+            this.layer.add(next.setAlpha(0));
             this.scene.tweens.add({ targets: next, alpha: 1, duration: MOTION.slow });
         }
     }

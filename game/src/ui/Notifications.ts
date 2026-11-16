@@ -41,7 +41,8 @@ interface Notice {
  * Big moments as banners in the upper third, smaller news as toasts at the
  * top (new abilities get their own card the first time; see UnlockScene).
  * Each kind shows one at a time from its own queue, without duplicates.
- * Everything here runs on the HUD scene's clock, so it waits while paused.
+ * Everything here runs on the HUD scene's clock, so it waits while paused;
+ * under an overlay (the pause menu, a new-ability card) it's also hidden.
  */
 export class Notifications {
     private readonly banners: Notice[] = [];
@@ -52,6 +53,8 @@ export class Notifications {
     private toastY = TOAST_Y;
     /** Held: nothing new shows and what's showing is hidden and frozen (during the judgment). */
     private held = false;
+    /** Covered: an overlay is open over the run, so what's showing is hidden (the paused scene's clock already froze it). */
+    private covered = false;
 
     constructor(private readonly scene: Phaser.Scene) {}
 
@@ -115,7 +118,7 @@ export class Notifications {
         }
         this.held = held;
         for (const container of this.shown) {
-            container.setVisible(!held);
+            container.setVisible(this.visible);
             this.scene.tweens.getTweensOf(container).forEach((tween) => (held ? tween.pause() : tween.resume()));
         }
         if (!held) {
@@ -126,6 +129,23 @@ export class Notifications {
                 this.nextToast();
             }
         }
+    }
+
+    /**
+     * Hides what's showing while an overlay is open over the run, so the
+     * overlay's own title and panels never share the screen with a notice;
+     * uncovered, notices are back with all the time they had left.
+     */
+    setCovered(covered: boolean): void {
+        this.covered = covered;
+        for (const container of this.shown) {
+            container.setVisible(this.visible);
+        }
+    }
+
+    /** How many notices are on screen, and how many of those can be seen (for the playtest). */
+    get counts(): { readonly showing: number; readonly visible: number } {
+        return { showing: this.shown.length, visible: this.shown.filter((container) => container.visible).length };
     }
 
     /** True while a banner is showing or waiting to. */
@@ -149,6 +169,11 @@ export class Notifications {
             container.destroy();
         }
         this.shown.length = 0;
+    }
+
+    /** Notices can be seen: not held for the judgment, and no overlay over the run. */
+    private get visible(): boolean {
+        return !this.held && !this.covered;
     }
 
     private enqueue(queue: Notice[], showing: Notice | null, notice: Notice, next: () => void): void {
@@ -274,6 +299,7 @@ export class Notifications {
     private show(parts: Phaser.GameObjects.GameObject[], y: number, holdMs: number, slide: number, done: () => void, kind: 'banner' | 'toast'): void {
         const container = this.scene.add.container(DESIGN_WIDTH / 2, y + slide, parts).setAlpha(0).setScale(slide ? 1 : 0.9);
         container.setData('kind', kind);
+        container.setVisible(this.visible);
         this.shown.push(container);
         this.scene.tweens.add({ targets: container, alpha: 1, y, scale: 1, duration: MOTION.normal, ease: 'Back.Out' });
         this.scene.tweens.add({

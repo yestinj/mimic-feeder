@@ -446,6 +446,21 @@ async function checkNextBuild(browser) {
         const fight = await waitForSnapshot((s) => s.game.boss !== null);
         assert(fight.game.floor % 2 === 0 && fight.game.zone === 5 && fight.game.objects === 0,
             '/next/ Zone 5 of an even floor starts a boss fight on a cleared board');
+
+        // The boss's banner is up. Under the pause menu it's hidden, so the menu's title and panels never
+        // share the screen with it; the score, hearts and ability bar stay. Paused for longer than the
+        // banner lasts, it's back afterwards with the time it had left.
+        await waitForSnapshot((s) => s.notices.visible > 0);
+        await page.keyboard.press('KeyP');
+        const underMenu = await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('hud'));
+        assert(underMenu.notices.showing > 0 && underMenu.notices.visible === 0, '/next/ the pause menu hides the banner that was showing');
+        await page.waitForTimeout(3000);
+        await page.keyboard.press('Escape');
+        const counting = await waitForSnapshot((s) => s.running.includes('countdown'));
+        assert(counting.notices.showing > 0 && counting.notices.visible === 0, '/next/ and it stays hidden through the resume countdown');
+        const backInPlay = await waitForSnapshot((s) => playing(s) && s.game.playTimeMs > underMenu.game.playTimeMs);
+        assert(backInPlay.notices.showing > 0 && backInPlay.notices.visible === backInPlay.notices.showing, '/next/ the banner is back once play resumes');
+
         await debug('damageBoss', fight.game.boss.max);
         await waitForSnapshot((s) => s.game.boss === null && s.game.floor === fight.game.floor + 1 && s.game.zone === 1, 60000);
         assert(true, '/next/ beating the boss moves on to the next floor');
@@ -516,6 +531,14 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('Space');
         await page.waitForTimeout(300);
         assert((await snapshot()).game.boltsCast === judged.game.boltsCast, '/next/ Shadow Bolts are blocked during the Judgment');
+        // The Judgment's own panel hides under the pause menu too, and is back in play.
+        assert((await snapshot()).notices.judgmentSeen === true, '/next/ the Judgment shows its panel');
+        await page.keyboard.press('KeyP');
+        const judgedUnderMenu = await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('hud'));
+        assert(judgedUnderMenu.notices.judgmentSeen === false, '/next/ the pause menu hides the Judgment\'s panel');
+        await page.keyboard.press('Escape');
+        const judgedInPlay = await waitForSnapshot((s) => playing(s) && s.game.playTimeMs > judgedUnderMenu.game.playTimeMs);
+        assert(judgedInPlay.notices.judgmentSeen === true, '/next/ and it is back once play resumes');
         await waitForSnapshot((s) => s.results !== null, 120000);
         assert((await snapshot()).results.cause === 'Judged by the dungeon', '/next/ dying to the Judgment shows as the cause of death');
         // Any key skips the story of the run to the end (it takes a few seconds otherwise).
