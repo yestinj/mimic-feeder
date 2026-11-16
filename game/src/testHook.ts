@@ -98,7 +98,7 @@ export interface DebugApi {
 }
 
 export interface MimicFeederTestHook {
-    /** Scene keys that have finished creating, in order. */
+    /** Scene keys that have finished creating, in order; and 'loadFailed' if the loading screen gave up (PreloadScene). */
     readonly ready: string[];
     snapshot?: () => GameSnapshot;
     debug?: DebugApi;

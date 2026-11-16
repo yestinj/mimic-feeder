@@ -9,6 +9,9 @@ import { Menu } from '../ui/Menu';
 import { addPanel } from '../ui/kit';
 import { addText } from '../ui/text';
 
+/** How long the loading screen waits before trying failed files again (ms). */
+const RETRY_AFTER_MS = 1000;
+
 /**
  * The loading screen: a themed progress bar while Floor 1's assets load.
  * Files that fail are tried once more. If an image is still missing after
@@ -57,10 +60,15 @@ export class PreloadScene extends Phaser.Scene {
         const missing = this.failed;
         this.failed = [];
         if (missing.length > 0 && !retried) {
-            // Queuing everything again only adds what isn't loaded yet: the loader skips the rest.
-            this.load.once(Phaser.Loader.Events.COMPLETE, () => this.finish(true));
-            loadCoreAssets(this.load);
-            this.load.start();
+            // The bar stays full for the second try, which is only a file or two.
+            this.load.off(Phaser.Loader.Events.PROGRESS);
+            // After a moment: a connection that dropped is rarely back the same instant.
+            this.time.delayedCall(RETRY_AFTER_MS, () => {
+                // Queuing everything again only adds what isn't loaded yet: the loader skips the rest.
+                this.load.once(Phaser.Loader.Events.COMPLETE, () => this.finish(true));
+                loadCoreAssets(this.load);
+                this.load.start();
+            });
             return;
         }
         if (missing.some((file) => file.type === 'image')) {
