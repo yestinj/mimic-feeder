@@ -87,16 +87,21 @@ export class HudScene extends Phaser.Scene {
         this.addScore();
         this.addVitals();
         this.notifications = new Notifications(this);
-        // The HUD is paused exactly while an overlay is over the run (and through the resume countdown).
-        const onPause = (): void => this.notifications.setCovered(true);
-        const onResume = (): void => this.notifications.setCovered(false);
-        this.events.on(Phaser.Scenes.Events.PAUSE, onPause);
-        this.events.on(Phaser.Scenes.Events.RESUME, onResume);
-        setNoticesView(() => this.notifications.counts);
         this.abilityBar = new AbilityBar(this, MARGIN, DESIGN_HEIGHT - 84);
         this.abilityBar.sync(game.abilityStates(), false);
         this.bossBar = new BossBar(this, DESIGN_WIDTH / 2, 24);
         this.judgmentPanel = new JudgmentPanel(this);
+        setNoticesView(() => ({ ...this.notifications.counts, judgmentSeen: this.judgmentPanel.seen }));
+        // The HUD is paused exactly while an overlay is over the run (and through the resume countdown):
+        // its notices and the judgment's panels hide, so the overlay never shares the screen with them.
+        const setCovered = (covered: boolean): void => {
+            this.notifications.setCovered(covered);
+            this.judgmentPanel.setCovered(covered);
+        };
+        const onPause = (): void => setCovered(true);
+        const onResume = (): void => setCovered(false);
+        this.events.on(Phaser.Scenes.Events.PAUSE, onPause);
+        this.events.on(Phaser.Scenes.Events.RESUME, onResume);
 
         const onEvent = (event: RunEvent): void => this.onRunEvent(event);
         const onChanged = (): void => this.refresh(true);

@@ -531,6 +531,14 @@ async function checkNextBuild(browser) {
         await page.keyboard.press('Space');
         await page.waitForTimeout(300);
         assert((await snapshot()).game.boltsCast === judged.game.boltsCast, '/next/ Shadow Bolts are blocked during the Judgment');
+        // The Judgment's own panel hides under the pause menu too, and is back in play.
+        assert((await snapshot()).notices.judgmentSeen === true, '/next/ the Judgment shows its panel');
+        await page.keyboard.press('KeyP');
+        const judgedUnderMenu = await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('hud'));
+        assert(judgedUnderMenu.notices.judgmentSeen === false, '/next/ the pause menu hides the Judgment\'s panel');
+        await page.keyboard.press('Escape');
+        const judgedInPlay = await waitForSnapshot((s) => playing(s) && s.game.playTimeMs > judgedUnderMenu.game.playTimeMs);
+        assert(judgedInPlay.notices.judgmentSeen === true, '/next/ and it is back once play resumes');
         await waitForSnapshot((s) => s.results !== null, 120000);
         assert((await snapshot()).results.cause === 'Judged by the dungeon', '/next/ dying to the Judgment shows as the cause of death');
         // Any key skips the story of the run to the end (it takes a few seconds otherwise).
