@@ -6,7 +6,7 @@ import { floorTitle } from '../rules/floors';
 import { formatScore } from '../rules/format';
 import { GROWTH, type Run, type RunEvent } from '../rules/run';
 import { STRINGS } from '../strings';
-import { PRACTICE_FLOOR, markReady } from '../testHook';
+import { PRACTICE_FLOOR, markReady, setNoticesView } from '../testHook';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import type { Ability } from '../rules/abilities';
 import type { Achievement } from '../rules/achievements';
@@ -44,7 +44,8 @@ interface HudBlock {
 /**
  * The heads-up display over the playfield: score, floor and zone (top left),
  * hearts, level and XP (top right), the mute icon, and notifications. It only
- * redraws when the game scene reports a change.
+ * redraws when the game scene reports a change. Under an overlay it stays on
+ * screen, sharp, without its notifications.
  */
 export class HudScene extends Phaser.Scene {
     private playfield!: GameScene;
@@ -86,6 +87,12 @@ export class HudScene extends Phaser.Scene {
         this.addScore();
         this.addVitals();
         this.notifications = new Notifications(this);
+        // The HUD is paused exactly while an overlay is over the run (and through the resume countdown).
+        const onPause = (): void => this.notifications.setCovered(true);
+        const onResume = (): void => this.notifications.setCovered(false);
+        this.events.on(Phaser.Scenes.Events.PAUSE, onPause);
+        this.events.on(Phaser.Scenes.Events.RESUME, onResume);
+        setNoticesView(() => this.notifications.counts);
         this.abilityBar = new AbilityBar(this, MARGIN, DESIGN_HEIGHT - 84);
         this.abilityBar.sync(game.abilityStates(), false);
         this.bossBar = new BossBar(this, DESIGN_WIDTH / 2, 24);
@@ -129,6 +136,9 @@ export class HudScene extends Phaser.Scene {
             game.events.off(RUN_EVENTS.achievement, onAchievement);
             game.events.off(RUN_EVENTS.newBest, onNewBest);
             stopFollowingMute();
+            this.events.off(Phaser.Scenes.Events.PAUSE, onPause);
+            this.events.off(Phaser.Scenes.Events.RESUME, onResume);
+            setNoticesView(null);
         });
 
         this.refresh(false);

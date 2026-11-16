@@ -53,6 +53,8 @@ export interface GameSnapshot {
     readonly muted: boolean;
     /** A confirm dialog is open. */
     readonly dialog: boolean;
+    /** The HUD's banners and toasts, while a run is on: how many are on screen, and how many of those can be seen (none under an overlay). */
+    readonly notices: { readonly showing: number; readonly visible: number } | null;
     /** The new-ability card on screen, and whether it accepts its key yet. */
     readonly card: { readonly ability: string; readonly ready: boolean } | null;
     /** How to Play, while it's open: the tab shown, what's marked "New", the creatures and items not met yet, and the abilities not unlocked yet. */
@@ -147,6 +149,13 @@ export function setDialogOpen(open: boolean): void {
     dialogsOpen = Math.max(0, dialogsOpen + (open ? 1 : -1));
 }
 
+let notices: (() => GameSnapshot['notices']) | null = null;
+
+/** The HUD registers how to count its notices; null when it shuts down. */
+export function setNoticesView(view: (() => GameSnapshot['notices']) | null): void {
+    notices = view;
+}
+
 let card: (() => GameSnapshot['card']) | null = null;
 let howToPlay: GameSnapshot['howToPlay'] = null;
 
@@ -198,6 +207,7 @@ export function installTestHook(game: Phaser.Game): void {
             audio: context ? context.state : 'none',
             muted: isMuted(),
             dialog: dialogsOpen > 0,
+            notices: notices ? notices() : null,
             card: card ? card() : null,
             howToPlay,
             results,
