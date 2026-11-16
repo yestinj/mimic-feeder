@@ -17,6 +17,11 @@ export const STRINGS = {
     pressToContinue: 'Press any key',
     keyHints: '← → move   ·   ↑ jump   ·   Esc pause',
     previewNotice: 'Preview of the new version. Work in progress.',
+    /** Shown in place of the game when the browser has no WebGL (the "needs JavaScript" notice is in index.html). */
+    noWebgl: {
+        title: 'Mimic Feeder needs WebGL',
+        text: 'WebGL isn’t available in this browser. Try switching on hardware acceleration in your browser’s settings, or use another browser.',
+    },
     /** Beside How to Play on the title, until it's been opened (or a few runs have been played). */
     newHere: 'First time? Start here',
     /** Practice runs (?test&floor=N), a testing aid: never shown to players otherwise. */
