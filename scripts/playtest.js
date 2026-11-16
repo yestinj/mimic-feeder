@@ -705,6 +705,70 @@ async function checkNextNotices(browser) {
     }
 }
 
+/**
+ * Files that fail to load at /next/: one that fails once is fetched again, an
+ * image that never arrives gets a message with a Reload button (not a black
+ * screen), and missing sounds only mean playing without them.
+ */
+async function checkNextLoading(browser) {
+    const openPage = async (route) => {
+        const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+        const errors = [];
+        page.on('pageerror', (err) => errors.push(String(err && err.message ? err.message : err)));
+        await route(page);
+        await page.goto(BASE + '/next/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        return { page, errors };
+    };
+    const reached = (page, scene, timeout = 30000) => page.waitForFunction((key) => window.__mimicFeeder && window.__mimicFeeder.ready.includes(key), scene, { timeout });
+    const readyScenes = (page) => page.evaluate(() => window.__mimicFeeder.ready);
+
+    // A sprite that fails once and then arrives: the title, as usual.
+    let requests = 0;
+    let { page, errors } = await openPage((p) => p.route('**/assets/goblin.png', (route) => (++requests === 1 ? route.abort() : route.continue())));
+    try {
+        await reached(page, 'title');
+        assert(requests === 2 && errors.length === 0, `/next/ fetches a sprite again when it fails to load (${requests} requests)`);
+    } finally {
+        await page.close().catch(() => {});
+    }
+
+    // A sprite that never arrives: a message, and Reload starts again once it's back.
+    ({ page, errors } = await openPage((p) => p.route('**/assets/chest_closed.png', (route) => route.abort())));
+    try {
+        await reached(page, 'loadFailed');
+        assert(!(await readyScenes(page)).includes('title') && errors.length === 0, '/next/ says it couldn’t load when a sprite never arrives, and throws no page error');
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-load-failed.png') });
+        await page.unroute('**/assets/chest_closed.png');
+        await page.keyboard.press('Enter');
+        // The page reloads, so the hook starts over: the title can only be this second load's.
+        await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title') && !window.__mimicFeeder.ready.includes('loadFailed'), null, { timeout: 30000 });
+        assert(true, '/next/ Reload loads the game once the file is back');
+    } finally {
+        await page.close().catch(() => {});
+    }
+
+    // No sound files at all: the game starts and plays, silently.
+    ({ page, errors } = await openPage((p) => p.route('**/*.mp3', (route) => route.abort())));
+    try {
+        await reached(page, 'title');
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Enter');
+        await reached(page, 'hud');
+        await page.evaluate(() => {
+            window.__mimicFeeder.debug.setSpawning(false);
+            window.__mimicFeeder.debug.spawn('goblin');
+        });
+        await page.waitForFunction(() => window.__mimicFeeder.snapshot().game.creaturesEaten === 1, null, { timeout: 60000 });
+        await page.waitForTimeout(300);
+        const snapshot = await page.evaluate(() => window.__mimicFeeder.snapshot());
+        assert(snapshot.game.objects === 0 && snapshot.game.creaturesEaten === 1 && errors.length === 0,
+            `/next/ plays on without its sounds when they fail to load${errors.length ? ` (${errors.join('; ')})` : ''}`);
+    } finally {
+        await page.close().catch(() => {});
+    }
+}
+
 async function main() {
     const headerRules = loadDistHeaderRules();
     fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -1392,6 +1456,7 @@ async function main() {
 
         await checkNextBuild(browser);
         await checkNextNotices(browser);
+        await checkNextLoading(browser);
 
         console.log(`\nPlaytest passed.`);
         console.log(`Screenshots: ${pathToFileURL(OUT_DIR).href}`);

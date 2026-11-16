@@ -14,6 +14,12 @@ export const STRINGS = {
     /** On something earned or met since the player last looked. */
     newTag: 'New',
     loading: 'Waking the mimic…',
+    /** On the loading screen when an image still hasn't arrived after a second try. */
+    loadFailed: {
+        title: 'Couldn’t load the game',
+        detail: 'Some files didn’t arrive.\nCheck your connection, then try again.',
+        reload: 'Reload',
+    },
     pressToContinue: 'Press any key',
     keyHints: '← → move   ·   ↑ jump   ·   Esc pause',
     previewNotice: 'Preview of the new version. Work in progress.',

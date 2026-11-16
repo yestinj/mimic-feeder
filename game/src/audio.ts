@@ -38,9 +38,13 @@ function musicVolume(): number {
     return MUSIC_VOLUME * profile().settings.musicVolume;
 }
 
-/** Plays a sound effect; returns it, or null if audio is still locked. */
+/**
+ * Plays a sound effect; returns it, or null if audio is still locked or the
+ * sound never loaded (Phaser throws on a missing sound, which would stop
+ * whatever was happening in the game half way).
+ */
 export function playSound(scene: Phaser.Scene, name: SoundName): Phaser.Sound.BaseSound | null {
-    if (scene.sound.locked) {
+    if (scene.sound.locked || !scene.cache.audio.exists(soundKey(name))) {
         return null;
     }
     const sound = scene.sound.add(soundKey(name), { volume: SOUNDS[name].volume * effectsVolume() });
