@@ -77,6 +77,11 @@ if (webglAvailable()) {
     try {
         start();
     } catch (error) {
+        // Phaser couldn't get its own context after all ("Cannot create WebGL context"). Anything
+        // else is a fault of the game's, not the browser's, and is left to surface as it is.
+        if (!(error instanceof Error && /webgl/i.test(error.message))) {
+            throw error;
+        }
         console.error(error);
         showNotice(STRINGS.noWebgl.title, STRINGS.noWebgl.text);
     }
