@@ -11,3 +11,32 @@ body {
     width: 100%;
     height: 100%;
 }
+
+/* A notice in place of the game when it can't run: no JavaScript (index.html)
+   or no WebGL (notice.ts). The colours and fonts are the theme's (theme.ts). */
+.notice {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
+    box-sizing: border-box;
+    background: #0b0806;
+    text-align: center;
+}
+
+.notice h1 {
+    margin: 0;
+    color: #ffd98a;
+    font: 700 clamp(2rem, 6vw, 3.5rem) / 1.1 'Grenze Gotisch', Georgia, serif;
+}
+
+.notice p {
+    margin: 0;
+    max-width: 34rem;
+    color: #f3e6c8;
+    font: 400 clamp(1rem, 2.4vw, 1.25rem) / 1.5 Barlow, system-ui, sans-serif;
+}

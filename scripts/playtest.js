@@ -651,6 +651,60 @@ async function checkNextBuild(browser) {
     }
 }
 
+/**
+ * The notices /next/ shows in place of the game when it can't run: without
+ * WebGL (in a browser of its own, started with WebGL off) and without
+ * JavaScript. Each is a styled message, not a blank page.
+ */
+async function checkNextNotices(browser) {
+    const readNotice = (page) => page.evaluate(() => {
+        const notice = document.querySelector('.notice');
+        if (!notice) {
+            return null;
+        }
+        const box = notice.getBoundingClientRect();
+        return {
+            heading: notice.querySelector('h1')?.textContent ?? '',
+            text: notice.querySelector('p')?.textContent ?? '',
+            // Styled: it fills the page, and its heading is in the theme's gold.
+            fillsPage: box.width >= window.innerWidth && box.height >= window.innerHeight,
+            headingColour: getComputedStyle(notice.querySelector('h1')).color,
+            canvases: document.querySelectorAll('canvas').length,
+        };
+    });
+    const GOLD = 'rgb(255, 217, 138)';
+
+    const noWebgl = await chromium.launch({ channel: 'chromium', args: ['--disable-gpu', '--disable-webgl', '--disable-3d-apis'] });
+    try {
+        const page = await noWebgl.newPage({ viewport: { width: 1280, height: 720 } });
+        const errors = [];
+        page.on('pageerror', (err) => errors.push(String(err && err.message ? err.message : err)));
+        await page.goto(BASE + '/next/', { waitUntil: 'load', timeout: 30000 });
+        await page.waitForSelector('.notice', { timeout: 10000 });
+        const notice = await readNotice(page);
+        assert(/WebGL/.test(notice.heading) && notice.text.length > 0, `/next/ without WebGL says so ("${notice.heading}")`);
+        assert(notice.fillsPage && notice.headingColour === GOLD && notice.canvases === 0, '/next/ the WebGL notice is styled and stands in place of the game');
+        assert(errors.length === 0, `/next/ without WebGL throws no page error${errors.length ? ` (${errors.join('; ')})` : ''}`);
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-no-webgl.png') });
+    } finally {
+        await noWebgl.close().catch(() => {});
+    }
+
+    const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 720 } });
+    try {
+        const page = await context.newPage();
+        await page.goto(BASE + '/next/', { waitUntil: 'load', timeout: 30000 });
+        // The page's own scripts don't run; the test's still can.
+        await page.waitForSelector('.notice', { timeout: 10000 });
+        const notice = await readNotice(page);
+        assert(/JavaScript/.test(notice.heading) && notice.text.length > 0, `/next/ without JavaScript says so ("${notice.heading}")`);
+        assert(notice.fillsPage && notice.headingColour === GOLD && notice.canvases === 0, '/next/ the JavaScript notice is styled like the WebGL one');
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-no-javascript.png') });
+    } finally {
+        await context.close().catch(() => {});
+    }
+}
+
 async function main() {
     const headerRules = loadDistHeaderRules();
     fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -1337,6 +1391,7 @@ async function main() {
         assert(hardConsoleErrors.length === 0, 'No unexpected console errors');
 
         await checkNextBuild(browser);
+        await checkNextNotices(browser);
 
         console.log(`\nPlaytest passed.`);
         console.log(`Screenshots: ${pathToFileURL(OUT_DIR).href}`);

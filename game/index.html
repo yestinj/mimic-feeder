@@ -9,7 +9,13 @@
 </head>
 <body>
     <div id="game" aria-label="Mimic Feeder game"></div>
-    <noscript>Mimic Feeder needs JavaScript to run.</noscript>
+    <!-- Styled like the game's own notices (src/style.css, src/notice.ts). -->
+    <noscript>
+        <div class="notice" role="alert">
+            <h1>Mimic Feeder needs JavaScript</h1>
+            <p>JavaScript is switched off in this browser. Switch it on, then reload the page.</p>
+        </div>
+    </noscript>
     <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
