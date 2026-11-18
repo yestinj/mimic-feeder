@@ -319,6 +319,41 @@ async function checkNextBuild(browser) {
         await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown'));
         assert((await snapshot()).game.cameraFilters === 0, '/next/ resuming after switching tab leaves no blur behind');
 
+        // A stronger screen shake takes over from a weaker one that's running (a hit straight after a dash),
+        // and a weaker one leaves a stronger one to finish. All in one go, so no frame passes in between.
+        const shakes = await page.evaluate(() => {
+            const hook = window.__mimicFeeder;
+            hook.debug.shake(2);
+            hook.debug.shake(7);
+            const stronger = hook.snapshot().game.shake;
+            hook.debug.shake(3);
+            return { stronger, weaker: hook.snapshot().game.shake };
+        });
+        assert(shakes.stronger === 7, `/next/ a strong screen shake takes over from a weaker one (shaking at ${shakes.stronger})`);
+        assert(shakes.weaker === 7, `/next/ and a weaker one doesn't cut a strong one short (shaking at ${shakes.weaker})`);
+
+        // Losing the WebGL context (a GPU reset) blanks the screen: the run pauses until it's back.
+        const webglContext = (lose) => page.evaluate((loseIt) => {
+            if (loseIt) {
+                const canvas = document.querySelector('canvas');
+                const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                window.__loseContext = gl.getExtension('WEBGL_lose_context');
+                window.__loseContext.loseContext();
+            } else {
+                window.__loseContext.restoreContext();
+            }
+        }, lose);
+        await webglContext(true);
+        const contextLost = await waitForSnapshot((s) => s.running.includes('pause') && s.paused.includes('game'));
+        await page.waitForTimeout(1000);
+        assert((await snapshot()).game.playTimeMs === contextLost.game.playTimeMs, '/next/ losing the WebGL context pauses the run');
+        await webglContext(false);
+        await page.waitForTimeout(500);
+        await page.keyboard.press('Escape');
+        const contextBack = await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown')
+            && s.game.playTimeMs > contextLost.game.playTimeMs);
+        assert(contextBack.game.cameraFilters === 0, '/next/ and play resumes from the pause menu once the context is back');
+
         // Abilities, unlocked through the debug shortcuts, with the normal spawns off so only the test's objects fall.
         const debug = (name, ...args) => page.evaluate(([fn, list]) => window.__mimicFeeder.debug[fn](...list), [name, args]);
         await debug('setSpawning', false);
@@ -440,6 +475,17 @@ async function checkNextBuild(browser) {
         resumed = await pauseAWhile(() => page.keyboard.press('KeyP'), DRAGON_PAUSE_MS);
         const flightPlayMs = resumed.game.playTimeMs - fleeing.game.playTimeMs;
         assert(resumed.game.flyingDragons > 0 || flightPlayMs >= 1000, `/next/ a dragon's flight doesn't run out while the game is paused (${Math.round(flightPlayMs)} ms of play since it took off)`);
+
+        // The lid stays ajar for a quarter second of play after a cast: pausing straight after doesn't use it up.
+        // (Allowing for slow frames: it only expects the lid ajar while less than that has passed since the cast.)
+        before = await waitForSnapshot((s) => playing(s) && s.game.flyingDragons === 0 && s.game.lid === 'closed');
+        resumed = await pauseAWhile(async () => {
+            await page.keyboard.press('Space');
+            await page.keyboard.press('KeyP');
+        }, 1000);
+        const sinceCast = resumed.game.playTimeMs - before.game.playTimeMs;
+        assert(resumed.game.boltsCast > before.game.boltsCast && (resumed.game.lid === 'ajar' || sinceCast >= 250),
+            `/next/ the lid's moments are timed in play: still ajar after a pause straight after a cast (${resumed.game.lid}, ${Math.round(sinceCast)} ms of play since)`);
 
         // Zone 5 of an even floor is a boss fight; beating the boss moves on a floor.
         await debug('startBoss');
@@ -788,6 +834,69 @@ async function checkNextLoading(browser) {
         assert(snapshot.game.objects === 0 && snapshot.game.creaturesEaten === 1 && errors.length === 0,
             `/next/ plays on without its sounds when they fail to load${errors.length ? ` (${errors.join('; ')})` : ''}`);
     } finally {
+        await page.close().catch(() => {});
+    }
+}
+
+/**
+ * Music that arrives late at /next/ (a slow connection): on Floor 4, whose own
+ * track and the boss's both load in the background, the floor's track turning
+ * up during the boss fight doesn't take over, and the boss's starts as soon as
+ * it arrives.
+ */
+async function checkNextLateMusic(browser) {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    const errors = [];
+    page.on('pageerror', (err) => errors.push(String(err && err.message ? err.message : err)));
+    const releases = {};
+    for (const file of ['background2.mp3', 'boss.mp3']) {
+        const released = new Promise((resolve) => {
+            releases[file] = resolve;
+        });
+        await page.route(`**/assets/music/${file}`, async (route) => {
+            await released;
+            await route.continue();
+        });
+    }
+    const snapshot = () => page.evaluate(() => window.__mimicFeeder.snapshot());
+    const waitForSnapshot = async (predicate, timeout = 30000) => {
+        const deadline = Date.now() + timeout;
+        let last = null;
+        while (Date.now() < deadline) {
+            last = await snapshot();
+            if (predicate(last)) {
+                return last;
+            }
+            await page.waitForTimeout(50);
+        }
+        throw new Error(`Timed out waiting for the game; last snapshot: ${JSON.stringify(last && last.game)}`);
+    };
+    try {
+        await page.goto(BASE + '/next/?test&floor=4', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 30000 });
+        await page.waitForTimeout(400);
+        await page.keyboard.press('Enter');
+        await page.waitForFunction(() => window.__mimicFeeder.ready.includes('hud'), null, { timeout: 30000 });
+        await page.evaluate(() => {
+            window.__mimicFeeder.debug.setSpawning(false);
+            window.__mimicFeeder.debug.startBoss();
+        });
+        await waitForSnapshot((s) => s.game.boss !== null && s.game.floor === 4);
+
+        // Floor 4's own track arrives mid-fight: it waits for the floor, and the boss's track is still wanted.
+        const floorTrack = page.waitForResponse('**/assets/music/background2.mp3');
+        releases['background2.mp3']();
+        await floorTrack;
+        await page.waitForTimeout(1500);
+        const fighting = await snapshot();
+        assert(fighting.game.boss !== null && fighting.game.music !== 'music2',
+            `/next/ a floor track that loads late doesn't take over the boss fight (playing: ${fighting.game.music})`);
+
+        releases['boss.mp3']();
+        await waitForSnapshot((s) => s.game.music === 'boss', 15000);
+        assert(errors.length === 0, `/next/ the boss music starts as soon as it loads${errors.length ? ` (${errors.join('; ')})` : ''}`);
+    } finally {
+        Object.values(releases).forEach((release) => release());
         await page.close().catch(() => {});
     }
 }
@@ -1480,6 +1589,7 @@ async function main() {
         await checkNextBuild(browser);
         await checkNextNotices(browser);
         await checkNextLoading(browser);
+        await checkNextLateMusic(browser);
 
         console.log(`\nPlaytest passed.`);
         console.log(`Screenshots: ${pathToFileURL(OUT_DIR).href}`);

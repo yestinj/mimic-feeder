@@ -105,6 +105,10 @@ Pause, help, about, object-info, achievements, and game-over should block gamepl
 - Mid-run info overlays (help / object info / about / achievements) draw `drawPlayfieldUnderlay()` under chrome so the world does not vanish
 - Resize must not clear `lastGameplayFrame` while paused (snapshot is stretched to the new canvas size)
 
+### Timing in `game/` (the rewrite)
+
+Gameplay timing in `game/` runs on play time, which stops while paused: accumulate the frame's `delta` in `update` (as `Run.playTimeMs` does; `GameScene` reads it as `playClock`), or use the scene's timers and tweens (`this.time.delayedCall`, `this.tweens`), which pause with the scene. Never time gameplay against `this.time.now`: the scene clock keeps running through a pause, so anything timed from it runs out while the game is paused. Purely visual loops (the background lights' flicker) may read it.
+
 ### p5 version
 
 Stay on **p5.js 1.11.x** CDN pins in `src/index.html` (currently **1.11.13** on cdnjs). The script tags intentionally omit Subresource Integrity because cdnjs changed bytes at the same versioned paths and the stale hashes prevented the game from starting. Do not reintroduce `integrity` attributes unless the libraries move to immutable, self-hosted files. Do not upgrade to p5 2.x without an explicit request and full playtest; any version or CDN change requires `npm run build && npm run playtest`.
