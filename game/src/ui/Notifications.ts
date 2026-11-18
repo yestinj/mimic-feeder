@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { DESIGN_WIDTH } from '../config';
 import type { Ability } from '../rules/abilities';
 import { TIER_POINTS, type Achievement } from '../rules/achievements';
+import { overlaps, type Rect } from '../rules/contact';
 import { STRINGS } from '../strings';
 import { COLOURS, MOTION, SPACE, TEXT_COLOURS, TYPE } from '../theme';
 import { addAbilityIcon } from './AbilityBar';
@@ -143,9 +144,33 @@ export class Notifications {
         }
     }
 
-    /** How many notices are on screen, and how many of those can be seen (for the playtest). */
-    get counts(): { readonly showing: number; readonly visible: number } {
-        return { showing: this.shown.length, visible: this.shown.filter((container) => container.visible).length };
+    /**
+     * Fades the toast on screen to `alpha` while `covering` (the boss, as it
+     * flies by) is behind it, and back once it's clear, as the HUD does for
+     * the score and hearts. Banners are left alone: the boss's entrance card
+     * sits just under it on purpose.
+     */
+    fadeToastsUnder(covering: Rect | null, alpha: number): void {
+        for (const container of this.shown) {
+            if (container.getData('kind') !== 'toast') {
+                continue;
+            }
+            const covered = covering !== null && overlaps(covering, container.getBounds());
+            if (covered !== (container.getData('faded') === true)) {
+                container.setData('faded', covered);
+                // The fade is on the content: the container's own alpha belongs to its fade in and out.
+                this.scene.tweens.add({ targets: container.getData('content'), alpha: covered ? alpha : 1, duration: MOTION.normal });
+            }
+        }
+    }
+
+    /** How many notices are on screen, how many of those can be seen, and how many toasts are faded (for the playtest). */
+    get counts(): { readonly showing: number; readonly visible: number; readonly faded: number } {
+        return {
+            showing: this.shown.length,
+            visible: this.shown.filter((container) => container.visible).length,
+            faded: this.shown.filter((container) => container.getData('faded') === true).length,
+        };
     }
 
     /** True while a banner is showing or waiting to. */
@@ -297,8 +322,17 @@ export class Notifications {
 
     /** Fades a notice in (sliding by `slide`), holds it, fades it out, then calls `done`. */
     private show(parts: Phaser.GameObjects.GameObject[], y: number, holdMs: number, slide: number, done: () => void, kind: 'banner' | 'toast'): void {
-        const container = this.scene.add.container(DESIGN_WIDTH / 2, y + slide, parts).setAlpha(0).setScale(slide ? 1 : 0.9);
+        // The parts sit in a container of their own, so a toast can fade under the boss (fadeToastsUnder)
+        // while the outer one fades in and out.
+        const content = this.scene.add.container(0, 0, parts);
+        const container = this.scene.add.container(DESIGN_WIDTH / 2, y + slide, [content]).setAlpha(0).setScale(slide ? 1 : 0.9);
         container.setData('kind', kind);
+        container.setData('content', content);
+        container.once(Phaser.GameObjects.Events.DESTROY, (_object: unknown, fromScene: boolean) => {
+            if (!fromScene) {
+                this.scene.tweens.killTweensOf(content);
+            }
+        });
         container.setVisible(this.visible);
         this.shown.push(container);
         this.scene.tweens.add({ targets: container, alpha: 1, y, scale: 1, duration: MOTION.normal, ease: 'Back.Out' });
