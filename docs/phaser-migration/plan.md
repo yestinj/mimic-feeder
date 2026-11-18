@@ -170,6 +170,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
 - **Eating and side hits** (agreed in M1):
   - Food is eaten only when it comes in over the rim: its bottom edge reaches the mouth (the top 30% of the chest), as when it drops in or the mimic jumps up into it. The p5 game also ate food that merely reached the mouth band, so running into tall creatures from the side usually counted as eating.
   - Anything that meets the chest lower down is a side hit: the creature is destroyed and, like food hitting the floor, it costs a life. The p5 game destroyed it for free.
+- **Tentacles** keep their promise. The chains reach their targets in 0.18 s (was 0.5 s), and from the moment Z is pressed the creatures they're going for are claimed: they can't land or hit the side of the chest, and one already at the floor waits there for its chain. In the p5 game a target kept falling while the chain reached it, so it could land first and cost a life. The 1 s pull into the mouth is unchanged. This makes Tentacles a dependable save; the 3 s cooldown, and the chains going for the creatures nearest the mimic rather than the ones about to land, keep it a judgement call (agreed while reviewing the migration; `game/src/game/Tentacles.ts`).
 - **Deliberately unchanged:**
   - Shadow Bolt still destroys shinies and power-ups (shoot carefully).
   - Touching a cat waiting on the floor still kills it.
