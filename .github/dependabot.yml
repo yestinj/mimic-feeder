@@ -11,8 +11,10 @@ updates:
           dev-tools:
               patterns: ['*']
               # esbuild is still 0.x, where each 0.N minor release can break
-              # things; keep its updates in their own PRs.
-              exclude-patterns: [esbuild]
+              # things; Phaser is the game engine, whose updates can change how
+              # the game looks or responds and are worth trying on their own.
+              # Keep both in their own PRs.
+              exclude-patterns: [esbuild, phaser]
               update-types: [minor, patch]
       ignore:
           # typescript-eslint supports TypeScript only below 6.1 (its peer
