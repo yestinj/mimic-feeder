@@ -123,7 +123,7 @@ Spawn weights are relative and are normalised over whatever is eligible at the t
 - **Level number:** level = (floor − 1) × 5 + zone.
 - **Difficulty:** multiplier = 1 + (level − 1) × 0.05. Drop speed scales up by it; spawn interval scales down by it (minimum 10 frames). Objects already falling take the new speed.
 - **Backgrounds:** one per floor for Floors 1–10 (upper dungeon → abyss). Floor 10's background stays for every later floor. Later backgrounds load in the background, with the closest loaded earlier floor shown until they arrive.
-- **Music:** Floors 1–2 and 5–6 (repeating every 4 floors) use track 1; Floors 3–4 and 7–8 use track 2. The boss has its own track. Music is silent during the boss death cue and the Ninefold Judgment.
+- **Music:** the code's comment says Floors 1–2 and 5–6 (repeating every 4 floors) use track 1, and Floors 3–4 and 7–8 track 2, but its formula (`floor % 4 < 2`) is a floor out: track 1 plays on Floor 1, track 2 on Floors 2–3, track 1 on 4–5, and so on. The rewrite follows the comment (plan §3.9). The boss has its own track. Music is silent during the boss death cue and the Ninefold Judgment.
 
 ### Boss (even floors)
 
