@@ -201,7 +201,7 @@ Handle them explicitly and narrowly, never by turning a rule off for the bundle:
 
 - `README.md` — player-facing controls and setup
 - `CONTRIBUTING.md` — fork workflow (not open contribution)
-- `reviews/` — dated code reviews (`develop-to-main-review-2026-11-09.md`; its follow-ups section records what is done and what is still open)
+- `reviews/` — dated code reviews: `develop-to-main-review-2026-11-09.md`, and `phaser-migration-review-2026-11-14.md` (the rewrite before the swap: findings, the swap checklist and rollback notes). Each has a follow-ups section recording what is done and what is still open
 - `archive/` — historical notes only (not living todos or current assessments): `plan.md` polish checklist, `tech-review.md` Feb 2026 tech review, `code-review-2026-07-09.md` superseded July 2026 review, `pre-merge-plan.md` the July 2026 develop→main checklist
 - `docs/phaser-migration/` — the Phaser + TypeScript rewrite: `plan.md` (decisions, approach, milestones) and `inventory.md` (everything the p5 game does)
 - GitHub issues — open follow-ups
