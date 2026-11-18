@@ -501,6 +501,11 @@ async function checkNextBuild(browser) {
         const fight = await waitForSnapshot((s) => s.game.boss !== null);
         assert(fight.game.floor % 2 === 0 && fight.game.zone === 5 && fight.game.objects === 0,
             '/next/ Zone 5 of an even floor starts a boss fight on a cleared board');
+        // A toast while the boss hovers at the top centre, in the toasts' spot: it fades so the boss stays in sight,
+        // as the score and hearts do. (Points enough for a level-up, whose toast shows at once.)
+        await debug('bonus', 2000);
+        const underBoss = await waitForSnapshot((s) => s.notices.faded > 0, 10000);
+        assert(underBoss.game.boss !== null, '/next/ a toast fades while the boss is behind it');
 
         // The boss's banner is up. Under the pause menu it's hidden, so the menu's title and panels never
         // share the screen with it; the score, hearts and ability bar stay. Paused for longer than the

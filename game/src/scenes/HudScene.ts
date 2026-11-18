@@ -163,9 +163,10 @@ export class HudScene extends Phaser.Scene {
         this.fadeBlocksUnderBoss();
     }
 
-    /** The score and the hearts fade while the boss flies behind them, so it never vanishes. */
+    /** The score, the hearts and any toast fade while the boss flies behind them, so it never vanishes. */
     private fadeBlocksUnderBoss(): void {
         const boss = this.playfield.bossBounds();
+        this.notifications.fadeToastsUnder(boss, COVERED_ALPHA);
         for (const block of this.blocks) {
             const covered = boss !== null && block.parts.some((part) => overlaps(boss, part.getBounds()));
             if (covered !== block.faded) {

@@ -61,10 +61,11 @@ export interface GameSnapshot {
     readonly dialog: boolean;
     /**
      * The HUD's notices, while a run is on: how many banners and toasts are on
-     * screen, how many of those can be seen (none under an overlay), and
-     * whether the Ninefold Judgment's panel can be (null when it has none up).
+     * screen, how many of those can be seen (none under an overlay), how many
+     * toasts are faded (the boss behind them), and whether the Ninefold
+     * Judgment's panel can be seen (null when it has none up).
      */
-    readonly notices: { readonly showing: number; readonly visible: number; readonly judgmentSeen: boolean | null } | null;
+    readonly notices: { readonly showing: number; readonly visible: number; readonly faded: number; readonly judgmentSeen: boolean | null } | null;
     /** The new-ability card on screen, and whether it accepts its key yet. */
     readonly card: { readonly ability: string; readonly ready: boolean } | null;
     /** How to Play, while it's open: the tab shown, what's marked "New", the creatures and items not met yet, and the abilities not unlocked yet. */
