@@ -167,6 +167,7 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
 - **The Magnet** behaves like the Wizard Staff: offered as soon as it unlocks (Floor 3 Zone 1), then occasionally after a miss, until collected.
 - **Spawn positions** use the full width correctly; drops currently lean left.
 - **Dash** gets its own whoosh sound instead of reusing the Shadow Bolt cast sound.
+- **Floor music** pairs the floors as the p5 code's comment intended: track 1 on Floors 1–2 and track 2 on 3–4, repeating every four floors. The p5 game's formula is a floor out, so it actually plays track 1 on Floor 1, then track 2 on 2–3, track 1 on 4–5, and so on. Paired this way, each boss ends its own two-floor stretch and the music changes once it's beaten (agreed while reviewing the migration; `musicForFloor` in `game/src/rules/progression.ts`).
 - **Eating and side hits** (agreed in M1):
   - Food is eaten only when it comes in over the rim: its bottom edge reaches the mouth (the top 30% of the chest), as when it drops in or the mimic jumps up into it. The p5 game also ate food that merely reached the mouth band, so running into tall creatures from the side usually counted as eating.
   - Anything that meets the chest lower down is a side hit: the creature is destroyed and, like food hitting the floor, it costs a life. The p5 game destroyed it for free.
