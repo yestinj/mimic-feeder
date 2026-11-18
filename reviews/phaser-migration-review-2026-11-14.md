@@ -419,8 +419,8 @@ Worked through with the owner after the review, one item at a time. Status on 20
 | A-2 | Each fix above came with playtest checks, each shown to fail without the fix. | #30–#34 |
 | D-1 | `/next/`'s pairing is kept (track 1 on Floors 1–2, track 2 on 3–4) and recorded in plan §3.9; the inventory now says what the p5 game actually plays. | #36 |
 | D-2 | The 0.18 s reach and claimed targets are kept and recorded in plan §3.9. | #37 |
-| D-6, F-8 | The "make the window bigger" message is dropped from plan §1. A-9's keyboard note for phones and tablets is in the plan's Later list instead. | #BATCH |
-| A-3 | Phaser updates get their own Dependabot PR. | #BATCH |
+| D-6, F-8 | The "make the window bigger" message is dropped from plan §1. A-9's keyboard note for phones and tablets is in the plan's Later list instead. | #38 |
+| A-3 | Phaser updates get their own Dependabot PR. | #38 |
 
 ### Still open
 
