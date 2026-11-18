@@ -43,12 +43,14 @@ export class CountdownScene extends Phaser.Scene {
 
         const backToPause = (): void => this.finish(() => game.reopenPause());
         onKeyDown(this, ['P', 'ESC'], backToPause);
-        // Losing focus, or the page being hidden, stops the count like it pauses play.
+        // Losing focus, the page being hidden, or losing the WebGL context stops the count like it pauses play.
         this.game.events.on(Phaser.Core.Events.BLUR, backToPause);
         this.game.events.on(Phaser.Core.Events.HIDDEN, backToPause);
+        this.game.renderer.on(Phaser.Renderer.Events.LOSE_WEBGL, backToPause);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             this.game.events.off(Phaser.Core.Events.BLUR, backToPause);
             this.game.events.off(Phaser.Core.Events.HIDDEN, backToPause);
+            this.game.renderer.off(Phaser.Renderer.Events.LOSE_WEBGL, backToPause);
         });
         markReady('countdown');
     }

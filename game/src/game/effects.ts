@@ -8,9 +8,6 @@ import { COLOURS, TEXT_COLOURS, TYPE } from '../theme';
 import { UI } from '../ui/kit';
 import { addText } from '../ui/text';
 
-/** The strength of the shake each camera is running (see `shake`). */
-const shaking = new WeakMap<Phaser.Cameras.Scene2D.Camera, number>();
-
 /**
  * Shakes the camera. `strength` is the p5 game's shake amount in reference
  * pixels; it decayed by 10% per frame, which this approximates with a steady
@@ -23,16 +20,15 @@ export function shake(camera: Phaser.Cameras.Scene2D.Camera, strength: number): 
     if (!screenShakeEnabled()) {
         return;
     }
-    if (camera.shakeEffect.isRunning && strength <= (shaking.get(camera) ?? 0)) {
+    if (strength <= shakeStrength(camera)) {
         return;
     }
-    shaking.set(camera, strength);
     const frames = Math.log(0.5 / strength) / Math.log(0.9);
     const pixels = strength * 0.5 * SIZE_SCALE;
     camera.shake((frames * 1000) / 60, new Phaser.Math.Vector2(pixels / DESIGN_WIDTH, pixels / DESIGN_HEIGHT), true);
 }
 
-/** The strength of the shake the camera is running, read back from Phaser's effect; 0 when still (for the playtest). */
+/** The strength of the shake the camera is running, read back from Phaser's effect; 0 when still. */
 export function shakeStrength(camera: Phaser.Cameras.Scene2D.Camera): number {
     const effect = camera.shakeEffect;
     return effect.isRunning ? Math.round((effect.intensity.x * DESIGN_WIDTH) / (0.5 * SIZE_SCALE)) : 0;

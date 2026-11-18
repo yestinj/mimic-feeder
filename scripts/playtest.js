@@ -349,6 +349,15 @@ async function checkNextBuild(browser) {
         assert((await snapshot()).game.playTimeMs === contextLost.game.playTimeMs, '/next/ losing the WebGL context pauses the run');
         await webglContext(false);
         await page.waitForTimeout(500);
+        // Lost again during the resume countdown: back to the pause menu, not on into play.
+        await page.keyboard.press('Escape');
+        await waitForSnapshot((s) => s.running.includes('countdown'));
+        await webglContext(true);
+        await waitForSnapshot((s) => s.running.includes('pause') && !s.running.includes('countdown'));
+        await page.waitForTimeout(3500);
+        assert((await snapshot()).game.playTimeMs === contextLost.game.playTimeMs, '/next/ and losing it during the resume countdown goes back to the pause menu');
+        await webglContext(false);
+        await page.waitForTimeout(500);
         await page.keyboard.press('Escape');
         const contextBack = await waitForSnapshot((s) => s.running.includes('game') && !s.running.includes('pause') && !s.running.includes('countdown')
             && s.game.playTimeMs > contextLost.game.playTimeMs);
