@@ -159,7 +159,7 @@ Spawn weights are relative and are normalised over whatever is eligible at the t
   - Fireballs: the bolt passes through them.
 - **Tentacles:**
   - Targets the nearest creatures (cats and dragons included). The target limit is 2 at level 5, plus 1 for each later level ("Tentacles +1" notice).
-  - The chains take 0.5 s to reach their targets, then pull them in over 1 s, and the targets are eaten.
+  - The chains take 0.5 s to reach their targets, then pull them in over 1 s, and the targets are eaten. Targets keep falling while the chains reach them, so one can still land first and cost a life (the rewrite changes this, plan §3.9).
   - The lid stays open meanwhile, with the `slurp` sound.
 - **Magnetism:**
   - On press, it marks the crowns, diamonds and small bombs on screen at that moment; objects spawned later aren't affected.
