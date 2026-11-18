@@ -9,7 +9,7 @@ import { Mimic } from '../game/Mimic';
 import { ShadowBolts } from '../game/ShadowBolts';
 import { Tentacles } from '../game/Tentacles';
 import { Ambience } from '../game/ambience';
-import { GLOW_COLOURS, boltHit, explode, pointsPopup, shake, spawnGlow, splat } from '../game/effects';
+import { GLOW_COLOURS, boltHit, explode, pointsPopup, shake, shakeStrength, spawnGlow, splat } from '../game/effects';
 import { ABILITIES, Cooldowns, DoubleTap, nearestTargets, type Ability } from '../rules/abilities';
 import { BOSS } from '../rules/boss';
 import { CAT_FADE_MS, CAT_RESCUE_MS } from '../rules/cats';
@@ -338,10 +338,12 @@ export class GameScene extends Phaser.Scene {
         const onDeferredLoaded = (key: string): void => this.onDeferredLoaded(key);
         this.game.events.on(GAME_EVENTS.deferredLoaded, onDeferredLoaded);
         this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
-        // Auto-pause: losing focus (another tab, another window) mid-run opens the pause menu.
+        // Auto-pause: losing focus (another tab, another window) mid-run opens the pause menu. So does
+        // losing the WebGL context (a GPU reset, say), which blanks the screen until the browser restores it.
         const onFocusLost = (): void => this.openOverlay('pause');
         this.game.events.on(Phaser.Core.Events.BLUR, onFocusLost);
         this.game.events.on(Phaser.Core.Events.HIDDEN, onFocusLost);
+        this.game.renderer.on(Phaser.Renderer.Events.LOSE_WEBGL, onFocusLost);
         // No cursor during play; the menu one comes back whenever play stops.
         showCursor(this, false);
         this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -349,6 +351,7 @@ export class GameScene extends Phaser.Scene {
             this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
             this.game.events.off(Phaser.Core.Events.BLUR, onFocusLost);
             this.game.events.off(Phaser.Core.Events.HIDDEN, onFocusLost);
+            this.game.renderer.off(Phaser.Renderer.Events.LOSE_WEBGL, onFocusLost);
             showCursor(this, true);
             setGameView(null);
             setDebugApi(null);
@@ -369,6 +372,7 @@ export class GameScene extends Phaser.Scene {
                     this.apply(this.run.detonate('bomb'), false);
                 }
             },
+            shake: (strength) => shake(this.cameras.main, strength),
             shootCats: (count) => {
                 for (let i = 0; i < count; i++) {
                     this.apply(this.run.shootCat(), false);
@@ -405,11 +409,22 @@ export class GameScene extends Phaser.Scene {
                 .map((object) => ({ x: Math.round(object.x), y: Math.round(object.y) }))
                 .sort((a, b) => b.y - a.y),
             cameraFilters: this.cameras.main.filters.external.list.length,
+            shake: shakeStrength(this.cameras.main),
+            music: this.music.current,
+            lid: this.mimic.lid,
         }));
 
         this.scene.launch('hud');
         this.cameras.main.fadeIn(MOTION.slow, 0, 0, 0);
         markReady('game');
+    }
+
+    /**
+     * The run's play time (ms), which stops while paused: the clock gameplay
+     * timing reads. The scene clock's `now` keeps running through a pause.
+     */
+    private get playClock(): number {
+        return this.run.playTimeMs;
     }
 
     override update(_time: number, delta: number): void {
@@ -449,12 +464,12 @@ export class GameScene extends Phaser.Scene {
         const mouth = this.mimic.mouth;
         this.tentacles.update(delta, mouth.x, mouth.y, (target) => this.eatGrabbed(target));
         if (this.tentacles.active) {
-            this.mimic.holdOpen(this.time.now);
+            this.mimic.holdOpen(this.playClock);
         }
 
         const left = this.keys.left.isDown || this.keys.a.isDown;
         const right = this.keys.right.isDown || this.keys.d.isDown;
-        this.mimic.update(Number(right) - Number(left), this.foodNearby(), this.time.now);
+        this.mimic.update(Number(right) - Number(left), this.foodNearby(), this.playClock);
 
         for (const object of this.activeObjects()) {
             object.steerTowards(this.mimic.centerX, this.mimic.centerY);
@@ -564,7 +579,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         this.bolts.fire(this.mimic.centerX, this.mimic.centerY);
-        this.mimic.holdAjar(this.time.now + CAST_LID_MS);
+        this.mimic.holdAjar(this.playClock + CAST_LID_MS);
         playSound(this, 'castSpell');
     }
 
@@ -579,7 +594,7 @@ export class GameScene extends Phaser.Scene {
             return;
         }
         this.tentacles.lash(targets);
-        this.mimic.holdOpen(this.time.now + TENTACLE_LID_MS);
+        this.mimic.holdOpen(this.playClock + TENTACLE_LID_MS);
         playSound(this, 'slurp');
     }
 
@@ -690,7 +705,7 @@ export class GameScene extends Phaser.Scene {
                 if (isEdible(kind)) {
                     events = this.run.eat(kind);
                 }
-                this.mimic.bite(this.time.now);
+                this.mimic.bite(this.playClock);
                 playSound(this, kind === 'cat' ? 'catMeow' : 'collect');
                 break;
             case 'collect':
@@ -758,7 +773,7 @@ export class GameScene extends Phaser.Scene {
         }
         const kind = target.kind;
         const events = isEdible(kind) ? this.run.eat(kind) : [];
-        this.mimic.bite(this.time.now);
+        this.mimic.bite(this.playClock);
         playSound(this, kind === 'cat' ? 'catMeow' : 'collect');
         target.destroy();
         this.apply(events, false);
@@ -1178,8 +1193,9 @@ export class GameScene extends Phaser.Scene {
     private onDeferredLoaded(key: string): void {
         if (key.startsWith('bg-floor-')) {
             this.showFloorBackground(false);
-        } else if (key === MUSIC.music2.key && !this.ending) {
-            this.music.play(musicForFloor(this.run.floor));
+        } else if (Object.values(MUSIC).some((track) => track.key === key)) {
+            // The player knows which track is wanted now (none during the Judgment or the boss's death cue).
+            this.music.retry();
         }
     }
 
@@ -1249,6 +1265,8 @@ export class GameScene extends Phaser.Scene {
     private onResume(): void {
         this.removePauseBlur();
         this.sound.resumeAll();
+        // A track that finished loading while paused.
+        this.music.retry();
         showCursor(this, false);
     }
 

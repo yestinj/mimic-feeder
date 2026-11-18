@@ -11,16 +11,27 @@ import { addText } from '../ui/text';
 /**
  * Shakes the camera. `strength` is the p5 game's shake amount in reference
  * pixels; it decayed by 10% per frame, which this approximates with a steady
- * shake at about half the strength for the same time. Skipped when screen
- * shake is off in Settings.
+ * shake at about half the strength for the same time. A stronger shake takes
+ * over from one that's running; a weaker or equal one leaves it to finish (a
+ * hit straight after a dash still shakes hard). Skipped when screen shake is
+ * off in Settings.
  */
 export function shake(camera: Phaser.Cameras.Scene2D.Camera, strength: number): void {
     if (!screenShakeEnabled()) {
         return;
     }
+    if (strength <= shakeStrength(camera)) {
+        return;
+    }
     const frames = Math.log(0.5 / strength) / Math.log(0.9);
     const pixels = strength * 0.5 * SIZE_SCALE;
-    camera.shake((frames * 1000) / 60, new Phaser.Math.Vector2(pixels / DESIGN_WIDTH, pixels / DESIGN_HEIGHT));
+    camera.shake((frames * 1000) / 60, new Phaser.Math.Vector2(pixels / DESIGN_WIDTH, pixels / DESIGN_HEIGHT), true);
+}
+
+/** The strength of the shake the camera is running, read back from Phaser's effect; 0 when still. */
+export function shakeStrength(camera: Phaser.Cameras.Scene2D.Camera): number {
+    const effect = camera.shakeEffect;
+    return effect.isRunning ? Math.round((effect.intensity.x * DESIGN_WIDTH) / (0.5 * SIZE_SCALE)) : 0;
 }
 
 /** Plays an animation once at (x, y), sized from a box and destroyed when it ends. */

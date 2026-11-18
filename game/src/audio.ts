@@ -55,8 +55,10 @@ export function playSound(scene: Phaser.Scene, name: SoundName): Phaser.Sound.Ba
 }
 
 /**
- * Loops one music track at a time. If audio is still locked it starts on
- * unlock; if the wanted track hasn't loaded yet the current one keeps playing.
+ * Loops one music track at a time: the one last asked for, or none after
+ * `stop`. If audio is still locked it starts on unlock; if the wanted track
+ * hasn't loaded yet the current one keeps playing until `retry` finds it
+ * loaded.
  */
 export class MusicPlayer {
     private sound: Phaser.Sound.BaseSound | null = null;
@@ -108,6 +110,23 @@ export class MusicPlayer {
     stop(): void {
         this.wanted = null;
         this.stopSound();
+    }
+
+    /**
+     * A track finished loading: plays the wanted track if it wasn't playing
+     * yet. A track that isn't wanted (a later floor's, or anything while the
+     * music is stopped) waits until it is. Not while the scene is paused: its
+     * sounds are paused too, and it retries on resuming.
+     */
+    retry(): void {
+        if (this.wanted && !this.scene.sys.isPaused()) {
+            this.play(this.wanted);
+        }
+    }
+
+    /** The track playing now, if any (for the playtest). */
+    get current(): Track | null {
+        return this.sound?.isPlaying ? this.playing : null;
     }
 
     private stopSound(): void {

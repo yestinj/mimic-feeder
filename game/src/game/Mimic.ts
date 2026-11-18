@@ -32,12 +32,12 @@ export class Mimic {
     private readonly baseHeight: number;
     private growth: Growth = { speed: 1, size: 1, jump: 1 };
     private jumps = 0;
-    /** Scene time until which the lid stays open after reaching for food mid-jump. */
+    /** Play time (ms) until which the lid stays open after reaching for food mid-jump. */
     private biteOpenUntil = 0;
-    /** Scene time until which the lid is held open (tentacles) or ajar (just cast a Shadow Bolt). */
+    /** Play time (ms) until which the lid is held open (tentacles) or ajar (just cast a Shadow Bolt). */
     private holdOpenUntil = 0;
     private holdAjarUntil = 0;
-    /** Scene time until which the lid is snapped shut on a bite. */
+    /** Play time (ms) until which the lid is snapped shut on a bite. */
     private snapUntil = 0;
     /** The sprite's squash and stretch, on top of its size. */
     private readonly squash = { x: 1, y: 1 };
@@ -131,12 +131,12 @@ export class Mimic {
         this.sprite.setScale(scale * this.squash.x, scale * this.squash.y);
     }
 
-    /** Holds the lid open until `time` (scene time). */
+    /** Holds the lid open until `time` (play time, ms). */
     holdOpen(time: number): void {
         this.holdOpenUntil = Math.max(this.holdOpenUntil, time);
     }
 
-    /** Holds the lid ajar until `time` (scene time). */
+    /** Holds the lid ajar until `time` (play time, ms). */
     holdAjar(time: number): void {
         this.holdAjarUntil = Math.max(this.holdAjarUntil, time);
     }

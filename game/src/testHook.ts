@@ -39,6 +39,12 @@ export interface GameView {
     readonly food: readonly { readonly x: number; readonly y: number }[];
     /** Filters on the playfield's camera: the blur while an overlay is up, none in play. */
     readonly cameraFilters: number;
+    /** The strength of the screen shake running now, 0 when still. */
+    readonly shake: number;
+    /** The music track playing now, if any. */
+    readonly music: string | null;
+    /** The mimic's lid: closed, ajar or open. */
+    readonly lid: string;
 }
 
 export interface GameSnapshot {
@@ -101,6 +107,8 @@ export interface DebugApi {
     bonus(points: number): void;
     /** Ends the run at once, as if bombs took every heart. */
     die(): void;
+    /** Shakes the screen as the game does, at a strength (the p5 game's units). */
+    shake(strength: number): void;
 }
 
 export interface MimicFeederTestHook {
