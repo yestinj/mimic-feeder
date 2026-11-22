@@ -162,8 +162,6 @@ The playtest and `npm run lint:p5-globals` always use **Playwright's own Chromiu
 
 Work on short-lived branches off `main` (there is no `develop` branch). PRs are squash-merged: it is the only merge method enabled, the squash commit takes the PR title, and the head branch is deleted automatically after merging. The squash commit's body is the branch's commit messages, so they land on `main` as written.
 
-Commit messages and PR descriptions carry no AI attribution: no "Generated with …" lines, and no `Co-Authored-By` trailers for AI tools. This applies to every agent. For Claude Code, `.claude/settings.json` turns its attribution off (`attribution` set to empty strings); other tools need their own equivalent switched off or left out by hand.
-
 `main` is protected by the **Protect main** repository ruleset (GitHub → Settings → Rules): changes arrive only through PRs (0 approvals required), the `Lint, build, smoke, playtest` check must pass, and force pushes and branch deletion are blocked. Repo admins can bypass it on a PR for emergencies (e.g. a cdnjs outage breaking CI); agents must never use or suggest the bypass. If you rename the CI job, update the ruleset's required check in the same change, or every PR to `main` will wait forever for the old check name.
 
 Dependabot (`.github/dependabot.yml`) opens weekly PRs: one grouped PR for minor/patch npm updates, separate PRs for npm majors, for every esbuild update (still 0.x, where minor releases can break) and for every Phaser update (the game engine: try the preview before merging), and one for GitHub Actions. CI tests each. After pulling a merged Playwright bump, run `npm run playtest:install` before the next local playtest.
