@@ -21,8 +21,8 @@ import { SystemScene } from './scenes/SystemScene';
 import { TitleScene } from './scenes/TitleScene';
 import { UnlockScene } from './scenes/UnlockScene';
 import { applySavedMute } from './audio';
-import { showNotice } from './notice';
-import { loadProfile } from './profile';
+import { showNotice, showNoticeOver } from './notice';
+import { loadProfile, profile, updateProfile } from './profile';
 import { STRINGS } from './strings';
 import { installTestHook } from './testHook';
 import { COLOURS } from './theme';
@@ -69,6 +69,27 @@ function start(): void {
     installTestHook(game);
 }
 
+/**
+ * True when the device's main input is touch (a phone or tablet). A
+ * touchscreen laptop's main pointer is still its trackpad or mouse.
+ */
+function touchFirst(): boolean {
+    return window.matchMedia('(pointer: coarse)').matches;
+}
+
+/**
+ * On a phone or tablet, a note over the game that it's played with a
+ * keyboard, until it's closed once. Continue closes it, since a tablet may
+ * have a keyboard attached; the game has been loading underneath.
+ */
+function showKeyboardNote(): void {
+    if (!touchFirst() || profile().keyboardNoteSeen) {
+        return;
+    }
+    const { title, text, continue: button } = STRINGS.keyboardNote;
+    showNoticeOver(title, text, button, () => updateProfile((save) => ({ ...save, keyboardNoteSeen: true })));
+}
+
 // The save first: settings (mute, volumes, motion) apply from the first frame.
 loadProfile();
 
@@ -76,6 +97,7 @@ loadProfile();
 if (webglAvailable()) {
     try {
         start();
+        showKeyboardNote();
     } catch (error) {
         // Phaser couldn't get its own context after all ("Cannot create WebGL context"). Anything
         // else is a fault of the game's, not the browser's, and is left to surface as it is.

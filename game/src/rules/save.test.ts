@@ -73,6 +73,14 @@ describe('save', () => {
         expect(opened('yes')).toBe(false);
     });
 
+    it('remembers the keyboard note being closed (true only)', () => {
+        const seen = (value: unknown) => parseSave(JSON.stringify({ version: SAVE_VERSION, keyboardNoteSeen: value }), false)?.keyboardNoteSeen;
+        expect(defaultSave(false).keyboardNoteSeen).toBe(false);
+        expect(seen(true)).toBe(true);
+        expect(seen(undefined)).toBe(false);
+        expect(seen(1)).toBe(false);
+    });
+
     it('cleans names: letters, digits and spaces, 12 at most, never empty', () => {
         expect(cleanName('  Big   Mimic  ')).toBe('Big Mimic');
         expect(cleanName('Ünïcødé 42')).toBe('Ünïcødé 42');

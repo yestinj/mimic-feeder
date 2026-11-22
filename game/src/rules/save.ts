@@ -92,6 +92,8 @@ export interface SaveData {
     readonly introduced: readonly Ability[];
     /** How to Play has been opened at least once (the title stops pointing at it). */
     readonly howToPlayOpened: boolean;
+    /** The note that the game is played with a keyboard (on phones and tablets) has been closed. */
+    readonly keyboardNoteSeen: boolean;
 }
 
 /** Settings start from the system: reduced motion on, and screen shake off, when it asks for less motion. */
@@ -139,6 +141,7 @@ export function defaultSave(systemPrefersReducedMotion: boolean): SaveData {
         discoveriesSeen: [],
         introduced: [],
         howToPlayOpened: false,
+        keyboardNoteSeen: false,
     };
 }
 
@@ -288,6 +291,7 @@ export function parseSave(raw: string | null, systemPrefersReducedMotion: boolea
         discoveriesSeen: readStrings(data.discoveriesSeen),
         introduced: readStrings(data.introduced).filter((item): item is Ability => (ABILITIES as readonly string[]).includes(item)),
         howToPlayOpened: data.howToPlayOpened === true,
+        keyboardNoteSeen: data.keyboardNoteSeen === true,
     };
 }
 

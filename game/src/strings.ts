@@ -28,6 +28,12 @@ export const STRINGS = {
         title: 'Mimic Feeder needs WebGL',
         text: 'WebGL isn’t available in this browser. Try switching on hardware acceleration in your browser’s settings, or use another browser.',
     },
+    /** Over the game on phones and tablets, until closed. */
+    keyboardNote: {
+        title: 'Mimic Feeder is played with a keyboard',
+        text: 'It’s made for a computer with a keyboard. If you have one connected, you can carry on.',
+        continue: 'Continue',
+    },
     /** Beside How to Play on the title, until it's been opened (or a few runs have been played). */
     newHere: 'First time? Start here',
     /** Practice runs (?test&floor=N), a testing aid: never shown to players otherwise. */
