@@ -405,7 +405,7 @@ Each step is sized for one small pull request, with `npm run check` green before
 
 ## Follow-ups
 
-Worked through with the owner after the review, one item at a time. Status on 2026-11-18:
+Worked through with the owner after the review, one item at a time. Status on 2026-11-22:
 
 ### Done before the swap
 
@@ -421,11 +421,23 @@ Worked through with the owner after the review, one item at a time. Status on 20
 | D-2 | The 0.18 s reach and claimed targets are kept and recorded in plan §3.9. | #37 |
 | D-6, F-8 | The "make the window bigger" message is dropped from plan §1. A-9's keyboard note for phones and tablets is in the plan's Later list instead. | #38 |
 | A-3 | Phaser updates get their own Dependabot PR. | #38 |
+| F-5 | A stronger screen shake takes over from a weaker one that's running; a weaker one leaves it to finish. | #39 |
+| F-6 | Music that finishes loading late plays only if it's the track wanted now: the boss's starts when it arrives, a floor's waits for its floor, the silences stay silent. | #39 |
+| F-7 | Losing the WebGL context opens the pause menu (and stops the resume countdown). | #39 |
+| A-1 | The mimic's lid timings run on play time, and `AGENTS.md` states the rule: gameplay timing in `game/` never reads `this.time.now`. | #39 |
+| A-4 | Unit tests for the dragon rules. | #39 |
+| V-2 | Toasts fade while the boss flies behind them, as the score and hearts do. | #40 |
+| A-9 | On phones and tablets a note over the game says it's played with a keyboard, until Continue is pressed once. | #KEYNOTE |
 
 ### Still open
 
 - **R-3:** the manual pass in Firefox and Safari, and on a high-refresh display, which also settles F-9.
 - **M5, the swap:** the R-1 table as the checklist, with D-7's canvas attributes, `DELETE_P5_SAVES` left off and the `/next/*` redirect (R-2).
 - **After the swap:** A-7 (remove the p5 code and tighten the CSP), then `DELETE_P5_SAVES` on in a later release.
-- **A-1:** the rule isn't written down yet. The mimic's lid timings still read the scene clock, which only affects how long the lid stays open.
-- **Polish, any time:** F-5, F-6, F-7, V-2, A-4. **Later**, with the art and balance passes: A-5, A-8, V-3. A-6 only if `GameScene` grows.
+- **A-8, the balance pass:** after the swap, starting from a table of the current numbers (plan, Later).
+- **A-6:** only if `GameScene` grows.
+
+### Decided against, for now
+
+- **A-5, texture atlases:** their main gain is on slow connections, which aren't a priority, and failed loads are already handled (F-3).
+- **V-3, a sharper canvas on dense screens:** a change to every scene at 2–4 times the drawing cost, sharpening mostly text and UI edges. Left as it is; worth another look with the art pass if the softness ever bothers.

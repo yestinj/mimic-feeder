@@ -915,6 +915,66 @@ async function checkNextLateMusic(browser) {
     }
 }
 
+/**
+ * The keyboard note at /next/: on a phone (touch as the main input) it shows
+ * over the game, which loads underneath; Continue closes it without the key
+ * reaching the game, and it isn't shown again. A desktop never sees it.
+ */
+async function checkNextKeyboardNote(browser) {
+    const titleReady = (page) => page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 30000 });
+    const readNote = (page) => page.evaluate(() => {
+        const note = document.querySelector('.notice');
+        return note ? { heading: note.querySelector('h1').textContent, focused: document.activeElement === note.querySelector('button') } : null;
+    });
+    const phone = { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true };
+
+    let context = await browser.newContext(phone);
+    try {
+        const page = await context.newPage();
+        const errors = [];
+        page.on('pageerror', (err) => errors.push(String(err && err.message ? err.message : err)));
+        await page.goto(BASE + '/next/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForSelector('.notice button', { timeout: 10000 });
+        await titleReady(page);
+        const note = await readNote(page);
+        assert(/keyboard/.test(note.heading) && note.focused, `/next/ on a phone, a note says the game is played with a keyboard ("${note.heading}")`);
+        await page.screenshot({ path: path.join(OUT_DIR, 'next-keyboard-note.png') });
+        // Enter presses Continue; on the title it would also start a run if it got through.
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(800);
+        const ready = await page.evaluate(() => window.__mimicFeeder.ready);
+        assert((await readNote(page)) === null && !ready.includes('game'), '/next/ Continue closes it, and the key doesn\'t reach the game');
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await titleReady(page);
+        await page.waitForTimeout(300);
+        assert((await readNote(page)) === null && errors.length === 0, `/next/ and it isn't shown again${errors.length ? ` (${errors.join('; ')})` : ''}`);
+    } finally {
+        await context.close().catch(() => {});
+    }
+
+    context = await browser.newContext(phone);
+    try {
+        const page = await context.newPage();
+        await page.goto(BASE + '/next/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.waitForSelector('.notice button', { timeout: 10000 });
+        await page.tap('.notice button');
+        await page.waitForTimeout(300);
+        assert((await readNote(page)) === null, '/next/ a tap on Continue closes it too');
+    } finally {
+        await context.close().catch(() => {});
+    }
+
+    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    try {
+        await page.goto(BASE + '/next/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await titleReady(page);
+        await page.waitForTimeout(300);
+        assert((await readNote(page)) === null, '/next/ a desktop never sees the keyboard note');
+    } finally {
+        await page.close().catch(() => {});
+    }
+}
+
 async function main() {
     const headerRules = loadDistHeaderRules();
     fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -1604,6 +1664,7 @@ async function main() {
         await checkNextNotices(browser);
         await checkNextLoading(browser);
         await checkNextLateMusic(browser);
+        await checkNextKeyboardNote(browser);
 
         console.log(`\nPlaytest passed.`);
         console.log(`Screenshots: ${pathToFileURL(OUT_DIR).href}`);

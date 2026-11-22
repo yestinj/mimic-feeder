@@ -13,7 +13,7 @@ The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is reb
 
 ## 1. Screen and layout
 
-- **Design resolution:** 1920×1080 (16:9), scaled to fit the window. Other aspect ratios get thin black bars. A small window shows the whole game, smaller, with no "make the window bigger" message (dropped while reviewing the migration): text stays readable down to a game about 800 px wide, and the screens smaller than that are phones, which can't play without a keyboard anyway (see Later).
+- **Design resolution:** 1920×1080 (16:9), scaled to fit the window. Other aspect ratios get thin black bars. A small window shows the whole game, smaller, with no "make the window bigger" message (dropped while reviewing the migration): text stays readable down to a game about 800 px wide, and the screens smaller than that are phones, which can't play without a keyboard anyway. Those get a note instead: on phones and tablets (touch as the main input), a notice over the game says it's played with a keyboard, until its Continue button is pressed once (a tablet may have a keyboard attached, and the browser can't tell). It's page text, so it stays readable however small the game is.
 - **Full-width playfield:** horizontal movement (run speed, dash distance) scales with the wider screen, so crossing it takes the same time as today. Fall speeds and spawn timing don't change.
 - **Backgrounds:** the 4:3 floor backgrounds are cropped to fill the width, anchored to the floor so the ground line stays right. New 16:9 backgrounds come with the later art pass.
 
@@ -194,7 +194,6 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
 - New 16:9 backgrounds, character sprites, and possibly the animated mimic sets in `src/assets/_unused/mimic/`.
 - Balance tuning after the swap: experience and levelling (each level needs twice the experience of the last, so levels nearly stop after about Floor 7), and the mimic growing 5% per level without limit. The level and score achievements were tuned to the current curve in M4d and would need another look with it.
 - Gamepad support.
-- A note on phones and tablets that Mimic Feeder is played with a keyboard. It can be dismissed, since a tablet may have a keyboard attached and the browser can't tell. Not a regression: the p5 game has none either.
 
 ## 4. Technical approach
 

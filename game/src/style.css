@@ -13,7 +13,8 @@ body {
 }
 
 /* A notice in place of the game when it can't run: no JavaScript (index.html)
-   or no WebGL (notice.ts). The colours and fonts are the theme's (theme.ts). */
+   or no WebGL (notice.ts); or over it, with a button: the keyboard note on
+   phones and tablets. The colours and fonts are the theme's (theme.ts). */
 .notice {
     position: fixed;
     inset: 0;
@@ -39,4 +40,20 @@ body {
     max-width: 34rem;
     color: #f3e6c8;
     font: 400 clamp(1rem, 2.4vw, 1.25rem) / 1.5 Barlow, system-ui, sans-serif;
+}
+
+.notice button {
+    margin-top: 1rem;
+    padding: 0.75rem 2.5rem;
+    border: 0;
+    border-radius: 0.5rem;
+    background: #ffd98a;
+    color: #0b0806;
+    font: 700 1.25rem / 1.2 Barlow, system-ui, sans-serif;
+    cursor: pointer;
+}
+
+.notice button:focus-visible {
+    outline: 3px solid #f3e6c8;
+    outline-offset: 3px;
 }
