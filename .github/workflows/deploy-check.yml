@@ -70,6 +70,6 @@ jobs:
               uses: actions/upload-artifact@v7
               with:
                   name: live-check
-                  path: playtest-output/live-check*.png
+                  path: playtest-output/live-check.png
                   if-no-files-found: ignore
                   retention-days: 7

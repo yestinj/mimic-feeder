@@ -1,5 +1,7 @@
 # Mimic Feeder: p5.js feature inventory
 
+> **Historical.** This describes the p5.js version of the game, which the Phaser rebuild replaced in M5 (#SWAP) and which was then removed (it is in the git history). The paths below (`src/js/`, `src/assets/`, `src/index.html`) are that version's. The rebuild ported it with the changes in [`plan.md`](plan.md) §3.9.
+
 Everything the current p5.js game does, written as a checklist for the Phaser + TypeScript rewrite. Gameplay is ported as it is, where feasible; UI and presentation are being redesigned, so the "Current weaknesses" notes are starting points for that discussion, not decisions.
 
 Source: `main` at the time of writing (`src/js/`, `src/assets/`, `src/index.html`). Values are given in seconds or pixels per second where the code uses 60fps frame units (60 frames = 1 s).

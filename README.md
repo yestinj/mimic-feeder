@@ -4,97 +4,72 @@
 
 Arcade mimic-feeding chaos. Eat creatures, grab shinies, dodge bombs, and unlock powers.
 
-*Desktop recommended. Keyboard required.*
+*Played with a keyboard, on a computer.*
 
 ## How to Play
-- **Move**: Left / Right Arrows or A / D
-- **Dash**: Double-tap Left / Right Arrows or A / D
-- **Jump / Double Jump**: Up Arrow or W
-- **Cast Shadow Bolt** (with Wizard Staff): Space
-- **Use Tentacles** (at level 5+): Z
-- **Use Magnetism** (with Magnet): X
-- **Pause / Resume**: P
-- **Mute / Unmute**: M
-- **Help Overlay**: Esc
-- **View Achievements**: K
 
-### First visit vs returning players
-- **First visit** (no saved player name): the intro screen is shown before play.
-- **Returning players**: if a name was saved after a previous run (browser `localStorage`), the intro is skipped and the run starts immediately.
-- Controls and help are always available in-game (**Esc** for Help / Object Info / About, short onboarding tips early in a run, **K** for achievements).
+Creatures fall from above: catch them in the mimic's mouth before they hit the floor. Treasure is worth points, bombs cost a heart, and every second floor ends with a boss. Eat enough to clear each zone and go deeper.
 
-## Achievements
-- Achievements are split into three tiers:
-- **Early**: +25 score
-- **Mid**: +50 score
-- **Late / Mastery**: +100 score
-- Progression includes quick unlocks, medium milestones, and long-run goals (high floors, long survival, repeated ability usage, and boss clears).
-- Center-screen notifications are queued and displayed one at a time to avoid overlap.
-- Queued panel notifications auto-size and wrap text to keep the background aligned to content.
-- Play-time achievements count active gameplay time only (not intro/pause/help/about/object-info/achievements overlays).
-Mastery tracking includes:
-- Shadow bolts cast
-- Tentacles used
-- Dashes used
-- Bosses defeated
+| Action | Keys |
+|---|---|
+| Move | ← → or A D |
+| Jump (again in the air to double jump) | ↑ or W |
+| Dash | Double-tap ← or → |
+| Shadow Bolt (once you find the Wizard Staff) | Space |
+| Tentacles (from level 5) | Z |
+| Magnetism (once you find the Magnet) | X |
+| Pause | P or Esc |
+| How to Play | H |
+| Achievements | K |
+| Mute | M |
+| Fullscreen | F |
+| In menus: choose, select, back | ↑ ↓, Enter, Esc |
 
-## Installation and Running
+How to Play (on the title screen, or H during a run) covers the rules, the controls, every creature and item you've met, and the abilities.
+
+### Achievements and saves
+
+Achievements come in Bronze, Silver and Gold tiers (+25, +50 and +100 score when they unlock), plus a few secret ones. Progress toward the long-term ones counts across all your runs.
+
+Your name, high scores, achievements and settings are saved in your browser (`localStorage`); there are no accounts and nothing is sent anywhere. Settings can reset them, or erase everything.
+
+## Running it locally
+
+Use the Node version in `.nvmrc`.
+
 1. Clone the repository
 2. Install dependencies: `npm install`
-3. Build the project: `npm run build`
-4. Start the local server: `npm start` (this will open the game in your browser)
+3. Either:
+   - `npm run dev` for the Vite dev server, which reloads on save (add `?debug` to the URL to outline physics bodies and show frame times), or
+   - `npm run build`, then `npm start` to serve `dist/` with the production headers from `public/_headers`, including the Content-Security-Policy. The only difference from the live site is caching: it sends `Cache-Control: no-store`.
 
-`npm start` serves `dist/` with the production headers from `src/_headers`, including the Content-Security-Policy, so local runs behave like the live site. The only difference is caching: it sends `Cache-Control: no-store` so a refresh always picks up a new build.
-
-The game must be served over HTTP. Opening `dist/index.html` directly (`file://`) does not work: the browser blocks asset loading and the game stays on "Loading...".
-
-### Deploy notes
-- Production is a static Cloudflare Pages site (build output: `dist/`).
-- Deploys are automatic via the Cloudflare Pages GitHub integration.
-- No Pages Functions or D1 are used, and the game's code contains no analytics or tracking.
-- Cloudflare Web Analytics is enabled for the domain. Cloudflare adds its script at the edge, and the Content Security Policy in `src/_headers` allows it.
-
-### Common Issues
-- **No Audio**: If audio is muted on first load, click anywhere on the page or press any key to activate the audio context.
-- **No intro screen**: Expected for returning players with a saved name (see above). Press **Esc** for controls anytime.
-
-## Development
-- Source code is in the `src` directory
-- Assets are in the `src/assets` directory
-- Build script is in `build.js`
-
-### p5.js CDN
-- The game loads **p5.js 1.11.13** and **p5.sound** from cdnjs in `src/index.html` (not from npm).
-- The URLs are explicitly versioned and intentionally omit Subresource Integrity. cdnjs previously changed bytes at the same versioned paths, causing browsers to reject the libraries and preventing the game from starting.
-- **When upgrading p5 or switching CDN host:** update both script URLs, then run the full build and browser playtest before release.
-- Stay on p5 **1.x** unless you plan a dedicated 2.x migration (see `AGENTS.md`).
-
-### Development Workflow
-1. Run `npm run dev` to rebuild `dist/` automatically on file changes (Node's built-in watcher; this does not serve the game)
-2. In a second terminal, run `npm start` to serve `dist/` and open it in your browser
-3. Make changes to files in the `src` directory
-4. When you see "Build completed successfully!" in the console, refresh your browser to see changes
-
-The project uses a simple build process that:
-- Concatenates and minifies JavaScript files
-- Minifies CSS
-- Swaps the game's script tags in the HTML for the bundle (the HTML is not minified)
-- Copies assets to the dist directory
+The game must be served over HTTP: opening `dist/index.html` directly (`file://`) does not work.
 
 ### Quality gates
-Use the Node version in `.nvmrc` (26). Run `npm run check` before opening a PR; GitHub Actions (`.github/workflows/ci.yml`) runs the same gates on every PR and on pushes to `main`.
 
-- `npm run lint`: `node --check` on every file, then ESLint with its recommended rules. The game is linted as the same concatenation the build ships (`JS_FILE_ORDER`), with browser and p5/p5.sound globals allowed, so it catches undeclared names, implicit globals, cross-file redeclarations, names that shadow p5 functions, unintended `switch` fall-through and similar bugs. Tooling (`build.js`, `scripts/`) is linted with Node globals.
-- `npm run lint:p5-globals`: regenerates `scripts/p5-globals.json` (the allowed p5 names) from the CDN URLs in `src/index.html`. Run it after changing the p5 version; lint fails until you do.
-- `npm test`: lint, build, and static smoke contracts.
-- `npm run check:live`: smoke-tests the deployed site (https://mimicfeeder.yest.dev/, or `LIVE_URL`) in headless Chromium. It is read-only. GitHub Actions runs it after every deploy of `main` (`.github/workflows/deploy-check.yml`), once Cloudflare reports that the deploy succeeded.
-- `npm run playtest`: drives the built game in Playwright's headless Chromium, the same browser CI uses. Run `npm run playtest:install` once to download it (and again after upgrading Playwright). The local server applies `src/_headers` like Cloudflare Pages, so the run fails on any Content-Security-Policy violation or if a path would get more than one `Cache-Control` value.
+Run `npm run check` before opening a PR; GitHub Actions (`.github/workflows/ci.yml`) runs the same gates on every PR and on pushes to `main`.
+
+- `npm run lint`: `node --check` on the tooling, then ESLint on the game (typescript-eslint) and the tooling.
+- `npm run typecheck`: TypeScript in strict mode.
+- `npm run test:unit`: Vitest unit tests for the game's rules and the save.
+- `npm test`: all of the above, then the build.
+- `npm run playtest`: drives the built game in Playwright's Chromium, the same browser CI uses (run `npm run playtest:install` once first, and again after upgrading Playwright). The local server applies `public/_headers` like Cloudflare Pages, so the run fails on any Content-Security-Policy violation, or if a path would get more than one `Cache-Control` value.
+- `npm run check:live`: a read-only smoke test of the deployed site (https://mimicfeeder.yest.dev/, or `LIVE_URL`). GitHub Actions runs it after every deploy of `main` (`.github/workflows/deploy-check.yml`).
+
+### Deploy notes
+
+- Production is a static Cloudflare Pages site, built with `npm run build` into `dist/`.
+- Deploys are automatic via the Cloudflare Pages GitHub integration.
+- No Pages Functions or D1 are used, and the game's code contains no analytics or tracking.
+- Cloudflare Web Analytics is enabled for the domain. Cloudflare adds its script at the edge, and the Content-Security-Policy in `public/_headers` allows it.
 
 ## Technologies Used
-- p5.js **1.11.13** (pinned cdnjs URLs) for rendering and game logic — see [p5.js CDN](#p5js-cdn) when upgrading
-- HTML/CSS for basic structure
-- JavaScript for game mechanics
-- esbuild for bundling
+
+- [Phaser 4](https://phaser.io/) for rendering, input, audio and physics
+- TypeScript (strict), built with Vite
+- Vitest for unit tests, Playwright for the browser playtest
+
+The game was first written with p5.js and rebuilt in Phaser in 2026; the p5.js version is in the git history.
 
 ## Project Status
 
@@ -103,11 +78,11 @@ While the code is public and may be forked under the license terms, maintenance 
 
 ## Attributions
 
-All assets used in this project are either original, public domain, or used under free licenses that do not require attribution.
+Art and audio are original, public domain, or used under free licenses. The interface sounds come from [Kenney](https://kenney.nl/)'s CC0 packs (thanked in the game's Credits).
 
 ## License
 
-This project is licensed under the  
+This project is licensed under the
 **Creative Commons Attribution-NonCommercial 4.0 International License (CC BY-NC 4.0)**.
 
 You are free to:

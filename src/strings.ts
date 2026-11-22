@@ -22,7 +22,6 @@ export const STRINGS = {
     },
     pressToContinue: 'Press any key',
     keyHints: '← → move   ·   ↑ jump   ·   Esc pause',
-    previewNotice: 'Preview of the new version. Work in progress.',
     /** Shown in place of the game when the browser has no WebGL (the "needs JavaScript" notice is in index.html). */
     noWebgl: {
         title: 'Mimic Feeder needs WebGL',

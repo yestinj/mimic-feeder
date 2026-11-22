@@ -161,9 +161,8 @@ export class TitleScene extends Phaser.Scene {
 
     private addFooter(): void {
         addText(this, DESIGN_WIDTH / 2, DESIGN_HEIGHT - 56, STRINGS.keyHints, TYPE.small, { colour: TEXT_COLOURS.muted }).setOrigin(0.5);
-        addText(this, SPACE.l, SPACE.l, STRINGS.previewNotice, TYPE.small, { colour: TEXT_COLOURS.muted });
         if (PRACTICE_FLOOR !== null) {
-            addText(this, SPACE.l, SPACE.l + 34, STRINGS.practice.title(PRACTICE_FLOOR), TYPE.small, { colour: TEXT_COLOURS.gold });
+            addText(this, SPACE.l, SPACE.l, STRINGS.practice.title(PRACTICE_FLOOR), TYPE.small, { colour: TEXT_COLOURS.gold });
         }
     }
 
