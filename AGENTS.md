@@ -36,6 +36,9 @@ src/
   assets/             # Images, SFX, music (copied to dist; _unused/ skipped)
 game/                 # Phaser + TypeScript rewrite, built to dist/next/ (served at /next/)
   vite.config.mts     # Vite build (base /next/, hashed output in /next/bundle/) + Vitest config
+  src/main.ts         # Entry: loads the save, checks for WebGL, starts Phaser, shows the keyboard note on touch devices
+  src/notice.ts       # Plain HTML notices: in place of the game (no WebGL) or over it (the keyboard note)
+  src/config.ts       # Design resolution (1920×1080) and the scales from the p5 game's 1024×768 numbers
   src/scenes/         # One Phaser scene per screen (game, HUD, pause and results run as separate scenes)
   src/rules/          # Game rules in plain TypeScript, no Phaser imports; unit-tested (*.test.ts)
   src/game/           # Playfield objects: the mimic, falling objects, effects
@@ -59,7 +62,7 @@ scripts/
   lint.js             # node --check + ESLint (tooling, game/ TypeScript and the JS_FILE_ORDER bundle)
   generate-p5-globals.js  # Regenerates p5-globals.json from the index.html p5 pins
   p5-globals.json     # Generated p5 + p5.sound global-mode names (commit it)
-  smoke.js            # Static source contracts (no browser)
+  smoke.js            # Static source contracts on the p5 game (no browser)
   serve.js            # Static server for dist/ with _headers (npm start; used by playtest)
   playtest.js         # Playwright against dist/ served with _headers (p5 game and /next/)
   live-check.js       # Read-only smoke check of the deployed site and /next/ (npm run check:live)
@@ -68,7 +71,7 @@ dist/                 # Build output (gitignored)
 playtest-output/      # Playtest screenshots (gitignored)
 ```
 
-### JS module map (load / bundle order)
+### JS module map (p5 game: load / bundle order)
 
 Order is enforced in `build.js` and `src/index.html`:
 
@@ -81,7 +84,7 @@ When adding a new `.js` file under `src/js/`, update **both** `build.js` (`JS_FI
 
 ## Architecture notes
 
-### Globals, not modules
+### Globals, not modules (p5 game)
 
 Files share state via top-level `let` / `const` / `function` declarations. They are **not** attached to `window`.
 
@@ -89,13 +92,13 @@ Files share state via top-level `let` / `const` / `function` declarations. They 
 - esbuild runs with `bundle: false` after concatenation — treat the bundle as one global script.
 - ESLint checks that same concatenation (`npm run lint`) with ESLint's recommended rules plus a few game-specific settings (`eslint.config.js`), so a name used in one file and declared in another is fine, but an undeclared name, an implicit global (assignment without a declaration), a duplicate top-level declaration across files, or a declaration that shadows a browser/p5 global (e.g. `function random()`) fails. Findings are reported against the original `src/js` file and line.
 
-### Game loop ownership
+### Game loop ownership (p5 game)
 
 - `sketch.js` owns p5 lifecycle (`setup` / `draw` / `keyPressed` / etc.), `gameState`, pause freeze (`lastGameplayFrame`), and screen routing.
 - Collection / damage / bomb counting: prefer single ownership. Bomb tallies go through `handleBombCollection` (do not pre-increment elsewhere — smoke contracts guard this).
 - Achievements persist to `localStorage` (wrap reads, writes, and cleanup in try/catch).
 
-### Overlays and input
+### Overlays and input (p5 game)
 
 Pause, help, about, object-info, achievements, and game-over should block gameplay input. While paused:
 
@@ -125,7 +128,7 @@ npm run build          # src → dist
 npm run dev            # watch src, rebuild on change (node --watch-path)
 npm run dev:next       # Vite dev server for the game/ rewrite (reloads on save; serves src/assets at /assets/; add ?debug to outline physics bodies and show frame times)
 npm run typecheck      # tsc on game/ (strict)
-npm run test:unit      # Vitest unit tests for game/src/rules
+npm run test:unit      # Vitest unit tests for game/ (the rules and the save)
 npm start              # serve dist with _headers (CSP etc.; Cache-Control: no-store)
 npm run lint           # node --check + ESLint (tooling + concatenated game bundle)
 npm run lint:p5-globals # regenerate scripts/p5-globals.json after a p5 pin change
@@ -166,7 +169,7 @@ Work on short-lived branches off `main` (there is no `develop` branch). PRs are 
 
 Dependabot (`.github/dependabot.yml`) opens weekly PRs: one grouped PR for minor/patch npm updates, separate PRs for npm majors, for every esbuild update (still 0.x, where minor releases can break) and for every Phaser update (the game engine: try the preview before merging), and one for GitHub Actions. CI tests each. After pulling a merged Playwright bump, run `npm run playtest:install` before the next local playtest.
 
-### Lint false positives
+### Lint false positives (p5 game bundle)
 
 Handle them explicitly and narrowly, never by turning a rule off for the bundle:
 
@@ -187,12 +190,12 @@ Handle them explicitly and narrowly, never by turning a rule off for the bundle:
 
 | Do | Don’t |
 |----|--------|
-| Edit sources under `src/` | Commit `dist/`, `playtest-output/`, `node_modules/` |
+| Edit sources under `src/` and `game/` | Commit `dist/`, `playtest-output/`, `node_modules/` |
 | Keep bomb counting single-owner | Double-count bombs on bolt/explosion paths |
 | Guard gameplay keys when paused / overlays open; never simulate under pause shell | Let movement, spawns, or hazards run while paused (incl. after resize) |
 | Keep deploy static-only; CF Web Analytics OK | Add Functions, D1, or in-app track beacons |
-| Update smoke contracts when changing control contracts | Leave smoke asserting removed behavior |
-| Use bare globals in browser automation | Assume `window.gameState` etc. |
+| Update smoke contracts when changing control contracts (p5 game) | Leave smoke asserting removed behavior |
+| Use bare globals in browser automation (p5 game); use `window.__mimicFeeder` for `/next/` | Assume `window.gameState` etc. |
 | Fix or narrowly annotate lint findings | Disable ESLint rules for the game bundle or skip `npm test` |
 | Keep repo files, commits, PRs and comments about the project | Mention the owner's machine, OS, installed tools, network setup or other personal details anywhere public (the repo is public) |
 | End commit messages and PR descriptions with their own content | Add AI attribution: "Generated with …" lines or `Co-Authored-By` trailers for AI tools |
