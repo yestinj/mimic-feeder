@@ -6,6 +6,10 @@ node_modules/
 # macOS
 .DS_Store
 
+# Claude Code: personal settings and local worktrees (the shared .claude/settings.json is committed)
+.claude/settings.local.json
+.claude/worktrees/
+
 # Cloudflare Wrangler local state
 .wrangler/
 

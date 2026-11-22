@@ -50,6 +50,7 @@ docs/phaser-migration/  # Migration inventory and plan
 build.js              # Full build pipeline (exports JS_FILE_ORDER for lint)
 eslint.config.js      # ESLint flat config: Node tooling + concatenated game bundle
 .nvmrc                # Node major for local dev and CI (26, current LTS)
+.claude/settings.json # Claude Code project settings: no attribution in commits or PRs
 .github/
   workflows/ci.yml    # GitHub Actions: npm test + playtest (Playwright Chromium)
   workflows/deploy-check.yml  # After each push to main: wait for Cloudflare, then live check
@@ -159,7 +160,9 @@ The playtest and `npm run lint:p5-globals` always use **Playwright's own Chromiu
 
 `.github/workflows/deploy-check.yml` runs after each push to `main`. It waits (up to 15 minutes) for Cloudflare's own **Cloudflare Pages** check on that commit to succeed, then runs `npm run check:live` against https://mimicfeeder.yest.dev/: the page loads with its CSP, p5 loads, the game reaches active play, and there are no CSP violations, errors, failed requests or HTTP errors. A failed deploy, a missing deploy, or a broken live site turns that run red. It is not a required check (it runs after merging). To verify a deploy, read that run's result rather than probing the site locally.
 
-Work on short-lived branches off `main` (there is no `develop` branch). PRs are squash-merged: it is the only merge method enabled, the squash commit takes the PR title, and the head branch is deleted automatically after merging.
+Work on short-lived branches off `main` (there is no `develop` branch). PRs are squash-merged: it is the only merge method enabled, the squash commit takes the PR title, and the head branch is deleted automatically after merging. The squash commit's body is the branch's commit messages, so they land on `main` as written.
+
+Commit messages and PR descriptions carry no AI attribution: no "Generated with …" lines, and no `Co-Authored-By` trailers for AI tools. This applies to every agent. For Claude Code, `.claude/settings.json` turns its attribution off (`attribution` set to empty strings); other tools need their own equivalent switched off or left out by hand.
 
 `main` is protected by the **Protect main** repository ruleset (GitHub → Settings → Rules): changes arrive only through PRs (0 approvals required), the `Lint, build, smoke, playtest` check must pass, and force pushes and branch deletion are blocked. Repo admins can bypass it on a PR for emergencies (e.g. a cdnjs outage breaking CI); agents must never use or suggest the bypass. If you rename the CI job, update the ruleset's required check in the same change, or every PR to `main` will wait forever for the old check name.
 
@@ -194,6 +197,7 @@ Handle them explicitly and narrowly, never by turning a rule off for the bundle:
 | Use bare globals in browser automation | Assume `window.gameState` etc. |
 | Fix or narrowly annotate lint findings | Disable ESLint rules for the game bundle or skip `npm test` |
 | Keep repo files, commits, PRs and comments about the project | Mention the owner's machine, OS, installed tools, network setup or other personal details anywhere public (the repo is public) |
+| End commit messages and PR descriptions with their own content | Add AI attribution: "Generated with …" lines or `Co-Authored-By` trailers for AI tools |
 
 ## Deploy
 
