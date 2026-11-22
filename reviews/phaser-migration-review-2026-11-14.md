@@ -427,7 +427,7 @@ Worked through with the owner after the review, one item at a time. Status on 20
 | A-1 | The mimic's lid timings run on play time, and `AGENTS.md` states the rule: gameplay timing in `game/` never reads `this.time.now`. | #39 |
 | A-4 | Unit tests for the dragon rules. | #39 |
 | V-2 | Toasts fade while the boss flies behind them, as the score and hearts do. | #40 |
-| A-9 | On phones and tablets a note over the game says it's played with a keyboard, until Continue is pressed once. | #KEYNOTE |
+| A-9 | On phones and tablets a note over the game says it's played with a keyboard, until Continue is pressed once. | #41 |
 
 ### Still open
 
