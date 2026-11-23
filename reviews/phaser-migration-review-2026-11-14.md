@@ -2,6 +2,8 @@
 
 An independent engineering review of the Phaser 4 + TypeScript rewrite in `game/`, served at `/next/`, before it replaces the p5.js game at `/`. It is written to be acted on without access to the conversation that produced it.
 
+> **Paths have moved since.** The swap (#42) moved the game to the repository root: `game/src/` is now `src/`, `game/index.html` is `index.html`, `game/vite.config.mts` is `vite.config.mts`, and `src/_headers` is `public/_headers`. The p5.js files this review cites (`src/js/`, `src/index.html`, `scripts/smoke.js`) were removed and are in the git history. What was done about each finding is in [Follow-ups](#follow-ups).
+
 ## Scope
 
 | Field | Value |
@@ -405,7 +407,7 @@ Each step is sized for one small pull request, with `npm run check` green before
 
 ## Follow-ups
 
-Worked through with the owner after the review, one item at a time. Status on 2026-11-22:
+Worked through with the owner after the review, one item at a time. Status on 2026-11-23:
 
 ### Done before the swap
 
@@ -428,12 +430,14 @@ Worked through with the owner after the review, one item at a time. Status on 20
 | A-4 | Unit tests for the dragon rules. | #39 |
 | V-2 | Toasts fade while the boss flies behind them, as the score and hearts do. | #40 |
 | A-9 | On phones and tablets a note over the game says it's played with a keyboard, until Continue is pressed once. | #41 |
+| M5, R-1 | The swap: the game is served at `/` from the repository root (`index.html`, `src/`, `public/`), the R-1 checklist done (base path, headers, page metadata, no preview line, playtest and live check at `/`, docs rewritten), with `/next/` redirected to `/` and `DELETE_P5_SAVES` left off (R-2). | #42 |
+| D-7 | The game's container has `role="application"` and a label. | #42 |
+| A-7 | The p5.js code and its tooling are removed (bundle lint, p5 globals, smoke contracts, the p5 half of the playtest), and the CSP no longer allows cdnjs, `blob:` or workers. | #42 |
 
 ### Still open
 
 - **R-3:** the manual pass in Firefox and Safari, and on a high-refresh display, which also settles F-9.
-- **M5, the swap:** the R-1 table as the checklist, with D-7's canvas attributes, `DELETE_P5_SAVES` left off and the `/next/*` redirect (R-2).
-- **After the swap:** A-7 (remove the p5 code and tighten the CSP), then `DELETE_P5_SAVES` on in a later release.
+- **A later release:** `DELETE_P5_SAVES` on, once rolling back to the p5.js version is no longer on the table (R-2).
 - **A-8, the balance pass:** after the swap, starting from a table of the current numbers (plan, Later).
 - **A-6:** only if `GameScene` grows.
 

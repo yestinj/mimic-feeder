@@ -1,5 +1,7 @@
 # Mimic Feeder: Phaser + TypeScript migration plan
 
+> **Status: done.** The Phaser game replaced the p5.js version at the site root in M5 (#42), and the p5.js code was removed (it is in the git history). This plan stays as the record of what was decided and why; §3 still describes how the game is meant to work, and §3.9 lists its deliberate differences from the p5.js version. "The current game" and "the p5 game" below mean the p5.js version, and §4's arrangements for `/next/` and `game/` were for the transition: the game now lives at the repository root (`src/`, `public/`, `index.html`).
+
 The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is rebuilt to look and feel like a finished game. This plan records what was decided and the order the work happens in. [`inventory.md`](inventory.md) is the checklist of everything the current game does.
 
 ## Principles
@@ -150,7 +152,8 @@ Settings are reachable from the title and pause menus, and save automatically.
 ### 3.8 Saves
 
 - **On first load,** the three old keys are deleted (`mimicFeederHighScores`, `mimicFeederLastUsedName`, `mimicAchievements`). Starting fresh is accepted.
-  - **Not before M5:** `/next/` shares its origin, and so its storage, with the live p5 game, whose saves those keys are. The clean-up is built and tested in M3 but stays switched off (`DELETE_P5_SAVES` in `game/src/profile.ts`) until the swap.
+  - **Not before M5:** `/next/` shares its origin, and so its storage, with the live p5 game, whose saves those keys are. The clean-up is built and tested in M3 but stays switched off (`DELETE_P5_SAVES` in `src/profile.ts`).
+  - **Still off after M5:** left off for the first release, so the old version's players keep their scores if the swap is ever rolled back; a later release turns it on (`reviews/phaser-migration-review-2026-11-14.md`, R-2).
 - **One versioned save object** replaces them, so future changes can upgrade it. It holds:
   - Name and settings.
   - Top-10 high scores.
@@ -167,11 +170,11 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
 - **The Magnet** behaves like the Wizard Staff: offered as soon as it unlocks (Floor 3 Zone 1), then occasionally after a miss, until collected.
 - **Spawn positions** use the full width correctly; drops currently lean left.
 - **Dash** gets its own whoosh sound instead of reusing the Shadow Bolt cast sound.
-- **Floor music** pairs the floors as the p5 code's comment intended: track 1 on Floors 1–2 and track 2 on 3–4, repeating every four floors. The p5 game's formula is a floor out, so it actually plays track 1 on Floor 1, then track 2 on 2–3, track 1 on 4–5, and so on. Paired this way, each boss ends its own two-floor stretch and the music changes once it's beaten (agreed while reviewing the migration; `musicForFloor` in `game/src/rules/progression.ts`).
+- **Floor music** pairs the floors as the p5 code's comment intended: track 1 on Floors 1–2 and track 2 on 3–4, repeating every four floors. The p5 game's formula is a floor out, so it actually plays track 1 on Floor 1, then track 2 on 2–3, track 1 on 4–5, and so on. Paired this way, each boss ends its own two-floor stretch and the music changes once it's beaten (agreed while reviewing the migration; `musicForFloor` in `src/rules/progression.ts`).
 - **Eating and side hits** (agreed in M1):
   - Food is eaten only when it comes in over the rim: its bottom edge reaches the mouth (the top 30% of the chest), as when it drops in or the mimic jumps up into it. The p5 game also ate food that merely reached the mouth band, so running into tall creatures from the side usually counted as eating.
   - Anything that meets the chest lower down is a side hit: the creature is destroyed and, like food hitting the floor, it costs a life. The p5 game destroyed it for free.
-- **Tentacles** keep their promise. The chains reach their targets in 0.18 s (was 0.5 s), and from the moment Z is pressed the creatures they're going for are claimed: they can't land or hit the side of the chest, and one that reaches the floor first waits there for its chain. In the p5 game a target kept falling while the chain reached it, so it could land first and cost a life. The 1 s pull into the mouth is unchanged. This makes Tentacles a dependable save; the 3 s cooldown, and the chains going for the creatures nearest the mimic rather than the ones about to land, keep it a judgement call (agreed while reviewing the migration; `game/src/game/Tentacles.ts`).
+- **Tentacles** keep their promise. The chains reach their targets in 0.18 s (was 0.5 s), and from the moment Z is pressed the creatures they're going for are claimed: they can't land or hit the side of the chest, and one that reaches the floor first waits there for its chain. In the p5 game a target kept falling while the chain reached it, so it could land first and cost a life. The 1 s pull into the mouth is unchanged. This makes Tentacles a dependable save; the 3 s cooldown, and the chains going for the creatures nearest the mimic rather than the ones about to land, keep it a judgement call (agreed while reviewing the migration; `src/game/Tentacles.ts`).
 - **Deliberately unchanged:**
   - Shadow Bolt still destroys shinies and power-ups (shoot carefully).
   - Touching a cat waiting on the floor still kills it.
@@ -185,13 +188,13 @@ These are fixes to oversights and changes agreed while playing the rewrite; ever
   - Screen shake tuned per event. Shake and hit-stop respect the settings and reduced motion.
 - **Boss entrance:** an intro card ("The Flying Demon") with a camera push and a rumble.
 - **Built in M4b:** hit-stop on losing a heart (70 ms) and on a Shadow-Bolted bomb (45 ms), skipped with reduced motion; the lid snapping shut on every bite; squash and stretch on jumping, landing and biting, with dust on landing; shake tuned per event (hazard hits heaviest, good things lightest); and the boss card, rumble and camera push (no push with reduced motion).
-- **Sounds (M4b):** UI sounds (menu moves, select, back, tabs, toggles and sliders), the results' tally ticks and score landing, "New best!" and the boss rumble come from Kenney's CC0 packs (kenney.nl), chosen with the owner by ear. Each was trimmed, peak-normalised and converted to MP3 with ffmpeg; `game/src/assets.ts` notes the pack and file for each, and Credits thanks Kenney. The dash whoosh was made for the game (swept, filtered noise), since none of the packs had a real air whoosh.
+- **Sounds (M4b):** UI sounds (menu moves, select, back, tabs, toggles and sliders), the results' tally ticks and score landing, "New best!" and the boss rumble come from Kenney's CC0 packs (kenney.nl), chosen with the owner by ear. Each was trimmed, peak-normalised and converted to MP3 with ffmpeg; `src/assets.ts` notes the pack and file for each, and Credits thanks Kenney. The dash whoosh was made for the game (swept, filtered noise), since none of the packs had a real air whoosh.
 - **Ambient effects per floor:** dust, embers, flickering torchlight using Phaser 4 lighting. Kept light, and switched off by reduced motion where it moves a lot.
   - Built in M4c without Phaser's lights (the backgrounds have no normal maps). Each floor has its own air: dust on Floors 1-2, a few embers joining it on 3-4, pale spores on 5-6, thick embers on 7-8, violet sparks on 9-10. The light sources painted into each background (torches, lanterns, spectral glows, lava, the void) glow at their real positions, each kind flickering or pulsing at its own pace; the title shows Floor 1's. With reduced motion the particles stop and the lights hold steady.
 
 ### Later (not in this migration)
 
-- New 16:9 backgrounds, character sprites, and possibly the animated mimic sets in `src/assets/_unused/mimic/`.
+- New 16:9 backgrounds, character sprites, and possibly the animated mimic sets in `unused-assets/mimic/`.
 - Balance tuning after the swap: experience and levelling (each level needs twice the experience of the last, so levels nearly stop after about Floor 7), and the mimic growing 5% per level without limit. The level and score achievements were tuned to the current curve in M4d and would need another look with it.
 - Gamepad support.
 
@@ -245,7 +248,7 @@ Each milestone is one or more PRs. The owner reviews each, and can play the late
 | **M2** | Full gameplay | Dash, Shadow Bolt, Tentacles, Magnetism with the ability bar; Staff, Magnet and potion offers; cats and rescue; dragons; boss with boss bar; Ninefold Judgment; the gameplay fixes; cause-of-death tracking | Gameplay matches the inventory, with unit tests for the rules |
 | **M3** | Menus and saves | Title menu, How to Play with discovery, Achievements (lifetime counters, progress, secrets), High Scores, Settings (including fullscreen and erase), Credits, new save with old-key cleanup | Every screen reachable and working with keyboard and mouse |
 | **M4** | Polish | Notification tiers, results story and naming flow, UI sounds and dash whoosh, transitions, title screen life, boss entrance, game-feel pass, ambient floor effects, auto-pause, resume-countdown trial, cursor, final text review with the owner | The owner signs off the look and feel |
-| **M5** | Swap | Phaser to the site root, p5 code, globals generator and old smoke checks removed, the old save keys' clean-up switched on, docs (README, AGENTS.md) rewritten, live check moved to root | Live site runs the Phaser version |
+| **M5** | Swap | Phaser to the site root, p5 code, globals generator and old smoke checks removed, docs (README, AGENTS.md) rewritten, live check moved to root, `/next/` redirected to `/` (the old save keys' clean-up stays off for now, §3.8) | Live site runs the Phaser version |
 
 The p5 game stays live and unchanged until M5. `AGENTS.md` gets a short note about the migration in M0, and a full rewrite in M5.
 

@@ -8,7 +8,7 @@ import { EDIBLE_KINDS, POWER_UP_KINDS, SHINY_KINDS, type EdibleKind, type PowerU
 
 export const SAVE_KEY = 'mimicFeeder.save';
 export const SAVE_VERSION = 1;
-/** The p5 game's keys, deleted on first load (starting fresh was agreed, plan §3.8). */
+/** The old p5.js version's keys, deleted on first load once DELETE_P5_SAVES is on (starting fresh was agreed, plan §3.8). */
 export const OLD_KEYS = ['mimicFeederHighScores', 'mimicFeederLastUsedName', 'mimicAchievements'] as const;
 
 export const HIGH_SCORE_COUNT = 10;

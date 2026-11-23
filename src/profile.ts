@@ -5,10 +5,10 @@ import { unlockEarned } from './rules/achievements';
 import { OLD_KEYS, SAVE_KEY, defaultSave, isNewerSave, parseSave, type SaveData } from './rules/save';
 
 /**
- * The p5 game's keys are deleted on first load (plan §3.8), but not yet:
- * /next/ shares its origin, and so its localStorage, with the live p5 game,
- * whose scores and achievements those keys are. M5 turns this on when the
- * rewrite replaces it.
+ * The old p5.js version's save keys are deleted on first load (plan §3.8),
+ * but not yet: while rolling back to that version is still possible, its
+ * players' scores and achievements stay. A later release turns this on
+ * (reviews/phaser-migration-review-2026-11-14.md, R-2).
  */
 export const DELETE_P5_SAVES = false;
 

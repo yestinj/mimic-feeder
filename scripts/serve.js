@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
  * Local static server for dist/ that applies dist/_headers (the build's copy of
- * src/_headers) the way Cloudflare Pages does, so local runs get the production
+ * public/_headers) the way Cloudflare Pages does, so local runs get the production
  * Content-Security-Policy and other headers. See scripts/pages-headers.js.
  *
  * Used two ways:
  * - `npm start`: manual testing on http://127.0.0.1:8080 (PORT overrides).
  *   Every _headers rule applies except Cache-Control, which is replaced with
- *   `no-store` so rebuilt CSS/assets show up on a normal refresh.
+ *   `no-store` so a rebuild shows up on a normal refresh.
  * - scripts/playtest.js: imports startStaticServer() and keeps the exact
  *   production headers, including Cache-Control.
  */
@@ -42,14 +42,14 @@ function contentType(filePath) {
 
 /**
  * Fails with a hint when dist/ has not been built (or the build did not copy
- * src/_headers). Returns the parsed _headers rules.
+ * public/_headers). Returns the parsed _headers rules.
  */
 function loadDistHeaderRules() {
     if (!fs.existsSync(path.join(DIST, 'index.html'))) {
         throw new Error('dist/index.html missing. Run `npm run build` first.');
     }
     if (!fs.existsSync(HEADERS_FILE)) {
-        throw new Error('dist/_headers missing. The build should copy src/_headers; run `npm run build`.');
+        throw new Error('dist/_headers missing. The build copies public/_headers; run `npm run build`.');
     }
     return loadHeadersFile(HEADERS_FILE);
 }
@@ -68,12 +68,12 @@ function listDistFiles(dirPath, files = []) {
 
 /**
  * Every URL path Cloudflare Pages would serve from dist/: each file, minus
- * `_headers` itself (Pages consumes it, never serves it), plus the directory
- * path (`/`, `/next/`, ...) of every index.html.
+ * `_headers` and `_redirects` (Pages consumes them, never serves them), plus the directory
+ * path (`/`, ...) of every index.html.
  */
 function listServedPaths() {
     const filePaths = listDistFiles(DIST)
-        .filter((filePath) => filePath !== HEADERS_FILE)
+        .filter((filePath) => filePath !== HEADERS_FILE && filePath !== path.join(DIST, '_redirects'))
         .map((filePath) => '/' + path.relative(DIST, filePath).split(path.sep).join('/'));
     const directoryPaths = filePaths
         .filter((urlPath) => urlPath.endsWith('/index.html'))
@@ -182,7 +182,7 @@ async function main() {
     const url = `http://${host}:${port}/`;
     console.log(`Serving dist/ at ${url}`);
     console.log(`Applying ${headerRules.length} _headers rules (CSP etc.); Cache-Control replaced with no-store for local testing.`);
-    console.log('Rebuild with `npm run build` (or keep `npm run dev` running) and refresh. Ctrl+C to stop.');
+    console.log('After a change, run `npm run build` again and refresh. Ctrl+C to stop.');
     openInBrowser(url);
 }
 

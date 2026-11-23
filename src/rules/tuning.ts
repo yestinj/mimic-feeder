@@ -1,4 +1,4 @@
-// Gameplay tuning carried over from the p5 game (src/js/constants.js). Lengths
+// Gameplay tuning carried over from the original p5.js version of the game. Lengths
 // are in reference pixels (the p5 game's 1024×768 canvas) and times in
 // seconds; scenes convert lengths with SIZE_SCALE and RUN_SCALE (config.ts).
 // The p5 game counted in 60 fps frames: 6 px per frame is 360 px/s, and so on.

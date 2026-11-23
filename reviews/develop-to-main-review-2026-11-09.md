@@ -2,6 +2,8 @@
 
 Independent review of the full `develop` branch as it will merge into `main`. It is written to be acted on without access to the conversation that produced it.
 
+> **Historical.** This reviews the p5.js version of the game, which the Phaser rebuild replaced in #42. The files it cites (`src/js/`, `src/index.html`, `src/_headers`, `scripts/smoke.js`) were removed then, and are in the git history.
+
 > **Status update (2026-11-09, after fixes).** The review below was performed at `a0bb76d`. Every finding has since been resolved or decided by the owner, in these commits on `develop`:
 >
 > | Item | Resolution | Commit(s) |

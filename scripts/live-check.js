@@ -2,25 +2,24 @@
 /**
  * Read-only smoke check of the deployed site (production by default).
  *
- * Loads the live page in Playwright's Chromium as a returning player and checks:
- * - the document returns 200 with a Content-Security-Policy header
- * - p5 loads and the game reaches active play, with the play timer advancing
+ * Loads the live page in Playwright's Chromium and checks:
+ * - the document returns 200 with a Content-Security-Policy header, and
+ *   (on the production domain) isn't marked noindex
+ * - the game reaches its title screen, and Enter starts a run whose play time
+ *   advances
  * - no CSP violations, page errors, unexpected console errors, failed
  *   requests or HTTP error responses
+ * - the old /next/ preview address redirects to /
  *
- * It also checks the Phaser + TypeScript rewrite at /next/ (until it replaces
- * the p5 game): 200 with the CSP and noindex headers, reaches its title screen,
- * and no CSP violations, errors or failed requests.
- *
- * Nothing is written anywhere: the game has no backend, and the browser
- * profile is thrown away afterwards.
+ * The run is never saved: the browser profile is thrown away afterwards, and
+ * the game has no backend.
  *
  * Usage:
  *   npm run check:live                      # https://mimicfeeder.yest.dev/
  *   LIVE_URL=https://<preview>.pages.dev/ npm run check:live
  *
  * CI runs it after each deploy of main (.github/workflows/deploy-check.yml).
- * Screenshots are saved to playtest-output/live-check.png and live-check-next.png.
+ * A screenshot is saved to playtest-output/live-check.png.
  */
 const fs = require('fs');
 const path = require('path');
@@ -30,7 +29,6 @@ const LIVE_URL = process.env.LIVE_URL || 'https://mimicfeeder.yest.dev/';
 const OUT_DIR = path.join(__dirname, '..', 'playtest-output');
 const SCREENSHOT = path.join(OUT_DIR, 'live-check.png');
 const NEXT_URL = new URL('next/', LIVE_URL).href;
-const NEXT_SCREENSHOT = path.join(OUT_DIR, 'live-check-next.png');
 
 const failures = [];
 
@@ -48,54 +46,6 @@ function isExpectedConsoleError(text) {
     const t = text.toLowerCase();
     return t.includes('play() failed') || t.includes('audiocontext') || t.includes('autoplay')
         || t.includes('the play() request was interrupted');
-}
-
-/** The Phaser rewrite at /next/: loads with its headers and reaches the title screen cleanly. */
-async function checkNext(browser) {
-    console.log(`\nLive check: ${NEXT_URL}`);
-    const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
-    const problems = [];
-    page.on('pageerror', (error) => problems.push(`page error: ${error.message}`));
-    page.on('console', (message) => {
-        if (message.type() === 'error') {
-            problems.push(`console: ${message.text()}`);
-        }
-    });
-    page.on('requestfailed', (request) => {
-        const failure = request.failure();
-        problems.push(`failed: ${request.url()} (${failure ? failure.errorText : 'failed'})`);
-    });
-    page.on('response', (response) => {
-        if (response.status() >= 400) {
-            problems.push(`HTTP ${response.status()} ${response.url()}`);
-        }
-    });
-    try {
-        await page.exposeFunction('__liveCheckReportNextCspViolation', (violation) => problems.push(`CSP: ${violation}`));
-        await page.addInitScript(() => {
-            document.addEventListener('securitypolicyviolation', (event) => {
-                window.__liveCheckReportNextCspViolation(`${event.effectiveDirective} blocked ${event.blockedURI}`);
-            });
-        });
-        const response = await page.goto(NEXT_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        const headers = response ? response.headers() : {};
-        check(response && response.status() === 200, '/next/ returns 200', response && `status ${response.status()}`);
-        check(Boolean(headers['content-security-policy']), '/next/ has a Content-Security-Policy header');
-        check(/noindex/.test(headers['x-robots-tag'] || ''), '/next/ is marked noindex', headers['x-robots-tag']);
-        await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 30000 });
-        check(true, '/next/ reaches the title screen');
-        await page.waitForTimeout(500);
-        check(problems.length === 0, '/next/ has no CSP violations, errors or failed requests', problems.join('; '));
-    } catch (error) {
-        failures.push(error.message.split('\n')[0]);
-        console.error(`FAIL /next/: ${error.message.split('\n')[0]}`);
-        if (problems.length) {
-            console.error(`     ${problems.join('; ')}`);
-        }
-    } finally {
-        await page.screenshot({ path: NEXT_SCREENSHOT }).catch(() => {});
-        await page.close().catch(() => {});
-    }
 }
 
 async function main() {
@@ -133,30 +83,32 @@ async function main() {
             document.addEventListener('securitypolicyviolation', (event) => {
                 window.__liveCheckReportCspViolation(`${event.effectiveDirective} blocked ${event.blockedURI}`);
             });
-            // Returning player: skips the intro and name entry.
-            localStorage.setItem('mimicFeederLastUsedName', 'Live Check');
         });
 
         const response = await page.goto(LIVE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        const headers = response ? response.headers() : {};
         check(response && response.status() === 200, 'Document returns 200', response && `status ${response.status()}`);
-        check(Boolean(response && response.headers()['content-security-policy']), 'Document has a Content-Security-Policy header');
+        check(Boolean(headers['content-security-policy']), 'Document has a Content-Security-Policy header');
+        // Preview deployments (*.pages.dev) are noindex on purpose; the production domain must not be.
+        if (!new URL(LIVE_URL).hostname.endsWith('.pages.dev')) {
+            check(!/noindex/i.test(headers['x-robots-tag'] || ''), 'Document is not marked noindex', headers['x-robots-tag']);
+        }
 
-        await page.waitForSelector('canvas', { timeout: 30000 });
-        await page.waitForFunction(() => typeof gameState !== 'undefined' && gameState.gameStarted, null, { timeout: 30000 });
-        const p5Version = await page.evaluate(() => (typeof p5 !== 'undefined' ? p5.VERSION : null));
-        check(Boolean(p5Version), `p5 loaded (${p5Version})`);
+        // The game reports its scenes and state through its test hook (src/testHook.ts).
+        await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 30000 });
+        check(true, 'The game reaches its title screen');
+        await page.waitForTimeout(500);
 
-        // First gesture starts audio and play; then confirm the loop is running.
-        await page.click('canvas');
-        const before = await page.evaluate(() => gameState.playTime);
+        // Play is focused on the title: Enter starts a run (and unlocks audio).
+        await page.keyboard.press('Enter');
+        await page.waitForFunction(() => {
+            const snapshot = window.__mimicFeeder.snapshot();
+            return snapshot.running.includes('game') && snapshot.game && snapshot.game.playTimeMs > 0;
+        }, null, { timeout: 30000 });
+        const before = await page.evaluate(() => window.__mimicFeeder.snapshot().game.playTimeMs);
         await page.waitForTimeout(3000);
-        const state = await page.evaluate(() => ({
-            started: gameState.gameStarted,
-            over: gameState.gameOver,
-            playTime: gameState.playTime,
-        }));
-        check(state.started && !state.over, 'Game is in active play');
-        check(state.playTime > before, 'Play timer advances', `playTime ${before} -> ${state.playTime}`);
+        const after = await page.evaluate(() => window.__mimicFeeder.snapshot().game.playTimeMs);
+        check(after > before, 'A run starts and its play time advances', `playTimeMs ${Math.round(before)} -> ${Math.round(after)}`);
 
         check(cspViolations.length === 0, 'No CSP violations', cspViolations.join('; '));
         check(pageErrors.length === 0, 'No page errors', pageErrors.join('; '));
@@ -176,11 +128,20 @@ async function main() {
         await page.screenshot({ path: SCREENSHOT }).catch(() => {});
     }
 
-    await checkNext(browser);
+    // The old preview address, for anyone who still has the link.
+    try {
+        const redirect = await page.request.get(NEXT_URL, { maxRedirects: 0 });
+        const location = redirect.headers().location || '';
+        check([301, 308].includes(redirect.status()) && new URL(location, NEXT_URL).href === new URL('/', LIVE_URL).href,
+            '/next/ redirects to /', `status ${redirect.status()}, location ${location || 'none'}`);
+    } catch (error) {
+        check(false, '/next/ redirects to /', error.message.split('\n')[0]);
+    }
+
     await browser.close();
 
     if (failures.length) {
-        console.error(`\nLive check FAILED (${failures.length}). Screenshots: ${path.relative(process.cwd(), OUT_DIR)}/live-check*.png`);
+        console.error(`\nLive check FAILED (${failures.length}). Screenshot: ${path.relative(process.cwd(), SCREENSHOT)}`);
         process.exit(1);
     }
     console.log('\nLive check passed.');

@@ -17,6 +17,8 @@ jobs:
     test:
         # Required status check in the "Protect main" ruleset: if you rename
         # this job, update the ruleset (Settings -> Rules) in the same change.
+        # ("smoke" is historical: the p5 game's static contracts are gone, but
+        # the name stays so the ruleset keeps matching.)
         name: Lint, build, smoke, playtest
         runs-on: ubuntu-latest
         timeout-minutes: 20
@@ -32,7 +34,7 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            # ESLint (bundle + tooling) + syntax check, build, static smoke contracts.
+            # Lint, typecheck, unit tests and build.
             - name: npm test
               run: npm test
 
@@ -40,7 +42,7 @@ jobs:
             - name: Install Playwright Chromium
               run: npx playwright install --with-deps --no-shell chromium
 
-            # Browser playtest against dist/ served with src/_headers (CSP enforced).
+            # Browser playtest against dist/ served with public/_headers (CSP enforced).
             - name: Playtest
               run: npm run playtest
 

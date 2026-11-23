@@ -1,4 +1,4 @@
-// Practice runs, a testing aid: /next/?test&floor=7 starts every run on that
+// Practice runs, a testing aid: ?test&floor=7 starts every run on that
 // floor, with what a steady player would have by then. They leave the save
 // alone (no high scores, totals, achievements or discoveries).
 import { BOSS, isBossZone } from './boss';

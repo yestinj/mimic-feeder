@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mimic Feeder</title>
+    <meta name="description" content="Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock powers.">
+    <meta name="author" content="Yestin Johnson">
+    <link rel="icon" href="/assets/favicon.ico">
+
+    <!-- Open Graph, for social sharing -->
+    <meta property="og:title" content="Mimic Feeder">
+    <meta property="og:description" content="Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock powers.">
+    <meta property="og:image" content="https://mimicfeeder.yest.dev/assets/og-image.png">
+    <meta property="og:url" content="https://mimicfeeder.yest.dev/">
+    <meta property="og:type" content="website">
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Mimic Feeder">
+    <meta name="twitter:description" content="Arcade monster-feeder. Eat creatures, nab shinies, dodge bombs, and unlock powers.">
+    <meta name="twitter:image" content="https://mimicfeeder.yest.dev/assets/og-image.png">
+</head>
+<body>
+    <!-- A keyboard game: role="application" lets screen readers pass keys through to it. -->
+    <div id="game" role="application" aria-label="Mimic Feeder game"></div>
+    <!-- Styled like the game's own notices (src/style.css, src/notice.ts). -->
+    <noscript>
+        <div class="notice" role="alert">
+            <h1>Mimic Feeder needs JavaScript</h1>
+            <p>JavaScript is switched off in this browser. Switch it on, then reload the page.</p>
+        </div>
+    </noscript>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

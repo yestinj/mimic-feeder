@@ -7,16 +7,15 @@ I'm not open to contributions, but if you'd like to fork the project and make yo
 1. Fork the repository
 2. Clone your fork: `git clone https://github.com/YOUR_USERNAME/mimic-feeder.git`
 3. Install dependencies: `npm install`
-4. Build and serve the game: `npm run build && npm start` (use `npm run dev` alongside to rebuild on change)
+4. Run the game: `npm run dev` (Vite's dev server, reloads on save), or `npm run build && npm start` to serve the production build
 
 ## Development Workflow
 
 1. Create a new branch for your feature or bugfix: `git checkout -b feature/your-feature-name`
 2. Make your changes
-3. Test your changes: `npm run check` (lint, build, smoke checks and the browser playtest; run `npm run playtest:install` once first)
-4. Run the game: `npm start`
-5. Commit your changes with a descriptive commit message
-6. Push to your fork: `git push origin feature/your-feature-name`
+3. Test your changes: `npm run check` (lint, typecheck, unit tests, build and the browser playtest; run `npm run playtest:install` once first)
+4. Commit your changes with a descriptive commit message
+5. Push to your fork: `git push origin feature/your-feature-name`
 
 ## Code Style Guidelines
 
@@ -28,7 +27,8 @@ I'm not open to contributions, but if you'd like to fork the project and make yo
 
 ## Project Structure
 
-- `src/js/`: JavaScript source files
-- `src/assets/`: Game assets (images, sounds, etc.)
-- `src/index.html`: Main HTML file
-- `build.js`: Build script
+- `src/`: the game, in TypeScript with Phaser 4 (`src/scenes/` for screens, `src/rules/` for the game rules, unit-tested)
+- `public/assets/`: art, sounds and music, served at `/assets/`
+- `index.html`: the page
+- `vite.config.mts`: the Vite build (`npm run build` writes `dist/`)
+- `AGENTS.md`: a fuller guide to the layout and conventions

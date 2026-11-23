@@ -1,7 +1,6 @@
-// A small, read-only hook for the Playwright playtest. The rewrite uses ES
-// modules, so tests can't reach game state through bare globals as they did
-// with the p5 version; scenes report milestones here, and the playtest can
-// read a snapshot of the game.
+// A small, read-only hook for the Playwright playtest. The game is ES modules,
+// so tests can't reach its state through globals; scenes report milestones
+// here, and the playtest can read a snapshot of the game.
 import type * as Phaser from 'phaser';
 import { isMuted } from './audio';
 import { profile } from './profile';
