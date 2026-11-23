@@ -29,7 +29,7 @@ const withOldKeys = (): FakeStorage => {
 };
 
 describe('profile', () => {
-    it('keeps the p5 game’s saves while both games share the site', () => {
+    it('keeps the p5 game’s saves until a later release switches the clean-up on', () => {
         expect(DELETE_P5_SAVES).toBe(false);
         const storage = withOldKeys();
         loadProfile(storage);

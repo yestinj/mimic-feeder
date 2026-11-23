@@ -31,7 +31,7 @@ How to Play (on the title screen, or H during a run) covers the rules, the contr
 
 Achievements come in Bronze, Silver and Gold tiers (+25, +50 and +100 score when they unlock), plus a few secret ones. Progress toward the long-term ones counts across all your runs.
 
-Your name, high scores, achievements and settings are saved in your browser (`localStorage`); there are no accounts and nothing is sent anywhere. Settings can reset them, or erase everything.
+Your name, high scores, achievements and settings are saved in your browser (`localStorage`); there are no accounts and nothing is sent anywhere. Settings can put the settings back to their defaults, or erase everything.
 
 ## Running it locally
 

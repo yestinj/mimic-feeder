@@ -7,7 +7,7 @@
  * Used two ways:
  * - `npm start`: manual testing on http://127.0.0.1:8080 (PORT overrides).
  *   Every _headers rule applies except Cache-Control, which is replaced with
- *   `no-store` so rebuilt CSS/assets show up on a normal refresh.
+ *   `no-store` so a rebuild shows up on a normal refresh.
  * - scripts/playtest.js: imports startStaticServer() and keeps the exact
  *   production headers, including Cache-Control.
  */
@@ -182,7 +182,7 @@ async function main() {
     const url = `http://${host}:${port}/`;
     console.log(`Serving dist/ at ${url}`);
     console.log(`Applying ${headerRules.length} _headers rules (CSP etc.); Cache-Control replaced with no-store for local testing.`);
-    console.log('Rebuild with `npm run build` (or keep `npm run dev` running) and refresh. Ctrl+C to stop.');
+    console.log('After a change, run `npm run build` again and refresh. Ctrl+C to stop.');
     openInBrowser(url);
 }
 

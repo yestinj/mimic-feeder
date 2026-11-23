@@ -2,6 +2,8 @@
 
 An independent engineering review of the Phaser 4 + TypeScript rewrite in `game/`, served at `/next/`, before it replaces the p5.js game at `/`. It is written to be acted on without access to the conversation that produced it.
 
+> **Paths have moved since.** The swap (#42) moved the game to the repository root: `game/src/` is now `src/`, `game/index.html` is `index.html`, `game/vite.config.mts` is `vite.config.mts`, and `src/_headers` is `public/_headers`. The p5.js files this review cites (`src/js/`, `src/index.html`, `scripts/smoke.js`) were removed and are in the git history. What was done about each finding is in [Follow-ups](#follow-ups).
+
 ## Scope
 
 | Field | Value |
