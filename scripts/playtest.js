@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
  * Playwright playtest for Mimic Feeder (Playwright's Chromium), against dist/
- * served with dist/_headers applied the way Cloudflare Pages applies them.
+ * served under the production base path (/games/mimic-feeder/) with
+ * dist/_headers applied the way Cloudflare applies them.
  *
  * Checks:
- * - every served path gets Cache-Control from at most one _headers rule, and
- *   the old /next/ preview address redirects to /
+ * - every _headers rule is under the base path (or is /*), and every served
+ *   path gets Cache-Control from at most one rule
  * - a full run (checkGame): title, play, pause, abilities, cats, dragons, the
  *   boss, the Ninefold Judgment, game over, results, high scores, settings and
  *   the save, with the production CSP enforced (any `securitypolicyviolation`
@@ -29,8 +30,9 @@ const fs = require('fs');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const { chromium } = require('playwright');
-const { resolveHeaders } = require('./pages-headers.js');
+const { resolveHeaders } = require('./headers.js');
 const {
+    BASE_PATH,
     DIST,
     loadDistHeaderRules,
     listServedPaths,
@@ -40,7 +42,9 @@ const {
 
 const PORT = Number(process.env.PLAYTEST_PORT || 4173);
 const HOST = '127.0.0.1';
-const BASE = `http://${HOST}:${PORT}`;
+const ORIGIN = `http://${HOST}:${PORT}`;
+/** The game's address, as in production: under the base path, with its trailing slash. */
+const GAME_URL = ORIGIN + BASE_PATH;
 const OUT_DIR = path.join(__dirname, '..', 'playtest-output');
 
 function assert(condition, message) {
@@ -145,9 +149,9 @@ async function checkGame(browser) {
 
     try {
         // ?test adds the game's debug shortcuts (window.__mimicFeeder.debug), used for the abilities below.
-        const response = await page.goto(BASE + '/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        const response = await page.goto(GAME_URL + '?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
         const headers = response ? response.headers() : {};
-        assert(Boolean(headers['content-security-policy']), 'The game is served at / with the _headers Content-Security-Policy');
+        assert(Boolean(headers['content-security-policy']), `The game is served at ${BASE_PATH} with the _headers Content-Security-Policy`);
         assert(!/noindex/i.test(headers['x-robots-tag'] || ''), 'and is not marked noindex');
         await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 20000 });
         assert(true, 'reaches the title screen');
@@ -632,7 +636,7 @@ async function checkGame(browser) {
 
         // A practice run (?test&floor=N, a testing aid) starts on that floor with a steady player's progress,
         // and leaves the save alone.
-        await page.goto(BASE + '/?test&floor=7', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(GAME_URL + '?test&floor=7', { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 20000 });
         await page.waitForTimeout(400);
         await page.keyboard.press('Enter');
@@ -690,7 +694,7 @@ async function checkNotices(browser) {
         const page = await noWebgl.newPage({ viewport: { width: 1280, height: 720 } });
         const errors = [];
         page.on('pageerror', (err) => errors.push(String(err && err.message ? err.message : err)));
-        await page.goto(BASE + '/', { waitUntil: 'load', timeout: 30000 });
+        await page.goto(GAME_URL, { waitUntil: 'load', timeout: 30000 });
         await page.waitForSelector('.notice', { timeout: 10000 });
         const notice = await readNotice(page);
         assert(/WebGL/.test(notice.heading) && notice.text.length > 0, `without WebGL says so ("${notice.heading}")`);
@@ -704,7 +708,7 @@ async function checkNotices(browser) {
     const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 720 } });
     try {
         const page = await context.newPage();
-        await page.goto(BASE + '/', { waitUntil: 'load', timeout: 30000 });
+        await page.goto(GAME_URL, { waitUntil: 'load', timeout: 30000 });
         // The page's own scripts don't run; the test's still can.
         await page.waitForSelector('.notice', { timeout: 10000 });
         const notice = await readNotice(page);
@@ -727,7 +731,7 @@ async function checkLoading(browser) {
         const errors = [];
         page.on('pageerror', (err) => errors.push(String(err && err.message ? err.message : err)));
         await route(page);
-        await page.goto(BASE + '/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(GAME_URL + '?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
         return { page, errors };
     };
     const reached = (page, scene, timeout = 30000) => page.waitForFunction((key) => window.__mimicFeeder && window.__mimicFeeder.ready.includes(key), scene, { timeout });
@@ -814,7 +818,7 @@ async function checkLateMusic(browser) {
         throw new Error(`Timed out waiting for the game; last snapshot: ${JSON.stringify(last && last.game)}`);
     };
     try {
-        await page.goto(BASE + '/?test&floor=4', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(GAME_URL + '?test&floor=4', { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 30000 });
         await page.waitForTimeout(400);
         await page.keyboard.press('Enter');
@@ -861,7 +865,7 @@ async function checkKeyboardNote(browser) {
         const page = await context.newPage();
         const errors = [];
         page.on('pageerror', (err) => errors.push(String(err && err.message ? err.message : err)));
-        await page.goto(BASE + '/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(GAME_URL + '?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForSelector('.notice button', { timeout: 10000 });
         await titleReady(page);
         const note = await readNote(page);
@@ -883,7 +887,7 @@ async function checkKeyboardNote(browser) {
     context = await browser.newContext(phone);
     try {
         const page = await context.newPage();
-        await page.goto(BASE + '/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(GAME_URL + '?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
         await page.waitForSelector('.notice button', { timeout: 10000 });
         await page.tap('.notice button');
         await page.waitForTimeout(300);
@@ -894,7 +898,7 @@ async function checkKeyboardNote(browser) {
 
     const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     try {
-        await page.goto(BASE + '/?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await page.goto(GAME_URL + '?test', { waitUntil: 'domcontentloaded', timeout: 30000 });
         await titleReady(page);
         await page.waitForTimeout(300);
         assert((await readNote(page)) === null, 'a desktop never sees the keyboard note');
@@ -909,7 +913,7 @@ async function main() {
 
     const servedPaths = listServedPaths();
     const cacheControlConflicts = servedPaths
-        .map((urlPath) => describeCacheControlConflict(urlPath, resolveHeaders(headerRules, urlPath, BASE)))
+        .map((urlPath) => describeCacheControlConflict(urlPath, resolveHeaders(headerRules, urlPath, ORIGIN)))
         .filter(Boolean);
     if (cacheControlConflicts.length) {
         console.error('Paths with more than one Cache-Control rule:\n  ' + cacheControlConflicts.join('\n  '));
@@ -918,10 +922,12 @@ async function main() {
         cacheControlConflicts.length === 0,
         `Every served path (${servedPaths.length}) gets Cache-Control from at most one _headers rule`
     );
-    // The local server doesn't apply _redirects; check the rules Cloudflare Pages will.
-    const redirects = fs.readFileSync(path.join(DIST, '_redirects'), 'utf8');
-    assert(/^\/next\/\*\s+\/\s+301$/m.test(redirects) && /^\/next\s+\/\s+301$/m.test(redirects),
-        'The old /next/ preview address redirects to / (_redirects)');
+    // Cloudflare matches _headers against public paths, which include the base
+    // path: a rule outside it would silently never apply.
+    const strayRules = headerRules
+        .filter((rule) => !rule.absolute && rule.pattern !== '/*' && !rule.pattern.startsWith(BASE_PATH))
+        .map((rule) => rule.pattern);
+    assert(strayRules.length === 0, `Every _headers rule is under ${BASE_PATH} or is /*${strayRules.length ? ` (not: ${strayRules.join(', ')})` : ''}`);
 
     // Launch first so a missing browser fails before the server is listening.
     const browser = await chromium.launch({
@@ -931,7 +937,7 @@ async function main() {
     console.log(`Using browser: Playwright Chromium ${browser.version()}`);
     // Exact production headers here (no Cache-Control override).
     const server = await startStaticServer({ headerRules, host: HOST, port: PORT, cacheControlConflicts });
-    console.log(`Serving ${DIST} at ${BASE} with ${headerRules.length} _headers rules`);
+    console.log(`Serving ${DIST} at ${GAME_URL} with ${headerRules.length} _headers rules`);
 
     try {
         await checkGame(browser);

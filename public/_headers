@@ -1,19 +1,22 @@
-# Cloudflare Pages applies EVERY rule whose path matches and joins same-name
-# headers with commas. Keep exactly one Cache-Control rule per served path, and
-# never put Cache-Control in /* (it would be appended to every other rule).
+# Cloudflare applies EVERY rule whose path matches and joins same-name headers
+# with commas. Keep exactly one Cache-Control rule per served path, and never
+# put Cache-Control in /* (it would be appended to every other rule).
+#
+# Paths are public addresses, so they include the game's prefix (base_path in
+# wrangler.jsonc). Only the game's addresses reach this Worker, so /* is all of them.
 
-# Vite content-hashes everything under /bundle/, so those files never change in place.
-/bundle/*
+# Vite content-hashes everything in bundle/, so those files never change in place.
+/games/mimic-feeder/bundle/*
   Cache-Control: public, max-age=31536000, immutable
 
-/assets/*
+/games/mimic-feeder/assets/*
   # Unversioned media paths: revalidate within a day so deploys refresh sprites/SFX.
   Cache-Control: public, max-age=86400, must-revalidate
 
-/
+/games/mimic-feeder/
   Cache-Control: public, max-age=3600
 
-/index.html
+/games/mimic-feeder/index.html
   Cache-Control: public, max-age=3600
 
 /*
@@ -21,6 +24,3 @@
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
-
-https://*.pages.dev/*
-  X-Robots-Tag: noindex

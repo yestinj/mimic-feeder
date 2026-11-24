@@ -1,6 +1,6 @@
 # Mimic Feeder: Phaser + TypeScript migration plan
 
-> **Status: done.** The Phaser game replaced the p5.js version at the site root in M5 (#42), and the p5.js code was removed (it is in the git history). This plan stays as the record of what was decided and why; §3 still describes how the game is meant to work, and §3.9 lists its deliberate differences from the p5.js version. "The current game" and "the p5 game" below mean the p5.js version, and §4's arrangements for `/next/` and `game/` were for the transition: the game now lives at the repository root (`src/`, `public/`, `index.html`).
+> **Status: done.** The Phaser game replaced the p5.js version at the site root in M5 (#42), and the p5.js code was removed (it is in the git history). This plan stays as the record of what was decided and why; §3 still describes how the game is meant to work, and §3.9 lists its deliberate differences from the p5.js version. "The current game" and "the p5 game" below mean the p5.js version, and §4's arrangements for `/next/` and `game/` were for the transition: the game now lives at the repository root (`src/`, `public/`, `index.html`). Since then it has moved from Cloudflare Pages at mimicfeeder.yest.dev to a Cloudflare Worker at yest.dev/games/mimic-feeder/ (see the README's deploy notes).
 
 The game moves from p5.js to **Phaser 4 + TypeScript**, and its interface is rebuilt to look and feel like a finished game. This plan records what was decided and the order the work happens in. [`inventory.md`](inventory.md) is the checklist of everything the current game does.
 

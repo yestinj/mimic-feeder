@@ -6,7 +6,7 @@ Guidance for coding agents working in this repository.
 
 **Mimic Feeder** is a browser arcade game built with **Phaser 4** and **TypeScript**: control a dungeon mimic, eat creatures, collect shinies, dodge bombs, unlock abilities.
 
-- **Live:** https://mimicfeeder.yest.dev/
+- **Live:** https://yest.dev/games/mimic-feeder/
 - **License:** CC BY-NC 4.0 (non-commercial)
 - **Status:** Playable beta / portfolio project — keep changes focused; avoid large refactors unless asked
 - **Not accepting external contributions** (see `CONTRIBUTING.md`); forks are fine under the license
@@ -19,15 +19,16 @@ Guidance for coding agents working in this repository.
 | Game | **Phaser 4** + **TypeScript** (strict), ES modules |
 | Build | **Vite** (`vite.config.mts`) builds into `dist/`; `npm run build` runs it through `build.js` |
 | Tests | **Vitest** unit tests; a **Playwright** playtest of the built game |
-| Deploy | Static **Cloudflare Pages** from `dist/` (GitHub integration) |
-| Backend | **None** — no Pages Functions or D1. **Cloudflare Web Analytics** is on through the domain's automatic setup (no code; the CSP allows it) |
+| Deploy | **Cloudflare Workers** static assets: `dist/` at yest.dev/games/mimic-feeder/ (`wrangler.jsonc`), deployed by **Workers Builds** |
+| Backend | **None** — no Worker script, Functions or D1. **Cloudflare Web Analytics** is on through the domain's automatic setup (no code; the CSP allows it) |
 
-Do **not** reintroduce in-app track beacons, Pages Functions, or D1. Production is static-only: Cloudflare Pages builds `dist/` using the project's dashboard settings (build command, output directory `dist`, Node from `.nvmrc`). There is deliberately no `wrangler.toml`; adding one makes it the source of truth for the project's settings and bindings and locks them in the dashboard. Cloudflare Web Analytics is enabled through the yest.dev zone's automatic setup: Cloudflare adds its script to HTML responses for real browsers, so the repo has no analytics code, and the CSP allows `static.cloudflareinsights.com` and `cloudflareinsights.com` on purpose. Keep those CSP entries; this is not the removed client/D1 metrics pipeline.
+Do **not** reintroduce in-app track beacons, a Worker script, or D1. Production is static-only: a Worker that serves `dist/` as static assets, with no script. Workers Builds is connected to the repo in the dashboard; it installs from `package-lock.json` on the Node version in `.nvmrc`, runs `npm run build`, then `npx wrangler deploy` on `main` and `npx wrangler preview` on other branches (a preview URL per PR, on workers.dev). `wrangler.jsonc` is the source of truth for the Worker's settings: the route (`yest.dev/games/mimic-feeder*`), `assets.base_path`, a plain 404 for unknown addresses, no production workers.dev address, and previews. Change them there, not in the dashboard: every deploy applies the file. The rest of yest.dev is a separate site (a Pages project in another repo); the route only takes the game's addresses. Cloudflare Web Analytics is enabled through the yest.dev zone's automatic setup: Cloudflare adds its script to HTML responses for real browsers, so the repo has no analytics code, and the CSP allows `static.cloudflareinsights.com` and `cloudflareinsights.com` on purpose. Keep those CSP entries; this is not the removed client/D1 metrics pipeline.
 
 ## Layout
 
 ```
 index.html            # The page: meta tags, the game's container, the "needs JavaScript" notice
+wrangler.jsonc        # The Cloudflare Worker: route, base path, 404s, previews (no script)
 vite.config.mts       # Vite build (hashed output in /bundle/) + Vitest config
 tsconfig.json         # TypeScript (strict)
 src/
@@ -46,9 +47,8 @@ src/
   strings.ts          # All player-facing text
   style.css           # The page's own styles (the notices)
 public/               # Copied into dist/ as it is
-  assets/             # Images, sound effects, music, favicon and the social image, served at /assets/
-  _headers            # Cloudflare Pages headers (the playtest and npm start apply them)
-  _redirects          # Cloudflare Pages redirects (the old /next/ preview address to /)
+  assets/             # Images, sound effects, music, favicon and the social image
+  _headers            # Cloudflare headers; paths include /games/mimic-feeder (the playtest and npm start apply them)
 unused-assets/        # Quarantined art and audio, not shipped
 build.js              # `npm run build`: runs the Vite build
 eslint.config.js      # ESLint flat config: the game (typescript-eslint) and the Node tooling
@@ -60,8 +60,8 @@ eslint.config.js      # ESLint flat config: the game (typescript-eslint) and the
   dependabot.yml      # Weekly grouped npm + GitHub Actions update PRs
 scripts/
   lint.js             # node --check on the tooling, then ESLint
-  serve.js            # Static server for dist/ with _headers (npm start; used by the playtest)
-  pages-headers.js    # Cloudflare Pages _headers matching used by serve.js
+  serve.js            # Static server for dist/ under the base path, with _headers (npm start; used by the playtest)
+  headers.js          # Cloudflare _headers matching used by serve.js
   playtest.js         # Playwright against dist/ served with _headers
   live-check.js       # Read-only smoke check of the deployed site (npm run check:live)
 docs/phaser-migration/  # The rebuild's plan (design decisions) and the p5.js version's inventory
@@ -97,7 +97,8 @@ Gameplay timing runs on play time, which stops while paused: accumulate the fram
 
 ### Assets, loading and the CSP
 
-- Art and audio are in `public/assets/`, served unhashed at `/assets/` (revalidated within a day). The code is content-hashed under `/bundle/` (cached for a year); Phaser has its own chunk.
+- Every path in the game is relative (Vite `base: './'`, `ASSET_BASE = './assets/'` in `src/config.ts`), so the same build works at any address. Production serves it under `/games/mimic-feeder/`; never add a root-relative path (`/assets/…`). The playtest serves the game under that path too, so one fails there.
+- Art and audio are in `public/assets/`, served unhashed from `assets/` (revalidated within a day). The code is content-hashed in `bundle/` (cached for a year); Phaser has its own chunk.
 - Floor 1's assets load before the title; later floors' backgrounds, the second music track and the boss music load in the background (`SystemScene`). Code that needs one of those must cope with it not having arrived yet.
 - A file that fails to load is retried once; if an image still fails, the loading screen says so with a Reload button. A missing sound is skipped (`playSound` returns null).
 - The CSP (`public/_headers`) allows only the site itself, plus Cloudflare's analytics. No inline scripts or `<style>`; images from the site or `data:`. Phaser loads images as plain `<img>` requests (`imageLoadType: 'HTMLImageElement'`) so `blob:` isn't needed.
@@ -128,13 +129,13 @@ npm run check:live     # smoke-test the live site (LIVE_URL overrides)
 
 Run `npm run check` before opening a PR. For a change to behaviour, add a playtest check (or a unit test, for a rule) that fails without the change, and confirm it does.
 
-The playtest serves `dist/` with `dist/_headers` applied using Cloudflare Pages semantics (every matching rule applies; same-name headers are joined with commas), fails on any `securitypolicyviolation`, and fails if any served path would get `Cache-Control` from more than one rule. It always uses **Playwright's own Chromium** (`channel: 'chromium'`), locally and in CI, so a local pass means the same engine passed. There is deliberately no option to use another browser. If it is missing, or Playwright was upgraded, run `npm run playtest:install`. CI renders WebGL in software at a few frames per second, so checks wait for the game's state, not for fixed times.
+The playtest serves `dist/` under the base path from `wrangler.jsonc` (`/games/mimic-feeder/`), with `dist/_headers` applied using Cloudflare's semantics (every matching rule applies; same-name headers are joined with commas). It fails on any `securitypolicyviolation`, on a `_headers` rule outside the base path (it would never apply), and if any served path would get `Cache-Control` from more than one rule. It always uses **Playwright's own Chromium** (`channel: 'chromium'`), locally and in CI, so a local pass means the same engine passed. There is deliberately no option to use another browser. If it is missing, or Playwright was upgraded, run `npm run playtest:install`. CI renders WebGL in software at a few frames per second, so checks wait for the game's state, not for fixed times.
 
 ### CI
 
 `.github/workflows/ci.yml` runs on pushes to `main` and on every PR: `npm ci`, `npm test`, then `npm run playtest` with the same Playwright Chromium as local runs, on the Node version in `.nvmrc`. Screenshots are uploaded as an artifact when it fails. Keep it green; a red check means a gate above failed.
 
-`.github/workflows/deploy-check.yml` runs after each push to `main`. It waits (up to 15 minutes) for Cloudflare's own **Cloudflare Pages** check on that commit to succeed, then runs `npm run check:live` against https://mimicfeeder.yest.dev/: the page loads with its CSP and without noindex, the game reaches its title and starts a run, `/next/` redirects to `/`, and there are no CSP violations, errors, failed requests or HTTP errors. A failed deploy, a missing deploy, or a broken live site turns that run red. It is not a required check (it runs after merging). To verify a deploy, read that run's result rather than probing the site locally.
+`.github/workflows/deploy-check.yml` runs after each push to `main`. It waits (up to 15 minutes) for Cloudflare's own **Workers Builds: mimic-feeder** check on that commit to succeed (rename the Worker and the check's name changes: update `CHECK_NAME` in the workflow), then runs `npm run check:live` against https://yest.dev/games/mimic-feeder/: the page loads with its CSP and without noindex, the game reaches its title and starts a run, the page, bundle and assets get their `_headers` caching, the address without its trailing slash redirects to it, an unknown address is a 404, and there are no CSP violations, errors, failed requests or HTTP errors. A failed deploy, a missing deploy, or a broken live site turns that run red. It is not a required check (it runs after merging). To verify a deploy, read that run's result rather than probing the site locally.
 
 Work on short-lived branches off `main` (there is no `develop` branch). PRs are squash-merged: it is the only merge method enabled, the squash commit takes the PR title, and the head branch is deleted automatically after merging. The squash commit's body is the branch's commit messages, so they land on `main` as written.
 
@@ -167,9 +168,9 @@ Dependabot (`.github/dependabot.yml`) opens weekly PRs: one grouped PR for minor
 
 ## Deploy
 
-- Cloudflare Pages builds from the repo; output directory is `dist/`
-- No Wrangler publish step is required for normal deploys
-- The Pages project should have no bindings in either environment (there are no Functions). Open Cloudflare clean-up is tracked in GitHub issues.
+- Workers Builds builds from the repo and deploys with Wrangler (a dev dependency, so its version is pinned in `package-lock.json`); `wrangler.jsonc` holds every setting
+- `npx wrangler dev` serves the build with Cloudflare's own asset handling (base path, `_headers`, redirects, 404s); `LIVE_URL=http://localhost:8787/games/mimic-feeder/ npm run check:live` runs the live check against it
+- The Worker has no bindings. Open Cloudflare clean-up is tracked in GitHub issues.
 
 ## Related docs
 
