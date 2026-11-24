@@ -9,14 +9,17 @@
  *   advances
  * - no CSP violations, page errors, unexpected console errors, failed
  *   requests or HTTP error responses
- * - the old /next/ preview address redirects to /
+ * - the page, the bundle and the assets get their Cache-Control from
+ *   public/_headers (nothing errors if a rule's path stops matching)
+ * - the address without its trailing slash redirects to it, and an unknown
+ *   address gets a 404
  *
  * The run is never saved: the browser profile is thrown away afterwards, and
  * the game has no backend.
  *
  * Usage:
- *   npm run check:live                      # https://mimicfeeder.yest.dev/
- *   LIVE_URL=https://<preview>.pages.dev/ npm run check:live
+ *   npm run check:live                      # https://yest.dev/games/mimic-feeder/
+ *   LIVE_URL=https://<preview>-mimic-feeder.<subdomain>.workers.dev/games/mimic-feeder/ npm run check:live
  *
  * CI runs it after each deploy of main (.github/workflows/deploy-check.yml).
  * A screenshot is saved to playtest-output/live-check.png.
@@ -25,10 +28,10 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 
-const LIVE_URL = process.env.LIVE_URL || 'https://mimicfeeder.yest.dev/';
+// Always with its trailing slash: the game's paths are relative to it.
+const LIVE_URL = (process.env.LIVE_URL || 'https://yest.dev/games/mimic-feeder/').replace(/\/?$/, '/');
 const OUT_DIR = path.join(__dirname, '..', 'playtest-output');
 const SCREENSHOT = path.join(OUT_DIR, 'live-check.png');
-const NEXT_URL = new URL('next/', LIVE_URL).href;
 
 const failures = [];
 
@@ -60,6 +63,8 @@ async function main() {
     const consoleErrors = [];
     const failedRequests = [];
     const errorResponses = [];
+    /** Cache-Control of the first bundle/ and assets/ responses (unset until seen). */
+    const cacheControl = {};
 
     page.on('pageerror', (error) => pageErrors.push(error.message));
     page.on('console', (message) => {
@@ -75,6 +80,10 @@ async function main() {
         if (response.status() >= 400) {
             errorResponses.push(`${response.status()} ${response.url()}`);
         }
+        const kind = ['bundle', 'assets'].find((dir) => response.url().startsWith(new URL(`${dir}/`, LIVE_URL).href));
+        if (kind && !(kind in cacheControl)) {
+            cacheControl[kind] = response.headers()['cache-control'] || '';
+        }
     });
 
     try {
@@ -89,10 +98,11 @@ async function main() {
         const headers = response ? response.headers() : {};
         check(response && response.status() === 200, 'Document returns 200', response && `status ${response.status()}`);
         check(Boolean(headers['content-security-policy']), 'Document has a Content-Security-Policy header');
-        // Preview deployments (*.pages.dev) are noindex on purpose; the production domain must not be.
-        if (!new URL(LIVE_URL).hostname.endsWith('.pages.dev')) {
+        // Previews (*.workers.dev) are noindex on purpose; the production address must not be.
+        if (!new URL(LIVE_URL).hostname.endsWith('.workers.dev')) {
             check(!/noindex/i.test(headers['x-robots-tag'] || ''), 'Document is not marked noindex', headers['x-robots-tag']);
         }
+        check(/max-age=3600\b/.test(headers['cache-control'] || ''), 'Document is cached for an hour (_headers)', headers['cache-control']);
 
         // The game reports its scenes and state through its test hook (src/testHook.ts).
         await page.waitForFunction(() => window.__mimicFeeder && window.__mimicFeeder.ready.includes('title'), null, { timeout: 30000 });
@@ -115,6 +125,8 @@ async function main() {
         check(consoleErrors.length === 0, 'No unexpected console errors', consoleErrors.join('; '));
         check(failedRequests.length === 0, 'No failed requests', failedRequests.join('; '));
         check(errorResponses.length === 0, 'No HTTP error responses', errorResponses.join('; '));
+        check(/\bimmutable\b/.test(cacheControl.bundle || ''), 'The bundle is cached as immutable (_headers)', cacheControl.bundle);
+        check(/max-age=86400\b/.test(cacheControl.assets || ''), 'Assets revalidate within a day (_headers)', cacheControl.assets);
     } catch (error) {
         failures.push(error.message.split('\n')[0]);
         console.error(`FAIL ${error.message.split('\n')[0]}`);
@@ -128,14 +140,23 @@ async function main() {
         await page.screenshot({ path: SCREENSHOT }).catch(() => {});
     }
 
-    // The old preview address, for anyone who still has the link.
+    // Without the trailing slash, the game's relative paths would point one
+    // folder up: Cloudflare redirects to the address with it.
+    const noSlash = LIVE_URL.replace(/\/$/, '');
     try {
-        const redirect = await page.request.get(NEXT_URL, { maxRedirects: 0 });
+        const redirect = await page.request.get(noSlash, { maxRedirects: 0 });
         const location = redirect.headers().location || '';
-        check([301, 308].includes(redirect.status()) && new URL(location, NEXT_URL).href === new URL('/', LIVE_URL).href,
-            '/next/ redirects to /', `status ${redirect.status()}, location ${location || 'none'}`);
+        check([301, 302, 307, 308].includes(redirect.status()) && new URL(location, noSlash).href === LIVE_URL,
+            'The address without its trailing slash redirects to it', `status ${redirect.status()}, location ${location || 'none'}`);
     } catch (error) {
-        check(false, '/next/ redirects to /', error.message.split('\n')[0]);
+        check(false, 'The address without its trailing slash redirects to it', error.message.split('\n')[0]);
+    }
+    // The game is one page: anything else is a plain 404 (not_found_handling in wrangler.jsonc).
+    try {
+        const missing = await page.request.get(new URL('no-such-page', LIVE_URL).href, { maxRedirects: 0 });
+        check(missing.status() === 404, 'An unknown address gets a 404', `status ${missing.status()}`);
+    } catch (error) {
+        check(false, 'An unknown address gets a 404', error.message.split('\n')[0]);
     }
 
     await browser.close();

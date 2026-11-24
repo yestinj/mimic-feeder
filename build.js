@@ -1,6 +1,6 @@
 // `npm run build`: builds the game into dist/ with Vite (vite.config.mts).
-// Cloudflare Pages runs this and serves dist/. Kept as a script so the build
-// command stays the same whatever the build does.
+// Workers Builds runs this before deploying dist/ (wrangler.jsonc). Kept as a
+// script so the build command stays the same whatever the build does.
 const path = require('path');
 
 async function main() {

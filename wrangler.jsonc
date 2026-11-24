@@ -1,0 +1,32 @@
+{
+    "$schema": "./node_modules/wrangler/config-schema.json",
+    // A static site: Workers serves the build (dist/) with no Worker script.
+    // Workers Builds runs `npm run build`, then `npx wrangler deploy` for main
+    // and `npx wrangler preview` for other branches.
+    "name": "mimic-feeder",
+    "compatibility_date": "2026-11-24",
+
+    // The game lives at yest.dev/games/mimic-feeder/; the rest of yest.dev is a
+    // separate site. The pattern has no slash before the * so that it also
+    // takes /games/mimic-feeder (redirected to the address with the slash) and
+    // query strings such as ?test. Deploys warn that this route "will match
+    // assets: dist/games/mimic-feeder*": that warning ignores base_path below,
+    // which maps the route onto dist/ itself.
+    "routes": [{ "pattern": "yest.dev/games/mimic-feeder*", "zone_name": "yest.dev" }],
+    "assets": {
+        "directory": "./dist",
+        // dist/ stays laid out as if at the root: the game uses relative paths,
+        // so it works under any prefix. Paths in public/_headers include it.
+        "base_path": "/games/mimic-feeder",
+        // The game is one page: an unknown address gets a plain 404, not the game.
+        "not_found_handling": "none"
+    },
+
+    // Production only at the route above. Pull requests still get preview URLs
+    // on workers.dev, which Cloudflare marks noindex.
+    "workers_dev": false,
+    "preview_urls": true,
+    // Worker Previews (`npx wrangler preview`) need this block; empty because
+    // previews use the same settings as production.
+    "previews": {}
+}

@@ -1,5 +1,5 @@
 // The game's art, animations, sounds and music: Phaser keys and the files they
-// load from /assets/ (public/assets/, copied into the build as it is).
+// load from assets/ next to the page (public/assets/, copied into the build as it is).
 import type * as Phaser from 'phaser';
 import { ASSET_BASE } from './config';
 import { FLOORS, floorIndex } from './rules/floors';

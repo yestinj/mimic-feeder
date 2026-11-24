@@ -3,8 +3,11 @@
 export const DESIGN_WIDTH = 1920;
 export const DESIGN_HEIGHT = 1080;
 
-/** Shared art and audio, served by the site at /assets/. */
-export const ASSET_BASE = '/assets/';
+/**
+ * Shared art and audio (public/assets/). Relative to the page, so the game
+ * works wherever it is served from (yest.dev/games/mimic-feeder/ in production).
+ */
+export const ASSET_BASE = './assets/';
 
 // The p5 game was tuned in pixels on a 1024×768 canvas. Its numbers are kept
 // as they were and converted here (docs/phaser-migration/plan.md §1):

@@ -1,17 +1,18 @@
 /**
- * Minimal Cloudflare Pages `_headers` emulation for the local playtest server.
+ * Minimal emulation of Cloudflare's `_headers` file (Workers static assets) for
+ * the local server and the playtest.
  *
- * Semantics followed (https://developers.cloudflare.com/pages/configuration/headers/):
+ * Semantics followed (https://developers.cloudflare.com/workers/static-assets/headers/):
  * - A rule is an unindented URL pattern followed by indented `Name: value` lines.
  *   `#` starts a comment line; blank lines are ignored.
- * - Patterns are relative paths (`/assets/*`) or absolute URLs
- *   (`https://*.pages.dev/*`). `*` is a splat matching any characters (including
+ * - Patterns are public paths (`/games/mimic-feeder/assets/*`) or absolute URLs
+ *   (`https://example.com/*`). `*` is a splat matching any characters (including
  *   `/`), `:name` is a placeholder matching one path segment. Query strings are
  *   ignored. A pattern must match the whole path (or URL).
- * - EVERY matching rule applies. Headers with the same name from several rules
- *   are joined with `, ` in file order.
- * - An indented `! Name` line detaches that header (drops it even when another
- *   matching rule sets it).
+ * - EVERY matching rule applies, in file order. Headers with the same name from
+ *   several rules are joined with `, `.
+ * - An indented `! Name` line detaches that header: it removes what earlier
+ *   matching rules added, before the rule's own headers apply.
  */
 const fs = require('fs');
 
@@ -90,15 +91,14 @@ function loadHeadersFile(filePath) {
 }
 
 /**
- * Resolves the headers Cloudflare Pages would add to a response.
+ * Resolves the headers Cloudflare would add to a response.
  * @param {ReturnType<typeof parseHeadersFile>} rules
- * @param {string} urlPath request path without query, e.g. `/assets/a.png`
+ * @param {string} urlPath request path without query, e.g. `/games/mimic-feeder/assets/a.png`
  * @param {string} origin e.g. `http://127.0.0.1:4173`, for absolute-URL patterns
  * @returns {{headers: Map<string, {name: string, values: string[], rules: string[]}>, matchedRules: string[]}}
  */
 function resolveHeaders(rules, urlPath, origin) {
     const headers = new Map();
-    const detached = new Set();
     const matchedRules = [];
     const fullUrl = `${origin}${urlPath}`;
 
@@ -107,7 +107,7 @@ function resolveHeaders(rules, urlPath, origin) {
             continue;
         }
         matchedRules.push(rule.pattern);
-        rule.detach.forEach((name) => detached.add(name));
+        rule.detach.forEach((name) => headers.delete(name));
         for (const { name, value } of rule.headers) {
             const key = name.toLowerCase();
             if (!headers.has(key)) {
@@ -119,7 +119,6 @@ function resolveHeaders(rules, urlPath, origin) {
         }
     }
 
-    detached.forEach((key) => headers.delete(key));
     return { headers, matchedRules };
 }
 

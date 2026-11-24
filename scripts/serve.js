@@ -1,11 +1,16 @@
 #!/usr/bin/env node
 /**
  * Local static server for dist/ that applies dist/_headers (the build's copy of
- * public/_headers) the way Cloudflare Pages does, so local runs get the production
- * Content-Security-Policy and other headers. See scripts/pages-headers.js.
+ * public/_headers) the way Cloudflare does, so local runs get the production
+ * Content-Security-Policy and other headers. See scripts/headers.js.
+ *
+ * Like production, the game is served under the base path from wrangler.jsonc
+ * (/games/mimic-feeder/), so a root-relative path in the game fails here too.
+ * The address without the trailing slash redirects to it; anything outside the
+ * base path is a 404.
  *
  * Used two ways:
- * - `npm start`: manual testing on http://127.0.0.1:8080 (PORT overrides).
+ * - `npm start`: manual testing on http://127.0.0.1:8080/games/mimic-feeder/ (PORT overrides).
  *   Every _headers rule applies except Cache-Control, which is replaced with
  *   `no-store` so a rebuild shows up on a normal refresh.
  * - scripts/playtest.js: imports startStaticServer() and keeps the exact
@@ -15,10 +20,25 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { loadHeadersFile, resolveHeaders, toResponseHeaders } = require('./pages-headers.js');
+const ts = require('typescript');
+const { loadHeadersFile, resolveHeaders, toResponseHeaders } = require('./headers.js');
 
 const DIST = path.join(__dirname, '..', 'dist');
 const HEADERS_FILE = path.join(DIST, '_headers');
+
+/** The path the game is served under, with both slashes: assets.base_path in wrangler.jsonc. */
+function readBasePath() {
+    const file = path.join(__dirname, '..', 'wrangler.jsonc');
+    // TypeScript's tsconfig parser reads JSONC (comments, trailing commas).
+    const { config, error } = ts.parseConfigFileTextToJson(file, fs.readFileSync(file, 'utf8'));
+    if (error) {
+        throw new Error(`wrangler.jsonc: ${ts.flattenDiagnosticMessageText(error.messageText, '\n')}`);
+    }
+    const basePath = (config.assets && config.assets.base_path) || '/';
+    return `/${basePath.replace(/^\/+|\/+$/g, '')}/`.replace('//', '/');
+}
+
+const BASE_PATH = readBasePath();
 
 function contentType(filePath) {
     const ext = path.extname(filePath).toLowerCase();
@@ -67,14 +87,14 @@ function listDistFiles(dirPath, files = []) {
 }
 
 /**
- * Every URL path Cloudflare Pages would serve from dist/: each file, minus
- * `_headers` and `_redirects` (Pages consumes them, never serves them), plus the directory
- * path (`/`, ...) of every index.html.
+ * Every URL path Cloudflare would serve from dist/, under BASE_PATH: each file,
+ * minus `_headers` (Cloudflare reads it, never serves it), plus the directory
+ * path (BASE_PATH, ...) of every index.html.
  */
 function listServedPaths() {
     const filePaths = listDistFiles(DIST)
-        .filter((filePath) => filePath !== HEADERS_FILE && filePath !== path.join(DIST, '_redirects'))
-        .map((filePath) => '/' + path.relative(DIST, filePath).split(path.sep).join('/'));
+        .filter((filePath) => filePath !== HEADERS_FILE)
+        .map((filePath) => BASE_PATH + path.relative(DIST, filePath).split(path.sep).join('/'));
     const directoryPaths = filePaths
         .filter((urlPath) => urlPath.endsWith('/index.html'))
         .map((urlPath) => urlPath.slice(0, -'index.html'.length));
@@ -83,7 +103,7 @@ function listServedPaths() {
 
 /**
  * Returns a `path <- rule + rule => "value"` description when resolved headers
- * got Cache-Control from more than one _headers rule (Pages would join them).
+ * got Cache-Control from more than one _headers rule (Cloudflare would join them).
  */
 function describeCacheControlConflict(urlPath, resolved) {
     const cacheControl = resolved.headers.get('cache-control');
@@ -115,42 +135,57 @@ function startStaticServer({ headerRules, host, port, cacheControlOverride, cach
             return;
         }
 
-        // Pages emulation: apply every matching _headers rule to every response.
+        // Apply every matching _headers rule to every response, as Cloudflare does.
         const resolved = resolveHeaders(headerRules, urlPath, origin);
         const conflict = describeCacheControlConflict(urlPath, resolved);
         if (conflict && !cacheControlConflicts.includes(conflict)) {
             cacheControlConflicts.push(conflict);
         }
-        const pagesHeaders = toResponseHeaders(resolved.headers);
+        const ruleHeaders = toResponseHeaders(resolved.headers);
         if (cacheControlOverride) {
-            for (const name of Object.keys(pagesHeaders)) {
+            for (const name of Object.keys(ruleHeaders)) {
                 if (name.toLowerCase() === 'cache-control') {
-                    delete pagesHeaders[name];
+                    delete ruleHeaders[name];
                 }
             }
-            pagesHeaders['Cache-Control'] = cacheControlOverride;
+            ruleHeaders['Cache-Control'] = cacheControlOverride;
         }
 
-        // Like Pages, a directory path serves that directory's index.html.
-        const safePath = urlPath.endsWith('/') ? `${urlPath}index.html` : urlPath;
+        // Like Cloudflare: the game's address without its trailing slash
+        // redirects to it, and nothing outside the base path is served.
+        if (`${urlPath}/` === BASE_PATH) {
+            const queryStart = (req.url || '').indexOf('?');
+            const query = queryStart === -1 ? '' : req.url.slice(queryStart);
+            res.writeHead(307, { ...ruleHeaders, Location: BASE_PATH + query });
+            res.end();
+            return;
+        }
+        if (!urlPath.startsWith(BASE_PATH)) {
+            res.writeHead(404, ruleHeaders);
+            res.end('Not found');
+            return;
+        }
+        // A directory path serves that directory's index.html.
+        const relativePath = urlPath.slice(BASE_PATH.length);
+        const safePath = relativePath === '' || relativePath.endsWith('/') ? `${relativePath}index.html` : relativePath;
         const filePath = path.normalize(path.join(DIST, safePath));
         if (!filePath.startsWith(DIST + path.sep)) {
-            res.writeHead(403, pagesHeaders);
+            res.writeHead(403, ruleHeaders);
             res.end('Forbidden');
             return;
         }
         if (filePath === HEADERS_FILE) {
-            res.writeHead(404, pagesHeaders);
+            res.writeHead(404, ruleHeaders);
             res.end('Not found');
             return;
         }
         fs.readFile(filePath, (err, data) => {
             if (err) {
-                res.writeHead(404, pagesHeaders);
+                res.writeHead(404, ruleHeaders);
                 res.end('Not found');
                 return;
             }
-            res.writeHead(200, { ...pagesHeaders, 'Content-Type': contentType(filePath) });
+            res.writeHead(200, { ...ruleHeaders, 'Content-Type': contentType(filePath) });
             res.end(data);
         });
     });
@@ -179,7 +214,7 @@ async function main() {
     const headerRules = loadDistHeaderRules();
     await startStaticServer({ headerRules, host, port, cacheControlOverride: 'no-store' });
 
-    const url = `http://${host}:${port}/`;
+    const url = `http://${host}:${port}${BASE_PATH}`;
     console.log(`Serving dist/ at ${url}`);
     console.log(`Applying ${headerRules.length} _headers rules (CSP etc.); Cache-Control replaced with no-store for local testing.`);
     console.log('After a change, run `npm run build` again and refresh. Ctrl+C to stop.');
@@ -187,6 +222,7 @@ async function main() {
 }
 
 module.exports = {
+    BASE_PATH,
     DIST,
     HEADERS_FILE,
     loadDistHeaderRules,
