@@ -4,7 +4,7 @@
 export interface FloorInfo {
     /** Display name, e.g. "Ageing Lower Halls". */
     readonly name: string;
-    /** Background file under /assets/backgrounds/. */
+    /** Background file under assets/backgrounds/. */
     readonly background: string;
 }
 

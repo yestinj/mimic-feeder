@@ -28,7 +28,7 @@ I'm not open to contributions, but if you'd like to fork the project and make yo
 ## Project Structure
 
 - `src/`: the game, in TypeScript with Phaser 4 (`src/scenes/` for screens, `src/rules/` for the game rules, unit-tested)
-- `public/assets/`: art, sounds and music, served at `/assets/`
+- `public/assets/`: art, sounds and music, served from `assets/`
 - `index.html`: the page
 - `vite.config.mts`: the Vite build (`npm run build` writes `dist/`)
 - `AGENTS.md`: a fuller guide to the layout and conventions

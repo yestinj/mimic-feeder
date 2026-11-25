@@ -22,14 +22,14 @@ Guidance for coding agents working in this repository.
 | Deploy | **Cloudflare Workers** static assets: `dist/` at yest.dev/games/mimic-feeder/ (`wrangler.jsonc`), deployed by **Workers Builds** |
 | Backend | **None** — no Worker script, Functions or D1. **Cloudflare Web Analytics** is on through the domain's automatic setup (no code; the CSP allows it) |
 
-Do **not** reintroduce in-app track beacons, a Worker script, or D1. Production is static-only: a Worker that serves `dist/` as static assets, with no script. Workers Builds is connected to the repo in the dashboard; it installs from `package-lock.json` on the Node version in `.nvmrc`, runs `npm run build`, then `npx wrangler deploy` on `main` and `npx wrangler preview` on other branches (a preview URL per PR, on workers.dev). `wrangler.jsonc` is the source of truth for the Worker's settings: the route (`yest.dev/games/mimic-feeder*`), `assets.base_path`, a plain 404 for unknown addresses, no production workers.dev address, and previews. Change them there, not in the dashboard: every deploy applies the file. The rest of yest.dev is a separate site (a Pages project in another repo); the route only takes the game's addresses. Cloudflare Web Analytics is enabled through the yest.dev zone's automatic setup: Cloudflare adds its script to HTML responses for real browsers, so the repo has no analytics code, and the CSP allows `static.cloudflareinsights.com` and `cloudflareinsights.com` on purpose. Keep those CSP entries; this is not the removed client/D1 metrics pipeline.
+Do **not** reintroduce in-app track beacons, a Worker script, or D1. Production is static-only: a Worker that serves `dist/` as static assets, with no script. Workers Builds is connected to the repo in the dashboard; it installs from `package-lock.json` on the Node version in `.nvmrc`, runs `npm run build`, then `npx wrangler deploy` on `main` and `npx wrangler preview` on other branches (a preview URL per PR, on workers.dev). `wrangler.jsonc` is the source of truth for the Worker's settings: the route (`yest.dev/games/mimic-feeder*`), `assets.base_path`, a plain 404 for unknown addresses, no production workers.dev address, and previews. Change them there, not in the dashboard: every deploy applies the file. The rest of yest.dev is a separate site; the route only takes the game's addresses. Cloudflare Web Analytics is enabled through the yest.dev zone's automatic setup: Cloudflare adds its script to HTML responses for real browsers, so the repo has no analytics code, and the CSP allows `static.cloudflareinsights.com` and `cloudflareinsights.com` on purpose. Keep those CSP entries; this is not the removed client/D1 metrics pipeline.
 
 ## Layout
 
 ```
 index.html            # The page: meta tags, the game's container, the "needs JavaScript" notice
 wrangler.jsonc        # The Cloudflare Worker: route, base path, 404s, previews (no script)
-vite.config.mts       # Vite build (hashed output in /bundle/) + Vitest config
+vite.config.mts       # Vite build (hashed output in bundle/) + Vitest config
 tsconfig.json         # TypeScript (strict)
 src/
   main.ts             # Entry: loads the save, checks for WebGL, starts Phaser, shows the keyboard note on touch devices
@@ -38,7 +38,7 @@ src/
   game/               # Playfield objects: the mimic, falling objects, the boss, effects
   ui/                 # UI kit (generated SVGs in kit/), buttons, menus, HUD pieces, text; keys.ts for key input
   config.ts           # Design resolution (1920×1080) and the scales from the original 1024×768 numbers
-  assets.ts           # Asset keys and files (served at /assets/), animations
+  assets.ts           # Asset keys and files (served from assets/), animations
   audio.ts            # Sound effects, music and mute
   profile.ts          # The save (localStorage): settings, name, high scores, totals; loaded at boot
   notice.ts           # Plain HTML notices: in place of the game (no WebGL) or over it (the keyboard note)
@@ -170,7 +170,7 @@ Dependabot (`.github/dependabot.yml`) opens weekly PRs: one grouped PR for minor
 
 - Workers Builds builds from the repo and deploys with Wrangler (a dev dependency, so its version is pinned in `package-lock.json`); `wrangler.jsonc` holds every setting
 - `npx wrangler dev` serves the build with Cloudflare's own asset handling (base path, `_headers`, redirects, 404s); `LIVE_URL=http://localhost:8787/games/mimic-feeder/ npm run check:live` runs the live check against it
-- The Worker has no bindings. Open Cloudflare clean-up is tracked in GitHub issues.
+- The Worker has no bindings.
 
 ## Related docs
 
